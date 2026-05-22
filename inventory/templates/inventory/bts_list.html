@@ -1,0 +1,310 @@
+{% extends 'inventory/base.html' %}
+{% load static %}
+
+{% block title %}Mobile BTS Inventory | NET-TRACKER{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: #F8FAFC;
+    }
+    .inventory-header {
+        margin-bottom: 2.5rem;
+    }
+    .inventory-title {
+        color: #0F172A;
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: -0.025em;
+        margin: 0;
+    }
+    
+    /* Stats Section */
+    .stats-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 3rem;
+    }
+    .stat-card {
+        background: white;
+        border-radius: 20px;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        border: 1px solid #E2E8F0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s;
+    }
+    .stat-card:hover { transform: translateY(-3px); }
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        margin-right: 1.25rem;
+    }
+    .stat-label { color: #64748B; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.1rem; }
+    .stat-value { color: #0F172A; font-size: 1.5rem; font-weight: 800; line-height: 1; }
+    
+    .bg-blue-soft { background: #EFF6FF; color: #2563EB; }
+    .bg-green-soft { background: #F0FDF4; color: #16A34A; }
+    .bg-purple-soft { background: #FAF5FF; color: #9333EA; }
+
+    /* Search Bar */
+    .search-container {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 20px;
+        border: 1px solid #E2E8F0;
+        margin-bottom: 2rem;
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+    .search-box {
+        position: relative;
+        flex-grow: 1;
+    }
+    .search-box i {
+        position: absolute;
+        left: 1.25rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94A3B8;
+    }
+    .search-input {
+        width: 100%;
+        padding: 0.75rem 1rem 0.75rem 3rem;
+        border-radius: 14px;
+        border: 1px solid #E2E8F0;
+        background: #F8FAFC;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+    }
+    .search-input:focus {
+        outline: none;
+        background: white;
+        border-color: #3B82F6;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    }
+
+    /* Table Styling */
+    .inventory-card {
+        background: white;
+        border-radius: 24px;
+        border: 1px solid #E2E8F0;
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    .table thead th {
+        background: #F8FAFC;
+        padding: 1rem 1.5rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #64748B;
+        border-bottom: 1px solid #E2E8F0;
+    }
+    .table tbody td {
+        padding: 1.25rem 1.5rem;
+        vertical-align: middle;
+        font-size: 0.9rem;
+        color: #1E293B;
+        border-bottom: 1px solid #F1F5F9;
+    }
+    .bts-rp-id { font-weight: 800; color: #0F172A; }
+    .bts-name { font-weight: 600; }
+    
+    .badge-modern {
+        padding: 0.4rem 0.8rem;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.75rem;
+    }
+
+    .btn-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        border: 1px solid #E2E8F0;
+        background: white;
+        color: #64748B;
+    }
+    .btn-icon:hover {
+        background: #F8FAFC;
+        color: #3B82F6;
+        border-color: #3B82F6;
+        transform: translateY(-2px);
+    }
+
+    /* Empty State */
+    .empty-state {
+        padding: 5rem 2rem;
+        text-align: center;
+    }
+    .empty-state i { font-size: 4rem; color: #CBD5E1; margin-bottom: 1.5rem; display: block; }
+    .empty-state h5 { font-weight: 700; color: #475569; margin-bottom: 0.5rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-lg-5">
+    
+    <div class="inventory-header d-flex justify-content-between align-items-center">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-2">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}" class="text-decoration-none">Home</a></li>
+                    <li class="breadcrumb-item active">Mobile BTS</li>
+                </ol>
+            </nav>
+            <h1 class="inventory-title"><i class="bi bi-broadcast me-2 text-primary"></i>Mobile BTS Inventory</h1>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-success px-4 fw-bold rounded-pill"
+               href="{% url 'export_bts' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">
+                <i class="bi bi-file-earmark-excel me-2"></i>Export Excel
+            </a>
+            <a href="{% url 'bts_create' %}" class="btn btn-primary px-4 fw-bold rounded-pill shadow-sm">
+                <i class="bi bi-plus-lg me-2"></i>Add New BTS
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-container">
+        <div class="stat-card">
+            <div class="stat-icon bg-blue-soft"><i class="bi bi-tower"></i></div>
+            <div class="stat-content">
+                <div class="stat-label">Total BTS</div>
+                <div class="stat-value">{{ total_count|default:"0" }}</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon bg-purple-soft"><i class="bi bi-diagram-3"></i></div>
+            <div class="stat-content">
+                <div class="stat-label">On Ring</div>
+                <div class="stat-value">{{ ring_count|default:"0" }}</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon bg-green-soft"><i class="bi bi-cpu"></i></div>
+            <div class="stat-content">
+                <div class="stat-label">CEF 12T Circuits</div>
+                <div class="stat-value">{{ cef_count|default:"0" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="search-container shadow-sm">
+        <form method="GET" class="d-flex w-100 gap-3">
+            <div class="search-box">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" class="search-input" placeholder="Search by RP ID or BTS Name..." value="{{ request.GET.search }}">
+            </div>
+            <select name="is_ring" class="form-select border-0 bg-light fw-bold px-4" style="border-radius: 14px; width: 200px;" onchange="this.form.submit()">
+                <option value="">All Connectivity</option>
+                <option value="true" {% if request.GET.is_ring == 'true' %}selected{% endif %}>Ring Only</option>
+                <option value="false" {% if request.GET.is_ring == 'false' %}selected{% endif %}>Non-Ring Only</option>
+            </select>
+            <button type="submit" class="btn btn-dark px-4 fw-bold rounded-pill">Search</button>
+        </form>
+    </div>
+
+    <!-- Inventory Table -->
+    <div class="inventory-card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>RP ID</th>
+                        <th>BTS Name</th>
+                        <th>Location</th>
+                        <th>CEF 12T?</th>
+                        <th>Ring?</th>
+                        <th>Diagram</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bts in bts_list %}
+                    <tr class="animate-in">
+                        <td class="bts-rp-id">{{ bts.rp_id }}</td>
+                        <td class="bts-name">{{ bts.bts_name|default:"Unnamed BTS" }}</td>
+                        <td>
+                            {% if bts.latitude %}
+                                <div class="d-flex flex-column">
+                                    <span class="small fw-bold text-dark"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ bts.latitude|floatformat:4 }}</span>
+                                    <span class="extra-small text-muted ms-3">{{ bts.longitude|floatformat:4 }}</span>
+                                </div>
+                            {% else %}
+                                <span class="text-muted small">No GPS Data</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if bts.has_cef_12t %}
+                                <span class="badge-modern bg-success text-white">YES</span>
+                            {% else %}
+                                <span class="badge-modern bg-light text-muted">NO</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if bts.is_ring %}
+                                <span class="badge-modern bg-info text-white">YES</span>
+                            {% else %}
+                                <span class="badge-modern bg-light text-muted">NO</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if bts.erps_image %}
+                                <a href="{{ bts.erps_image.url }}" target="_blank" class="btn-icon">
+                                    <i class="bi bi-image-fill"></i>
+                                </a>
+                            {% else %}
+                                <span class="text-muted opacity-50"><i class="bi bi-image"></i></span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <div class="d-flex justify-content-end gap-2">
+                                <a href="{% url 'bts_detail' bts.pk %}" class="btn-icon" title="View Details">
+                                    <i class="bi bi-eye-fill"></i>
+                                </a>
+                                <a href="{% url 'bts_update' bts.pk %}" class="btn-icon" title="Edit BTS">
+                                    <i class="bi bi-pencil-fill"></i>
+                                </a>
+                                <a href="{% url 'bts_delete' bts.pk %}" class="btn-icon text-danger" title="Delete BTS">
+                                    <i class="bi bi-trash3-fill"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="p-0">
+                            <div class="empty-state">
+                                <i class="bi bi-broadcast"></i>
+                                <h5>No Mobile BTS found.</h5>
+                                <p class="text-muted">Start by adding a new Mobile Tower to your inventory.</p>
+                                <a href="{% url 'bts_create' %}" class="btn btn-primary px-4 fw-bold rounded-pill mt-3">
+                                    <i class="bi bi-plus-lg me-2"></i>Add First BTS
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

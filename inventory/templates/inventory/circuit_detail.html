@@ -1,0 +1,230 @@
+{% extends 'inventory/base.html' %}
+
+{% block title %}Circuit Details - {{ circuit.client_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'circuit_list' %}">EB Circuits</a></li>
+                    <li class="breadcrumb-item active">{{ circuit.client_name }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-3">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-hdd-network"></i> Circuit Information</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="35%">Client Name:</th>
+                            <td><strong>{{ circuit.client_name }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>Circuit Type:</th>
+                            <td><span class="badge bg-info">{{ circuit.circuit_type }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>Bandwidth:</th>
+                            <td><span class="badge bg-success">{{ circuit.bandwidth }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>Customer End Node:</th>
+                            <td>{{ circuit.customer_end_node }}</td>
+                        </tr>
+                        <tr>
+                            <th>Fiber Mode:</th>
+                            <td>
+                                {% if circuit.fiber_mode == 'SINGLE' %}
+                                <span class="badge bg-warning">Single</span>
+                                {% else %}
+                                <span class="badge bg-primary">Dual</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>TE Name:</th>
+                            <td><a href="{% url 'te_dashboard' circuit.te.id %}">{{ circuit.te.name|upper }}</a></td>
+                        </tr>
+                        <tr>
+                            <th>Connected Cable:</th>
+                            <td>{% if circuit.cable %}<a href="{% url 'cable_detail' circuit.cable.id %}">{{ circuit.cable.name }}</a>{% else %}Not connected{% endif %}</td>
+                        </tr>
+                        <tr>
+                            <th>Connected Equipment:</th>
+                            <td>{% if circuit.equipment %}<a href="{% url 'equipment_detail' circuit.equipment.id %}">{{ circuit.equipment.name }}</a>{% else %}Not connected{% endif %}</td>
+                        </tr>
+                        <tr>
+                            <th>Customer Premise Location:</th>
+                            <td>{{ circuit.customer_premise_location|default:"N/A" }}</td>
+                        </tr>
+                        <tr>
+                            <th>OTDR Distance:</th>
+                            <td><span class="badge bg-secondary">{{ circuit.otdr_distance|default:"N/A" }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>GPS Location:</th>
+                            <td>
+                                {% if circuit.latitude and circuit.longitude %}
+                                <a href="https://www.google.com/maps?q={{ circuit.latitude }},{{ circuit.longitude }}" target="_blank">
+                                    {{ circuit.latitude }}, {{ circuit.longitude }}
+                                </a>
+                                {% else %}
+                                Not configured
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Remarks:</th>
+                            <td>{{ circuit.remarks|default:"N/A" }}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="card-footer">
+                    <a href="{% url 'circuit_update' circuit.pk %}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-pencil"></i> Edit
+                    </a>
+                    <a href="{% url 'circuit_delete' circuit.pk %}" class="btn btn-danger btn-sm">
+                        <i class="bi bi-trash"></i> Delete
+                    </a>
+                    <a href="{% url 'circuit_list' %}" class="btn btn-secondary btn-sm">
+                        <i class="bi bi-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            </div>
+
+            {% if circuit.node_configuration %}
+            <div class="card mb-3 shadow-sm border-0 glass-card">
+                <div class="card-header bg-gradient bg-info text-white py-3">
+                    <h5 class="mb-0"><i class="bi bi-hdd-stack-fill me-2"></i>Customer End Node Details</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">
+                        <strong>Node Type:</strong> 
+                        <span class="badge bg-primary fs-6">{{ circuit.get_customer_end_node_display }}</span>
+                    </p>
+
+                    {% if circuit.customer_end_node == 'MEDIA_CONVERTER' %}
+                    <div class="p-3 bg-light border rounded">
+                        <strong>Type of Media Converter:</strong> {{ circuit.mc_type|default:"Not specified" }}
+                    </div>
+                    {% endif %}
+
+                    {% if circuit.customer_end_node == 'CPAN_B' %}
+                    <div class="mt-3">
+                        {% if circuit.node_configuration.xsv3 %}
+                        <h6 class="fw-bold text-primary border-bottom pb-1">XSV3 Cards ({{ circuit.node_configuration.xsv3.count }})</h6>
+                        <p class="mb-1 small"><strong>Slots:</strong> {{ circuit.node_configuration.xsv3.slots|join:", " }}</p>
+                        <div class="row mb-3">
+                            {% for port in circuit.node_configuration.xsv3.ports %}
+                            <div class="col-md-4 mb-2">
+                                <div class="border rounded p-2 bg-light small">
+                                    <strong>Port {{ port.port }}</strong><br>
+                                    Cable: {{ port.cable|default:"-" }}<br>
+                                    End: {{ port.system_end|default:"-" }}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        {% if circuit.node_configuration.stm and circuit.node_configuration.stm.available == 'Y' %}
+                        <h6 class="fw-bold text-primary border-bottom pb-1">STM Card S1V1</h6>
+                        <p class="mb-1 small"><strong>Slots:</strong> {{ circuit.node_configuration.stm.slots|join:", " }}</p>
+                        <div class="row mb-3">
+                            {% for port in circuit.node_configuration.stm.ports %}
+                            <div class="col-md-3 mb-2">
+                                <div class="border rounded p-1 bg-light small">
+                                    <strong>{{ port.port }}</strong>: {{ port.cable|default:"-" }} ({{ port.system_end|default:"-" }})
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        {% if circuit.node_configuration.msv1 and circuit.node_configuration.msv1.slots %}
+                        <h6 class="fw-bold text-primary border-bottom pb-1">MSV1 Cards</h6>
+                        <p class="mb-1 small"><strong>Slots:</strong> {{ circuit.node_configuration.msv1.slots|join:", " }}</p>
+                        <div class="accordion accordion-flush" id="msv1Accordion">
+                            {% regroup circuit.node_configuration.msv1.ports by port|slice:":1" as slot_groups %}
+                            {% for group in slot_groups %}
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed py-2 small fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#slot-{{ group.grouper }}">
+                                        Slot {{ group.grouper }} Ports
+                                    </button>
+                                </h2>
+                                <div id="slot-{{ group.grouper }}" class="accordion-collapse collapse" data-bs-parent="#msv1Accordion">
+                                    <div class="accordion-body p-2">
+                                        <div class="row">
+                                            {% for port in group.list %}
+                                            <div class="col-md-6 mb-1">
+                                                <div class="border rounded p-1 small">
+                                                    <strong>{{ port.port }}</strong> [{{ port.sfp }}]: {{ port.cable|default:"-" }}
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% elif circuit.node_configuration.ports %}
+                    <h6 class="fw-bold text-info border-bottom pb-2 mb-3">Port Mapping Details</h6>
+                    <div class="row g-2">
+                        {% for port in circuit.node_configuration.ports %}
+                        <div class="col-md-4">
+                            <div class="p-2 border rounded bg-light hover-shadow transition-all h-100">
+                                <div class="badge bg-success mb-2">Port {{ port.port }}</div>
+                                <div class="small">
+                                    <div class="fw-bold text-truncate" title="{{ port.circuit }}">
+                                        <i class="bi bi-diagram-3-fill me-1"></i>{{ port.circuit|default:"-" }}
+                                    </div>
+                                    <div class="text-muted text-truncate">
+                                        <i class="bi bi-cable me-1"></i>{{ port.cable|default:"-" }}
+                                    </div>
+                                    <div class="text-muted text-truncate">
+                                        <i class="bi bi-arrow-right-square me-1"></i>{{ port.system_end|default:"-" }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-diagram-2"></i> Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'circuit_update' circuit.pk %}" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-pencil"></i> Edit Circuit
+                        </a>
+                        <a href="{% url 'te_dashboard' circuit.te.id %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-building"></i> View TE Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

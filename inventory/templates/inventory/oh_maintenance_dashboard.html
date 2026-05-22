@@ -1,0 +1,288 @@
+{% extends 'inventory/base.html' %}
+{% load inventory_extras %}
+
+{% block title %}OH Maintenance Dashboard - NET-TRACKER{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+$(document).ready(function() {
+    // MTTR Chart
+    const mttrCtx = document.getElementById('mttrChart').getContext('2d');
+    const mttrData = {
+        labels: [{% for item in division_mttr %}"{{ item.division__name }}",{% endfor %}],
+        datasets: [{
+            label: 'Avg MTTR (Hours)',
+            data: [{% for item in division_mttr %}{{ item.avg_hours|floatformat:1 }},{% endfor %}],
+            backgroundColor: 'rgba(79, 70, 229, 0.2)',
+            borderColor: 'rgba(79, 70, 229, 1)',
+            borderWidth: 2,
+            borderRadius: 8,
+            tension: 0.3,
+            fill: true
+        }]
+    };
+
+    new Chart(mttrCtx, {
+        type: 'bar',
+        data: mttrData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Hours'
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4 animate-fade">
+        <div>
+            <h3 class="fw-bold text-primary mb-1">Maintenance Dashboard</h3>
+            <p class="text-muted small mb-0">Overview of OH cable maintenance activities and costs</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'oh_maintenance_bill' %}" class="btn btn-outline-primary">
+                <i class="bi bi-file-earmark-text me-1"></i> View Bill
+            </a>
+            <a href="{% url 'oh_maintenance_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-lg me-1"></i> New Entry
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-4 animate-fade">
+        <div class="col-md-3">
+            <div class="card card-premium border-0 shadow-sm h-100 p-3 bg-tint-blue">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Total Entries</div>
+                        <div class="h2 fw-bold mb-0">{{ stats.total_entries }}</div>
+                    </div>
+                    <div class="bg-primary text-white rounded-circle p-3">
+                        <i class="bi bi-journal-text h4 mb-0"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-premium border-0 shadow-sm h-100 p-3 bg-tint-amber">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Pending Verification</div>
+                        <div class="h2 fw-bold mb-0">{{ stats.pending_verification }}</div>
+                    </div>
+                    <div class="bg-warning text-dark rounded-circle p-3">
+                        <i class="bi bi-clock-history h4 mb-0"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-premium border-0 shadow-sm h-100 p-3 bg-tint-emerald">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Pending Approval</div>
+                        <div class="h2 fw-bold mb-0">{{ stats.pending_approval }}</div>
+                    </div>
+                    <div class="bg-success text-white rounded-circle p-3">
+                        <i class="bi bi-check2-circle h4 mb-0"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-premium border-0 shadow-sm h-100 p-3 bg-tint-violet">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Cost (This Month)</div>
+                        <div class="h2 fw-bold mb-0">₹{{ stats.total_cost_this_month|floatformat:0 }}</div>
+                    </div>
+                    <div class="bg-indigo text-white rounded-circle p-3" style="background-color: var(--color-bts);">
+                        <i class="bi bi-currency-rupee h4 mb-0"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fault Tracking Stats Cards -->
+    <div class="row g-4 mb-4 animate-fade">
+        <div class="col-md-3">
+            <div class="card card-premium border-0 shadow-sm h-100 p-3 bg-tint-rose">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Total Faults (Month)</div>
+                        <div class="h2 fw-bold mb-0">{{ stats.total_faults_this_month }}</div>
+                    </div>
+                    <div class="bg-danger text-white rounded-circle p-3">
+                        <i class="bi bi-exclamation-octagon h4 mb-0"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-premium border-0 shadow-sm h-100 p-3 bg-tint-cyan">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Avg Clearance Time</div>
+                        <div class="h2 fw-bold mb-0">
+                            {% if stats.avg_clearance_time %}
+                                {{ stats.avg_clearance_time.total_seconds|divide:3600|floatformat:1 }} hrs
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="bg-info text-white rounded-circle p-3">
+                        <i class="bi bi-hourglass-split h4 mb-0"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-premium border-0 shadow-sm h-100 p-3 bg-tint-red">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Critical Faults</div>
+                        <div class="h2 fw-bold mb-0">{{ stats.critical_fault_count }}</div>
+                    </div>
+                    <div class="bg-dark text-white rounded-circle p-3">
+                        <i class="bi bi-shield-exclamation h4 mb-0"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-premium border-0 shadow-sm h-100 p-3 bg-tint-orange">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Pending Closures</div>
+                        <div class="h2 fw-bold mb-0">{{ stats.pending_fault_closures }}</div>
+                    </div>
+                    <div class="bg-warning text-dark rounded-circle p-3">
+                        <i class="bi bi-tools h4 mb-0"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 animate-fade mb-4">
+        <!-- MTTR Graph -->
+        <div class="col-lg-8">
+            <div class="card card-premium border-0 shadow-sm h-100">
+                <div class="card-header bg-white fw-bold py-3">Division-wise MTTR (Mean Time To Repair)</div>
+                <div class="card-body">
+                    <canvas id="mttrChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Repeated Fault Hotspots -->
+        <div class="col-lg-4">
+            <div class="card card-premium border-0 shadow-sm h-100">
+                <div class="card-header bg-white fw-bold py-3">Fault Hotspot Locations</div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light small text-uppercase fw-bold">
+                                <tr>
+                                    <th class="ps-4">Location</th>
+                                    <th class="text-center">Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for hotspot in hotspots %}
+                                <tr>
+                                    <td class="ps-4">{{ hotspot.location }}</td>
+                                    <td class="text-center"><span class="badge bg-danger rounded-pill">{{ hotspot.fault_count }}</span></td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="2" class="text-center py-4 text-muted">No hotspots identified.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 animate-fade">
+        <!-- Activity Summary Chart Placeholder -->
+        <div class="col-lg-7">
+            <div class="card card-premium border-0 shadow-sm h-100">
+                <div class="card-header bg-white fw-bold py-3">Activity-wise Quantity Summary</div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead class="small text-muted text-uppercase">
+                                <tr>
+                                    <th>Activity Type</th>
+                                    <th class="text-end">Total Quantity</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in activity_summary %}
+                                <tr>
+                                    <td class="fw-medium">{{ item.activity_type }}</td>
+                                    <td class="text-end fw-bold text-primary">{{ item.total_qty }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="2" class="text-center py-4 text-muted">No activities recorded.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Entries -->
+        <div class="col-lg-5">
+            <div class="card card-premium border-0 shadow-sm h-100">
+                <div class="card-header bg-white fw-bold py-3 d-flex justify-content-between align-items-center">
+                    <span>Recent Maintenance Entries</span>
+                    <a href="{% url 'oh_maintenance_list' %}" class="btn btn-sm btn-link text-primary p-0">View All</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for entry in recent_entries %}
+                        <a href="{% url 'oh_maintenance_detail' entry.pk %}" class="list-group-item list-group-item-action border-0 px-4 py-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold small">{{ entry.maintenance_date|date:"d M Y" }}</span>
+                                <span class="badge rounded-pill px-2 py-1 small 
+                                    {% if entry.status == 'Approved' %}bg-success
+                                    {% elif entry.status == 'Draft' %}bg-secondary
+                                    {% else %}bg-warning text-dark{% endif %}">
+                                    {{ entry.status }}
+                                </span>
+                            </div>
+                            <div class="text-muted small mb-1">{{ entry.team_name }}</div>
+                            <div class="small text-primary fw-bold">{{ entry.location }}</div>
+                        </a>
+                        {% empty %}
+                        <div class="p-4 text-center text-muted">No recent entries.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

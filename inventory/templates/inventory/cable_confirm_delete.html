@@ -1,0 +1,44 @@
+{% extends 'inventory/base.html' %}
+
+{% block title %}Delete Cable - {{ cable.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Confirm Delete</h5>
+                </div>
+                <div class="card-body">
+                    <p>Are you sure you want to delete the cable <strong>{{ cable.name }}</strong>?</p>
+                    
+                    <ul class="list-group mb-3">
+                        <li class="list-group-item"><strong>Type:</strong> {{ cable.cable_type }}</li>
+                        <li class="list-group-item"><strong>Mode:</strong> {{ cable.get_mode_display }}</li>
+                        <li class="list-group-item"><strong>Category:</strong> {{ cable.get_category_display }}</li>
+                        <li class="list-group-item"><strong>TE:</strong> {{ cable.te.name|upper }}</li>
+                        <li class="list-group-item"><strong>Total Fibers:</strong> {{ cable.fiber_count }}</li>
+                    </ul>
+                    
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-circle"></i> 
+                        <strong>Warning:</strong> This will also delete all {{ cable.fiber_count }} fibers associated with this cable. This action cannot be undone.
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> Yes, Delete
+                        </button>
+                        <a href="{% url 'cable_list' %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

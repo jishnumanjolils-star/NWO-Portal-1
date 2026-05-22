@@ -1,0 +1,284 @@
+{% extends 'inventory/base.html' %}
+{% load static %}
+
+{% block title %}Network Command Center | NET-TRACKER{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Professional Typography & Hierarchy */
+    .dashboard-header { margin-bottom: 3.5rem; }
+    .sub-title { font-size: 0.95rem; font-weight: 700; color: var(--slate-500); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem; }
+    .main-title { font-size: 2.75rem; font-weight: 900; color: var(--slate-900); letter-spacing: -0.04em; line-height: 1; }
+    body.dark-mode .main-title { color: white; }
+
+    /* Impactful KPI Grid */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 4rem;
+    }
+    .kpi-card {
+        background: white; border-radius: 24px; padding: 2rem;
+        border: 1px solid var(--slate-200);
+        display: flex; flex-direction: column;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative; overflow: hidden;
+        box-shadow: var(--shadow-sm);
+    }
+    .kpi-card::after {
+        content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+        background: var(--accent-color, var(--primary)); opacity: 0.8;
+    }
+    .kpi-card:hover { 
+        transform: translateY(-10px); 
+        box-shadow: var(--shadow-lg);
+        border-color: var(--accent-color, var(--primary));
+    }
+    .kpi-icon { 
+        width: 54px; height: 54px; border-radius: 16px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.5rem; margin-bottom: 1.5rem;
+        transition: all 0.3s ease;
+    }
+    .kpi-card:hover .kpi-icon { transform: scale(1.1) rotate(-8deg); }
+    .kpi-label { font-size: 0.8rem; font-weight: 700; color: var(--slate-500); text-transform: uppercase; letter-spacing: 0.05em; }
+    .kpi-value { font-size: 2.25rem; font-weight: 900; color: var(--slate-900); margin-top: 0.25rem; }
+    
+    body.dark-mode .kpi-card { background: #161f31; border-color: #243049; }
+    body.dark-mode .kpi-value { color: white; }
+
+    /* Search & Refined Filters */
+    .filter-bar {
+        background: white; padding: 1.25rem; border-radius: 20px;
+        border: 1px solid var(--slate-200); margin-bottom: 3.5rem;
+        display: flex; gap: 1.5rem; align-items: center;
+        box-shadow: var(--shadow-sm);
+    }
+    body.dark-mode .filter-bar { background: #161f31; border-color: #243049; }
+    
+    .search-wrapper { position: relative; flex-grow: 1; }
+    .search-wrapper i { position: absolute; left: 1.25rem; top: 50%; transform: translateY(-50%); color: var(--slate-400); }
+    .search-input-modern {
+        width: 100%; padding: 0.85rem 1rem 0.85rem 3.25rem;
+        border-radius: 14px; border: 1px solid var(--slate-200);
+        background: var(--slate-50); font-size: 1rem; transition: all 0.2s;
+        font-weight: 500; color: var(--slate-900);
+    }
+    body.dark-mode .search-input-modern { background: #0b0f1a; border-color: #243049; color: white; }
+    .search-input-modern:focus { outline: none; border-color: var(--primary); background: white; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); }
+
+    /* Professional TE Cards */
+    .division-label {
+        display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem;
+    }
+    .division-label h4 { font-weight: 800; color: var(--slate-900); margin: 0; font-size: 1.25rem; }
+    .division-sep { flex-grow: 1; height: 1px; background: var(--slate-200); }
+    body.dark-mode .division-label h4 { color: white; }
+    body.dark-mode .division-sep { background: #243049; }
+
+    .te-card-premium {
+        background: white; border-radius: 28px; border: 1px solid var(--slate-200);
+        padding: 2.25rem; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex; flex-direction: column; position: relative;
+    }
+    .te-card-premium:hover { 
+        transform: translateY(-12px); 
+        box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.12); 
+        border-color: var(--primary); 
+    }
+    body.dark-mode .te-card-premium { background: #161f31; border-color: #243049; }
+    
+    .te-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; }
+    .te-title { font-size: 1.6rem; font-weight: 800; color: var(--slate-900); margin-bottom: 0.4rem; letter-spacing: -0.02em; }
+    body.dark-mode .te-title { color: white; }
+    .te-location { font-size: 0.9rem; color: var(--slate-500); font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    
+    .status-indicator { 
+        display: inline-flex; align-items: center; gap: 0.5rem; 
+        padding: 0.4rem 1rem; border-radius: 100px; 
+        font-size: 0.7rem; font-weight: 800; text-transform: uppercase;
+        background: #f0fdf4; color: #16a34a; border: 1px solid #dcfce7;
+    }
+    body.dark-mode .status-indicator { background: rgba(22, 163, 74, 0.1); border-color: rgba(22, 163, 74, 0.2); }
+
+    /* Compact Stats Row */
+    .stat-row-modern {
+        display: flex; justify-content: space-between;
+        gap: 0.5rem; margin-bottom: 2.25rem;
+    }
+    .stat-pill {
+        flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+        padding: 1rem 0.5rem; border-radius: 16px; background: var(--slate-50);
+        transition: all 0.2s; border: 1px solid transparent;
+    }
+    .te-card-premium:hover .stat-pill { background: white; border-color: var(--slate-100); }
+    body.dark-mode .stat-pill { background: #0b0f1a; }
+    .stat-pill i { font-size: 1.1rem; }
+    .stat-pill .v { font-size: 1.25rem; font-weight: 800; color: var(--slate-900); }
+    body.dark-mode .stat-pill .v { color: white; }
+    .stat-pill .l { font-size: 0.55rem; font-weight: 700; color: var(--slate-500); text-transform: uppercase; }
+
+    /* Modern Buttons */
+    .action-footer { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .btn-premium {
+        padding: 1rem; border-radius: 16px; font-weight: 700; font-size: 0.95rem;
+        text-align: center; text-decoration: none !important; transition: all 0.2s;
+        border: none; cursor: pointer;
+    }
+    .btn-main { background: var(--slate-900); color: white; }
+    .btn-main:hover { background: black; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+    .btn-alt { background: var(--slate-100); color: var(--slate-700); }
+    .btn-alt:hover { background: var(--slate-200); color: var(--slate-900); transform: translateY(-2px); }
+    
+    body.dark-mode .btn-main { background: var(--primary); }
+    body.dark-mode .btn-main:hover { background: var(--primary-hover); }
+    body.dark-mode .btn-alt { background: #243049; color: var(--slate-300); }
+    body.dark-mode .btn-alt:hover { background: #2d3b58; color: white; }
+
+    /* Fix for animations */
+    .fw-900 { font-weight: 900; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header animate-fade">
+    <div class="sub-title">System Overview</div>
+    <h1 class="main-title">{{ user_division_name }} Network</h1>
+</div>
+
+<!-- Impactful KPI Cards -->
+<div class="kpi-grid animate-fade" style="animation-delay: 0.1s;">
+    <div class="kpi-card" style="--accent-color: #64748b;">
+        <div class="kpi-icon bg-tint-slate"><i class="bi bi-building"></i></div>
+        <div class="kpi-label">Exchanges</div>
+        <div class="kpi-value">{{ total_tes }}</div>
+    </div>
+    <div class="kpi-card" style="--accent-color: #3b82f6;">
+        <div class="kpi-icon bg-tint-blue"><i class="bi bi-cable"></i></div>
+        <div class="kpi-label">Active Cables</div>
+        <div class="kpi-value">{{ total_cables }}</div>
+    </div>
+    <div class="kpi-card" style="--accent-color: #f59e0b;">
+        <div class="kpi-icon bg-tint-amber"><i class="bi bi-cpu"></i></div>
+        <div class="kpi-label">Node Capacity</div>
+        <div class="kpi-value">{{ total_equipment }}</div>
+    </div>
+    <div class="kpi-card" style="--accent-color: #10b981;">
+        <div class="kpi-icon bg-tint-emerald"><i class="bi bi-diagram-3"></i></div>
+        <div class="kpi-label">Active Circuits</div>
+        <div class="kpi-value">{{ total_circuits }}</div>
+    </div>
+    <div class="kpi-card" style="--accent-color: #8b5cf6;">
+        <div class="kpi-icon bg-tint-violet"><i class="bi bi-broadcast"></i></div>
+        <div class="kpi-label">BTS Sites</div>
+        <div class="kpi-value">{{ total_bts }}</div>
+    </div>
+    <div class="kpi-card" style="--accent-color: #06b6d4;">
+        <div class="kpi-icon bg-tint-cyan"><i class="bi bi-house-heart"></i></div>
+        <div class="kpi-label">FTTH Units</div>
+        <div class="kpi-value">{{ total_ftth }}</div>
+    </div>
+</div>
+
+<!-- Refined Search & Filter -->
+<div class="filter-bar animate-fade" style="animation-delay: 0.2s;">
+    <div class="search-wrapper">
+        <i class="bi bi-search"></i>
+        <input type="text" id="teSearch" class="search-input-modern" placeholder="Search by exchange name, location, or ID...">
+    </div>
+    <select class="header-btn" style="min-width: 180px;">
+        <option>All Divisions</option>
+        <option>Active Status</option>
+        <option>Maintenance</option>
+    </select>
+</div>
+
+<!-- Professional TE Grid -->
+{% for nwo in nwo_data_list %}
+<div class="division-section mb-5 animate-fade" style="animation-delay: 0.3s;">
+    <div class="division-label">
+        <h4>{{ nwo.display_name }}</h4>
+        <div class="division-sep"></div>
+    </div>
+
+    <div class="row g-4">
+        {% for te in nwo.te_data %}
+        <div class="col-xl-4 col-md-6 te-item" data-name="{{ te.name|lower }}">
+            <div class="te-card-premium">
+                <div class="te-header">
+                    <div>
+                        <h3 class="te-title">{{ te.name|upper }}</h3>
+                        <div class="te-location">
+                            <i class="bi bi-geo-alt-fill text-danger"></i> Core Exchange Node
+                        </div>
+                    </div>
+                    <span class="status-indicator">
+                        <i class="bi bi-circle-fill" style="font-size: 6px;"></i> Operational
+                    </span>
+                </div>
+
+                <div class="stat-row-modern">
+                    <div class="stat-pill">
+                        <i class="bi bi-cable" style="color: var(--color-cables);"></i>
+                        <span class="v">{{ te.cable_count }}</span>
+                        <span class="l">Cables</span>
+                    </div>
+                    <div class="stat-pill">
+                        <i class="bi bi-cpu" style="color: var(--color-equip);"></i>
+                        <span class="v">{{ te.equipment_count }}</span>
+                        <span class="l">Nodes</span>
+                    </div>
+                    <div class="stat-pill">
+                        <i class="bi bi-diagram-3" style="color: var(--color-circuits);"></i>
+                        <span class="v">{{ te.circuit_count }}</span>
+                        <span class="l">Circuits</span>
+                    </div>
+                    <div class="stat-pill">
+                        <i class="bi bi-broadcast" style="color: var(--color-bts);"></i>
+                        <span class="v">{{ te.bts_count }}</span>
+                        <span class="l">BTS</span>
+                    </div>
+                    <div class="stat-pill">
+                        <i class="bi bi-house-gear" style="color: var(--color-ftth);"></i>
+                        <span class="v">{{ te.ftth_count }}</span>
+                        <span class="l">FTTH</span>
+                    </div>
+                </div>
+
+                <div class="action-footer">
+                    <a href="{% url 'te_dashboard' te.id %}" class="btn-premium btn-main w-100">Analyze</a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <div class="text-muted opacity-50 mb-3"><i class="bi bi-building-dash fs-1"></i></div>
+            <h5 class="fw-bold text-slate-400">No Exchange Records Found</h5>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // High-performance Search
+        $('#teSearch').on('input', function() {
+            const query = $(this).val().toLowerCase();
+            $('.te-item').each(function() {
+                const name = $(this).data('name');
+                $(this).toggle(name.includes(query));
+            });
+            
+            $('.division-section').each(function() {
+                const visible = $(this).find('.te-item:visible').length;
+                $(this).toggle(visible > 0);
+            });
+        });
+    });
+</script>
+{% endblock %}

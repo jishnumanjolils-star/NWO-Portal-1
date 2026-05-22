@@ -1,0 +1,81 @@
+{% extends 'inventory/base.html' %}
+
+{% block title %}LIU Inventory - NWO Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="bi bi-patch-check"></i> 
+        {% if filter_te %}
+            LIUs at {{ filter_te.name|upper }}
+        {% else %}
+            LIU Inventory
+        {% endif %}
+    </h2>
+    <div class="btn-group">
+        {% if filter_te %}
+            <a href="{% url 'te_liu_setup' filter_te.id %}" class="btn btn-outline-primary">
+                <i class="bi bi-plus-lg"></i> Add More LIUs
+            </a>
+        {% endif %}
+        <a href="{% url 'liu_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> New LIU
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>TE</th>
+                        <th>Cable</th>
+                        <th>Capacity</th>
+                        <th>Used Fibers</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for liu in liu_list %}
+                    <tr>
+                        <td>{{ liu.te.name|upper }}</td>
+                        <td>
+                            {% if liu.cable %}
+                                {{ liu.cable.name }}
+                            {% else %}
+                                {{ liu.cable_manual_entry }} <span class="badge bg-secondary">Manual</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ liu.get_capacity_display }}</td>
+                        <td>
+                            {% with used=liu.cable.fibers.filter.is_used.count total=liu.cable.fiber_count %}
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar {% if used == total %}bg-danger{% else %}bg-success{% endif %}" 
+                                     role="progressbar" style="width: {% widthratio used total 100 %}%">
+                                    {{ used }} / {{ total }}
+                                </div>
+                            </div>
+                            {% endwith %}
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{% url 'liu_detail' liu.id %}" class="btn btn-sm btn-info" title="Manage Ports">
+                                    <i class="bi bi-list-check"></i>
+                                </a>
+                                <a href="#" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-4">No LIUs found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

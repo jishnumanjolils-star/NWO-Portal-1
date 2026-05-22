@@ -1,0 +1,221 @@
+{% extends 'inventory/base.html' %}
+{% load static %}
+
+{% block title %}Bulk Provisioning | NET-TRACKER{% endblock %}
+
+{% block extra_css %}
+<style>
+    .upload-view { max-width: 900px; margin: 0 auto; }
+    .glass-card {
+        background: white; border-radius: 32px; border: 1px solid var(--slate-200);
+        padding: 4rem; transition: all 0.3s ease;
+        box-shadow: var(--shadow-lg);
+    }
+    body.dark-mode .glass-card { background: #161f31; border-color: #243049; }
+
+    .header-group { text-align: center; margin-bottom: 4rem; }
+    .header-group i { 
+        font-size: 4rem; color: var(--primary); margin-bottom: 1.5rem; display: block;
+        filter: drop-shadow(0 10px 15px rgba(79, 70, 229, 0.2));
+    }
+
+    .form-group-custom { margin-bottom: 2.5rem; }
+    .label-custom { font-weight: 800; color: var(--slate-900); margin-bottom: 1rem; display: block; font-size: 1rem; letter-spacing: -0.01em; }
+    body.dark-mode .label-custom { color: white; }
+
+    .input-premium {
+        padding: 1.25rem 1.5rem; border-radius: 18px; border: 2px solid var(--slate-100);
+        background: var(--slate-50); font-weight: 600; color: var(--slate-900); width: 100%;
+        transition: all 0.2s;
+    }
+    body.dark-mode .input-premium { background: #0b0f1a; border-color: #243049; color: white; }
+    .input-premium:focus { outline: none; border-color: var(--primary); background: white; box-shadow: 0 0 0 5px rgba(79, 70, 229, 0.1); }
+
+    .template-banner {
+        background: var(--slate-900); border-radius: 24px; padding: 2rem;
+        margin-top: 3rem; display: flex; align-items: center; justify-content: space-between;
+        color: white; box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.3);
+    }
+    body.dark-mode .template-banner { background: var(--primary); box-shadow: 0 20px 40px -10px rgba(79, 70, 229, 0.3); }
+    .template-banner h5 { font-weight: 900; margin-bottom: 0.25rem; }
+    .template-banner p { margin-bottom: 0; color: var(--slate-400); font-weight: 600; font-size: 0.9rem; }
+    body.dark-mode .template-banner p { color: rgba(255,255,255,0.7); }
+
+    .btn-dl {
+        background: white; color: var(--slate-900); padding: 0.85rem 1.75rem;
+        border-radius: 14px; font-weight: 800; text-decoration: none !important;
+        transition: all 0.2s; font-size: 0.95rem;
+    }
+    .btn-dl:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); background: var(--slate-50); }
+
+    .guide-box {
+        margin-top: 3.5rem; padding: 2.5rem; border-radius: 28px;
+        background: var(--slate-50); border: 1px solid var(--slate-200);
+    }
+    body.dark-mode .guide-box { background: #0b0f1a; border-color: #243049; }
+    .guide-box h6 { font-weight: 900; color: var(--slate-900); margin-bottom: 1.5rem; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.85rem; }
+    body.dark-mode .guide-box h6 { color: white; }
+    
+    .col-pill {
+        display: inline-block; padding: 0.5rem 1rem; border-radius: 12px;
+        background: white; border: 1px solid var(--slate-200); margin: 0.35rem;
+        font-size: 0.8rem; font-weight: 700; color: var(--slate-600);
+        box-shadow: var(--shadow-sm);
+    }
+    body.dark-mode .col-pill { background: #161f31; border-color: #243049; color: var(--slate-400); }
+
+    .btn-submit-large {
+        background: var(--primary); color: white; padding: 1.5rem; border-radius: 24px;
+        font-weight: 900; font-size: 1.25rem; border: none; width: 100%;
+        margin-top: 3rem; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 10px 20px -5px rgba(79, 70, 229, 0.4);
+    }
+    .btn-submit-large:hover { transform: translateY(-5px); box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.5); background: var(--primary-hover); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="upload-view animate-fade">
+    <nav aria-label="breadcrumb" class="mb-5">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}" class="text-decoration-none fw-bold">Command Center</a></li>
+            <li class="breadcrumb-item active fw-bold">Bulk Provisioning</li>
+        </ol>
+    </nav>
+
+    <div class="glass-card">
+        <div class="header-group">
+            <i class="bi bi-rocket-takeoff-fill"></i>
+            <h1 class="main-title mb-2">Mass Infrastructure Import</h1>
+            <p class="text-muted fw-600">Standardized Excel ingestion for rapid network expansion.</p>
+        </div>
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="form-group-custom">
+                <label class="label-custom">Select Asset Category</label>
+                <select name="upload_type" class="input-premium" required id="uploadType">
+                    <option value="CIRCUIT">Active EB Circuits</option>
+                    <option value="CABLE">Fiber Cable Routes (UG/OH)</option>
+                    <option value="EQUIPMENT">Network Node Hardware</option>
+                    <option value="BTS">Mobile BTS Sites</option>
+                    <option value="FTTH">FTTH Subscribers</option>
+                </select>
+            </div>
+
+            <div class="form-group-custom">
+                <label class="label-custom">Dataset Source (.xlsx)</label>
+                <input type="file" name="excel_file" class="input-premium" accept=".xlsx" required>
+            </div>
+
+            <div class="template-banner">
+                <div>
+                    <h5>Standard Template</h5>
+                    <p>Get the required format for <span id="categoryName" class="text-white">Active EB Circuits</span></p>
+                </div>
+                <a href="{% url 'download_template' %}?category=CIRCUIT" class="btn-dl" id="downloadBtn">
+                    <i class="bi bi-download me-2"></i>Download Format
+                </a>
+            </div>
+
+            <div class="guide-box">
+                <h6><i class="bi bi-shield-check me-2 text-primary"></i>Required Schema Verification</h6>
+                <div id="circuit-instr" class="instr-group">
+                    <div class="d-flex flex-wrap">
+                        <span class="col-pill">Client Name</span>
+                        <span class="col-pill">Type</span>
+                        <span class="col-pill">Bandwidth</span>
+                        <span class="col-pill">End Node</span>
+                        <span class="col-pill">Fiber Mode</span>
+                        <span class="col-pill">TE Name</span>
+                        <span class="col-pill">Remarks</span>
+                    </div>
+                </div>
+                <div id="cable-instr" class="instr-group" style="display:none;">
+                    <div class="d-flex flex-wrap">
+                        <span class="col-pill">Cable Name</span>
+                        <span class="col-pill">Type</span>
+                        <span class="col-pill">Fiber Count</span>
+                        <span class="col-pill">Mode (UG/OH)</span>
+                        <span class="col-pill">TE Name</span>
+                        <span class="col-pill">Remarks</span>
+                    </div>
+                </div>
+                <div id="equipment-instr" class="instr-group" style="display:none;">
+                    <div class="d-flex flex-wrap">
+                        <span class="col-pill">Equipment Name</span>
+                        <span class="col-pill">Type</span>
+                        <span class="col-pill">Total Ports</span>
+                        <span class="col-pill">TE Name</span>
+                        <span class="col-pill">Remarks</span>
+                    </div>
+                </div>
+                <div id="bts-instr" class="instr-group" style="display:none;">
+                    <div class="d-flex flex-wrap">
+                        <span class="col-pill">RP ID</span>
+                        <span class="col-pill">BTS Name</span>
+                        <span class="col-pill">Place Name</span>
+                        <span class="col-pill">Latitude</span>
+                        <span class="col-pill">Longitude</span>
+                        <span class="col-pill">Has CEF 12T</span>
+                        <span class="col-pill">Is Ring</span>
+                        <span class="col-pill">P2 Circuit</span>
+                        <span class="col-pill">P2 System End</span>
+                        <span class="col-pill">P2 Cable</span>
+                        <span class="col-pill">P3 Circuit</span>
+                        <span class="col-pill">P3 System End</span>
+                        <span class="col-pill">P3 Cable</span>
+                        <span class="col-pill">P4 Circuit</span>
+                        <span class="col-pill">P4 System End</span>
+                        <span class="col-pill">P4 Cable</span>
+                        <span class="col-pill">P5 Circuit</span>
+                        <span class="col-pill">P5 System End</span>
+                        <span class="col-pill">P5 Cable</span>
+                    </div>
+                </div>
+                <div id="ftth-instr" class="instr-group" style="display:none;">
+                    <div class="d-flex flex-wrap">
+                        <span class="col-pill">Customer Name</span>
+                        <span class="col-pill">Landline Number</span>
+                        <span class="col-pill">Optical Power</span>
+                        <span class="col-pill">OLT Name</span>
+                        <span class="col-pill">Port Number</span>
+                        <span class="col-pill">Division</span>
+                        <span class="col-pill">TE Name</span>
+                        <span class="col-pill">Latitude</span>
+                        <span class="col-pill">Longitude</span>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-submit-large">
+                Initiate Batch Provisioning
+            </button>
+        </form>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('#uploadType').on('change', function() {
+            const type = $(this).val();
+            const labels = {
+                'CIRCUIT': 'Active EB Circuits',
+                'CABLE': 'Fiber Cable Routes (UG/OH)',
+                'EQUIPMENT': 'Network Node Hardware',
+                'BTS': 'Mobile BTS Sites',
+                'FTTH': 'FTTH Subscribers'
+            };
+            
+            $('#categoryName').text(labels[type]);
+            $('.instr-group').hide();
+            $(`#${type.toLowerCase()}-instr`).fadeIn();
+            
+            $('#downloadBtn').attr('href', `{% url 'download_template' %}?category=${type}`);
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %}

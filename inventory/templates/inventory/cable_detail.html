@@ -1,0 +1,244 @@
+{% extends 'inventory/base.html' %}
+
+{% block title %}Cable Details - {{ cable.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'cable_list' %}">Cables</a></li>
+                    <li class="breadcrumb-item active">{{ cable.name }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-3">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Cable Information</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="35%">Cable Name:</th>
+                            <td><strong>{{ cable.name }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>Cable Type:</th>
+                            <td><span class="badge bg-info">{{ cable.cable_type }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>Mode:</th>
+                            <td>
+                                {% if cable.mode == 'OH' %}
+                                <span class="badge bg-warning">Overhead (OH)</span>
+                                {% else %}
+                                <span class="badge bg-dark">Underground (UG)</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Category:</th>
+                            <td><span class="badge bg-secondary">{{ cable.get_category_display }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>Telephone Exchange:</th>
+                            <td><a href="{% url 'te_dashboard' cable.te.id %}">{{ cable.te.name|upper }}</a></td>
+                        </tr>
+                        <tr>
+                            <th>Connected TE:</th>
+                            <td>{% if cable.connected_te %}{{ cable.connected_te.name|upper }}{% else %}Not connected{% endif %}</td>
+                        </tr>
+                        <tr>
+                            <th>Total Fibers:</th>
+                            <td>{{ cable.fiber_count }}</td>
+                        </tr>
+                        <tr>
+                            <th>OTDR Distance:</th>
+                            <td>{{ cable.otdr_distance_formatted|default:"Not recorded" }}</td>
+                        </tr>
+                        {% if cable.otdr_image %}
+                        <tr>
+                            <th>OTDR Image:</th>
+                            <td>
+                                <a href="{{ cable.otdr_image.url }}" target="_blank" class="btn btn-sm btn-outline-info">
+                                    <i class="bi bi-image"></i> View Image
+                                </a>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        <tr>
+                            <th>Remarks:</th>
+                            <td>{{ cable.remarks|default:"N/A" }}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="card-footer">
+                    <a href="{% url 'cable_update' cable.pk %}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-pencil"></i> Edit
+                    </a>
+                    <a href="{% url 'cable_delete' cable.pk %}" class="btn btn-danger btn-sm">
+                        <i class="bi bi-trash"></i> Delete
+                    </a>
+                    <a href="{% url 'cable_list' %}" class="btn btn-secondary btn-sm">
+                        <i class="bi bi-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card mb-3">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-collection"></i> Fiber Summary</h5>
+                </div>
+                <div class="card-body">
+                    {% with used_count=fibers|length %}
+                    <p><strong>Total Fibers:</strong> {{ cable.fiber_count }}</p>
+                    <p><strong>Used:</strong> {{ used_count }}</p>
+                    <p><strong>Available:</strong> {{ cable.fiber_count|add:"-"|stringformat:"d"|default:"0" }}</p>
+                    {% endwith %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-diagram-2"></i> Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'cable_update' cable.pk %}" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-pencil"></i> Edit Cable
+                        </a>
+                        <a href="{% url 'te_dashboard' cable.te.id %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-building"></i> View TE Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fiber List -->
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-list-columns"></i> Fiber Details</h5>
+                    <span class="badge bg-light text-info">{{ cable.get_structure_type_display }} Structure</span>
+                </div>
+                <div class="card-body p-2">
+                    {% if fibers %}
+                        {% if cable.structure_type == 'RIBBON' %}
+                            {% regroup fibers by ribbon_group as ribbon_list %}
+                            <div class="accordion" id="detailRibbonAccordion">
+                                {% for ribbon in ribbon_list %}
+                                <div class="accordion-item mb-2 border-primary shadow-sm">
+                                    <h2 class="accordion-header" id="detailHeading{{ ribbon.grouper }}">
+                                        <button class="accordion-button {% if not forloop.first %}collapsed{% endif %} bg-light text-primary fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#detailCollapse{{ ribbon.grouper }}" aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" aria-controls="detailCollapse{{ ribbon.grouper }}">
+                                            Ribbon {{ ribbon.grouper }}
+                                        </button>
+                                    </h2>
+                                    <div id="detailCollapse{{ ribbon.grouper }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="detailHeading{{ ribbon.grouper }}" data-bs-parent="#detailRibbonAccordion">
+                                        <div class="accordion-body p-0">
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-hover table-striped mb-0 text-center align-middle">
+                                                    <thead class="table-primary">
+                                                        <tr>
+                                                            <th width="5%">#</th>
+                                                            <th width="10%">Color</th>
+                                                            <th width="10%">Status</th>
+                                                            <th width="20%">System End</th>
+                                                            <th width="20%">Circuit Name</th>
+                                                            <th width="15%">OTDR Dist.</th>
+                                                            <th width="20%">OTDR Image</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for fiber in ribbon.list %}
+                                                        <tr>
+                                                            <td>{{ fiber.fiber_number }}</td>
+                                                            <td><span class="badge bg-dark">{{ fiber.color }}</span></td>
+                                                            <td>
+                                                                {% if fiber.status == 'Available' %}
+                                                                <span class="badge bg-success">{{ fiber.status }}</span>
+                                                                {% else %}
+                                                                <span class="badge bg-warning">{{ fiber.status }}</span>
+                                                                {% endif %}
+                                                            </td>
+                                                            <td>{{ fiber.system_end|default:"-" }}</td>
+                                                            <td>{{ fiber.circuit_name|default:"-" }}</td>
+                                                            <td>{{ fiber.otdr_distance_formatted|default:"-" }}</td>
+                                                            <td>
+                                                                {% if fiber.otdr_image %}
+                                                                <a href="{{ fiber.otdr_image.url }}" target="_blank" class="btn btn-sm btn-outline-success"><i class="bi bi-image"></i> View</a>
+                                                                {% else %}
+                                                                <span class="text-muted">-</span>
+                                                                {% endif %}
+                                                            </td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover table-striped mb-0 text-center align-middle">
+                                    <thead class="table-primary">
+                                        <tr>
+                                            <th width="5%">#</th>
+                                            <th width="10%">Color</th>
+                                            <th width="10%">Status</th>
+                                            <th width="20%">System End</th>
+                                            <th width="20%">Circuit Name</th>
+                                            <th width="15%">OTDR Dist.</th>
+                                            <th width="20%">OTDR Image</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for fiber in fibers %}
+                                        <tr>
+                                            <td>{{ fiber.fiber_number }}</td>
+                                            <td><span class="badge bg-dark">{{ fiber.color }}</span></td>
+                                            <td>
+                                                {% if fiber.status == 'Available' %}
+                                                <span class="badge bg-success">{{ fiber.status }}</span>
+                                                {% else %}
+                                                <span class="badge bg-warning">{{ fiber.status }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ fiber.system_end|default:"-" }}</td>
+                                            <td>{{ fiber.circuit_name|default:"-" }}</td>
+                                            <td>{{ fiber.otdr_distance_formatted|default:"-" }}</td>
+                                            <td>
+                                                {% if fiber.otdr_image %}
+                                                <a href="{{ fiber.otdr_image.url }}" target="_blank" class="btn btn-sm btn-outline-success"><i class="bi bi-image"></i> View</a>
+                                                {% else %}
+                                                <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center text-muted p-4">No fibers found</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

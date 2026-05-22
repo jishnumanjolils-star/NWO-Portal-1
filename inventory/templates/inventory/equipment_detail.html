@@ -1,0 +1,259 @@
+{% extends 'inventory/base.html' %}
+
+{% block title %}Equipment Details - {{ equipment.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'equipment_list' %}">Equipment</a></li>
+                    <li class="breadcrumb-item active">{{ equipment.name }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-3">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-hdd"></i> Equipment Information</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="35%">Equipment Name:</th>
+                            <td><strong>{{ equipment.name }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>Equipment Type:</th>
+                            <td><span class="badge bg-info">{{ equipment.get_equipment_type_display }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>TE Name:</th>
+                            <td><a href="{% url 'te_dashboard' equipment.te.id %}">{{ equipment.te.name|upper }}</a></td>
+                        </tr>
+                        <tr>
+                            <th>Uplink Connectivity:</th>
+                            <td>{{ equipment.uplink_connectivity }}</td>
+                        </tr>
+                        <tr>
+                            <th>Total Ports:</th>
+                            <td>{{ equipment.total_ports }}</td>
+                        </tr>
+                        <tr>
+                            <th>Used Ports:</th>
+                            <td>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar" role="progressbar" 
+                                         style="width: {% widthratio equipment.used_ports equipment.total_ports 100 %}%;">
+                                        {{ equipment.used_ports }}/{{ equipment.total_ports }}
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Port Utilization:</th>
+                            <td>{% widthratio equipment.used_ports equipment.total_ports 100 %}%</td>
+                        </tr>
+                        <tr>
+                            <th>GPS Location:</th>
+                            <td>
+                                {% if equipment.latitude and equipment.longitude %}
+                                {{ equipment.latitude }}, {{ equipment.longitude }}
+                                {% else %}
+                                Not configured
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Remarks:</th>
+                            <td>{{ equipment.remarks|default:"N/A" }}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="card-footer">
+                    <a href="{% url 'equipment_update' equipment.pk %}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-pencil"></i> Edit
+                    </a>
+                    <a href="{% url 'equipment_delete' equipment.pk %}" class="btn btn-danger btn-sm">
+                        <i class="bi bi-trash"></i> Delete
+                    </a>
+                    <a href="{% url 'equipment_list' %}" class="btn btn-secondary btn-sm">
+                        <i class="bi bi-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            </div>
+
+            {% if equipment.configuration %}
+            <div class="card mb-3 shadow-sm border-0 glass-card">
+                <div class="card-header bg-gradient bg-info text-white py-3">
+                    <h5 class="mb-0"><i class="bi bi-gear-fill me-2"></i>CPAN Node Configuration</h5>
+                </div>
+                <div class="card-body">
+                    {% if equipment.configuration.xsv3 %}
+                    <div class="mb-4">
+                        <h6 class="fw-bold text-primary border-bottom pb-2 d-flex justify-content-between align-items-center">
+                            <span>XSV3 Cards ({{ equipment.configuration.xsv3.count }})</span>
+                            <span class="badge bg-primary rounded-pill">Slots: {{ equipment.configuration.xsv3.slots|join:", " }}</span>
+                        </h6>
+                        <div class="row g-2">
+                            {% for port in equipment.configuration.xsv3.ports %}
+                            <div class="col-md-6">
+                                <div class="p-3 border rounded bg-light hover-shadow transition-all">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="badge bg-secondary">Port {{ port.port }}</span>
+                                    </div>
+                                    <div class="small">
+                                        <div class="text-muted"><i class="bi bi-diagram-3 me-1"></i>Circuit: <span class="text-dark fw-bold">{{ port.circuit|default:"-" }}</span></div>
+                                        <div class="text-muted"><i class="bi bi-cable me-1"></i>Cable: <span class="text-dark fw-bold">{{ port.cable|default:"-" }}</span></div>
+                                        <div class="text-muted"><i class="bi bi-arrow-right-circle me-1"></i>End: <span class="text-dark fw-bold">{{ port.system_end|default:"-" }}</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if equipment.configuration.stm and equipment.configuration.stm.available == 'Y' %}
+                    <div class="mb-4">
+                        <h6 class="fw-bold text-primary border-bottom pb-2 d-flex justify-content-between align-items-center">
+                            <span>STM Card S1V1</span>
+                            <span class="badge bg-info rounded-pill">Slots: {{ equipment.configuration.stm.slots|join:", " }}</span>
+                        </h6>
+                        <div class="row g-2">
+                            {% for port in equipment.configuration.stm.ports %}
+                            <div class="col-md-4">
+                                <div class="p-2 border rounded bg-light small">
+                                    <div class="fw-bold text-info mb-1">{{ port.port }}</div>
+                                    <div class="text-truncate">{{ port.circuit|default:"-" }}</div>
+                                    <div class="text-truncate">{{ port.cable|default:"-" }}</div>
+                                    <div class="text-muted text-truncate">{{ port.system_end|default:"-" }}</div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if equipment.configuration.msv1 and equipment.configuration.msv1.slots %}
+                    <div>
+                        <h6 class="fw-bold text-primary border-bottom pb-2 d-flex justify-content-between align-items-center">
+                            <span>MSV1 Cards</span>
+                            <span class="badge bg-success rounded-pill">Slots: {{ equipment.configuration.msv1.slots|join:", " }}</span>
+                        </h6>
+                        <div class="accordion accordion-flush custom-accordion" id="msv1Accordion">
+                            {% regroup equipment.configuration.msv1.ports by port|slice:":1" as slot_groups %}
+                            {% for group in slot_groups %}
+                            <div class="accordion-item border-0 mb-2 rounded overflow-hidden shadow-sm">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed py-2 fw-bold bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#slot-{{ group.grouper }}">
+                                        Slot {{ group.grouper }} Ports
+                                    </button>
+                                </h2>
+                                <div id="slot-{{ group.grouper }}" class="accordion-collapse collapse" data-bs-parent="#msv1Accordion">
+                                    <div class="accordion-body p-2 bg-white">
+                                        <div class="row g-1">
+                                            {% for port in group.list %}
+                                            <div class="col-md-4">
+                                                <div class="p-2 border rounded small h-100">
+                                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                                        <span class="fw-bold">{{ port.port }}</span>
+                                                        <span class="badge bg-{% if port.sfp == 'Single' %}primary{% else %}warning{% endif %} px-1">{{ port.sfp }}</span>
+                                                    </div>
+                                                    <div class="text-truncate" title="{{ port.cable }}">{{ port.cable|default:"-" }}</div>
+                                                    <div class="text-muted text-truncate" title="{{ port.circuit }}">{{ port.circuit|default:"-" }}</div>
+                                                    <div class="text-muted text-truncate" title="{{ port.system_end }}">{{ port.system_end|default:"-" }}</div>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% if equipment.configuration.type == 'MAAN_A3_A4' %}
+            <div class="card mb-3 shadow-sm border-0 glass-card">
+                <div class="card-header bg-gradient bg-success text-white py-3">
+                    <h5 class="mb-0"><i class="bi bi-cpu-fill me-2"></i>MAAN A3/A4 Node Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <h6 class="fw-bold text-success border-bottom pb-2 mb-3">Port Configuration (P1-P24, E1-E4)</h6>
+                    <div class="row g-2">
+                        {% for port in equipment.configuration.ports %}
+                        <div class="col-md-4 col-lg-3">
+                            <div class="p-2 border rounded bg-light hover-shadow transition-all h-100">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="badge bg-success">Port {{ port.port }}</span>
+                                    <span class="text-muted tiny">
+                                        {% with pNum=port.port|slice:"1:"|add:"0" %}
+                                            {% if port.port|slice:":1" == 'P' %}
+                                                {% if pNum <= 12 %}1G Out
+                                                {% elif pNum <= 16 %}10G Out
+                                                {% elif pNum <= 20 %}1GE LAN
+                                                {% else %}STM Ports
+                                                {% endif %}
+                                            {% else %}Expansion
+                                            {% endif %}
+                                        {% endwith %}
+                                    </span>
+                                </div>
+                                <div class="small">
+                                    <div class="text-truncate fw-bold" title="Circuit: {{ port.circuit }}">{{ port.circuit|default:"-" }}</div>
+                                    <div class="text-muted text-truncate tiny">{{ port.cable|default:"-" }}</div>
+                                    <div class="text-muted text-truncate tiny">{{ port.system_end|default:"-" }}</div>
+                                    {% if port.remarks %}
+                                    <div class="mt-1 p-1 bg-white border-start border-3 border-success tiny fst-italic">
+                                        {{ port.remarks }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="col-md-4">
+            <div class="card mb-3">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Port Summary</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Total:</strong> {{ equipment.total_ports }}</p>
+                    <p><strong>Used:</strong> {{ equipment.used_ports }}</p>
+                    <p><strong>Available:</strong> {{ equipment.total_ports|add:"-"|add:equipment.used_ports }}</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-diagram-2"></i> Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'equipment_update' equipment.pk %}" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-pencil"></i> Edit Equipment
+                        </a>
+                        <a href="{% url 'te_dashboard' equipment.te.id %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-building"></i> View TE Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

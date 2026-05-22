@@ -1,0 +1,341 @@
+{% extends 'inventory/base.html' %}
+{% load inventory_extras %}
+
+{% block title %}{{ te.name|upper }} Intelligence | NET-TRACKER{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Professional Stats Bar */
+    .te-stats-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1.25rem; margin-bottom: 3.5rem;
+    }
+    .te-metric-card {
+        background: white; border-radius: 22px; padding: 1.5rem;
+        border: 1px solid var(--slate-200); display: flex; flex-direction: column;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: var(--shadow-sm);
+        position: relative; overflow: hidden;
+    }
+    .te-metric-card::after {
+        content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+        background: var(--accent-color, var(--primary)); opacity: 0.8;
+    }
+    .te-metric-card:hover { 
+        transform: translateY(-5px); 
+        border-color: var(--accent-color, var(--primary));
+        box-shadow: var(--shadow-md);
+    }
+    .te-metric-card .v { font-size: 2rem; font-weight: 900; color: var(--slate-900); line-height: 1; margin-bottom: 0.5rem; }
+    .te-metric-card .l { font-size: 0.75rem; font-weight: 800; color: var(--slate-500); text-transform: uppercase; letter-spacing: 0.08em; }
+    
+    body.dark-mode .te-metric-card { background: #161f31; border-color: #243049; }
+    body.dark-mode .te-metric-card .v { color: white; }
+
+    /* Modern Action Drawer */
+    .drawer-action {
+        display: none; background: white; border-radius: 28px;
+        border: 1px solid var(--slate-200); margin-bottom: 3.5rem; overflow: hidden;
+        box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.1);
+    }
+    body.dark-mode .drawer-action { background: #161f31; border-color: #243049; box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.5); }
+    
+    .action-pill-btn {
+        display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
+        padding: 1.75rem 1rem; border-radius: 20px; text-decoration: none !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: var(--slate-50);
+        border: 1px solid var(--slate-100);
+    }
+    .action-pill-btn:hover { 
+        background: white; 
+        border-color: var(--accent-color, var(--primary)); 
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-md);
+    }
+    body.dark-mode .action-pill-btn { background: #0b0f1a; border-color: #1e293b; }
+    body.dark-mode .action-pill-btn:hover { background: #1e293b; border-color: var(--accent-color, var(--primary)); }
+    
+    .action-icon-circle {
+        width: 52px; height: 52px; border-radius: 14px; background: white;
+        display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+        box-shadow: var(--shadow-sm);
+        transition: all 0.3s ease;
+    }
+    .action-pill-btn:hover .action-icon-circle { transform: scale(1.1) rotate(-5deg); }
+    body.dark-mode .action-icon-circle { background: #161f31; }
+
+    /* Map & Analytics Cards */
+    .panel-premium {
+        background: white; border-radius: 28px; border: 1px solid var(--slate-200);
+        overflow: hidden; height: 100%; display: flex; flex-direction: column;
+        box-shadow: var(--shadow-sm);
+        transition: border-color 0.3s ease;
+    }
+    .panel-premium:hover { border-color: var(--slate-300); }
+    body.dark-mode .panel-premium { background: #161f31; border-color: #243049; }
+    
+    .panel-header { 
+        padding: 1.5rem 1.75rem; border-bottom: 1px solid var(--slate-100); 
+        display: flex; justify-content: space-between; align-items: center;
+        background: rgba(248, 250, 252, 0.5);
+    }
+    body.dark-mode .panel-header { border-color: #243049; background: rgba(11, 15, 26, 0.3); }
+    .panel-title { font-weight: 800; color: var(--slate-900); margin: 0; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    body.dark-mode .panel-title { color: white; }
+
+    /* Progress Indicators */
+    .usage-bar { height: 8px; border-radius: 100px; background: var(--slate-100); overflow: hidden; }
+    body.dark-mode .usage-bar { background: #0b0f1a; }
+    
+    .map-frame { height: 520px; width: 100%; border-radius: 0 0 28px 28px; }
+    
+    /* Professional Accent Colors */
+    .accent-blue { --accent-color: #3b82f6; }
+    .accent-emerald { --accent-color: #10b981; }
+    .accent-rose { --accent-color: #f43f5e; }
+    .accent-amber { --accent-color: #f59e0b; }
+    .accent-violet { --accent-color: #8b5cf6; }
+    .accent-cyan { --accent-color: #06b6d4; }
+    .accent-slate { --accent-color: #64748b; }
+
+    .badge-premium {
+        padding: 0.5rem 1rem; border-radius: 100px; font-weight: 800;
+        font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .badge-live { background: #f0fdf4; color: #16a34a; border: 1px solid #dcfce7; }
+    body.dark-mode .badge-live { background: rgba(22, 163, 74, 0.1); border-color: rgba(22, 163, 74, 0.2); }
+    .fw-900 { font-weight: 900; }
+    .fw-800 { font-weight: 800; }
+    .fw-700 { font-weight: 700; }
+    .extra-small { font-size: 0.65rem; }
+    .rounded-16 { border-radius: 16px; }
+    body.dark-mode .bg-slate-50 { background: #0b0f1a !important; border-color: #243049 !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="animate-fade">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}" class="text-decoration-none">Network</a></li>
+            <li class="breadcrumb-item active">{{ te.name|upper }}</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-end mb-4">
+        <div>
+            <h1 class="main-title mb-1">{{ te.name|upper }}</h1>
+            <p class="fw-600 text-muted mb-0"><i class="bi bi-geo-alt-fill text-danger me-1"></i>Core Infrastructure Node</p>
+        </div>
+        <button id="toggleActions" class="btn-premium btn-main px-4">
+            <i class="bi bi-plus-lg me-2"></i>Quick Action
+        </button>
+    </div>
+
+    <!-- Minimal Action Drawer -->
+    <div id="actionPanel" class="drawer-action animate-fade">
+        <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-light bg-opacity-25">
+            <span class="fw-800 text-slate-500 small px-3">PROVISIONING TOOLS</span>
+            <button type="button" class="btn-close me-2" onclick="$('#actionPanel').slideUp()"></button>
+        </div>
+        <div class="p-4">
+            <div class="row g-3">
+                <div class="col-6 col-md-3 col-lg-2">
+                    <a href="{% url 'cable_create' %}?te={{ te.id }}" class="action-pill-btn accent-blue">
+                        <div class="action-icon-circle" style="color: #3b82f6;"><i class="bi bi-cable"></i></div>
+                        <span class="fw-800 text-slate-700 extra-small">Add Cable</span>
+                    </a>
+                </div>
+                <div class="col-6 col-md-3 col-lg-2">
+                    <a href="{% url 'ftth_create' %}?te={{ te.id }}" class="action-pill-btn accent-cyan">
+                        <div class="action-icon-circle" style="color: #06b6d4;"><i class="bi bi-house-gear"></i></div>
+                        <span class="fw-800 text-slate-700 extra-small">Add FTTH</span>
+                    </a>
+                </div>
+                <div class="col-6 col-md-3 col-lg-2">
+                    <a href="{% url 'circuit_create' %}?te={{ te.id }}" class="action-pill-btn accent-emerald">
+                        <div class="action-icon-circle" style="color: #10b981;"><i class="bi bi-diagram-3"></i></div>
+                        <span class="fw-800 text-slate-700 extra-small">EB Circuit</span>
+                    </a>
+                </div>
+                <div class="col-6 col-md-3 col-lg-2">
+                    <a href="{% url 'bts_create' %}?te={{ te.id }}" class="action-pill-btn accent-violet">
+                        <div class="action-icon-circle" style="color: #8b5cf6;"><i class="bi bi-broadcast"></i></div>
+                        <span class="fw-800 text-slate-700 extra-small">Add BTS</span>
+                    </a>
+                </div>
+                <div class="col-6 col-md-3 col-lg-2">
+                    <a href="{% url 'equipment_create' %}?te={{ te.id }}" class="action-pill-btn accent-amber">
+                        <div class="action-icon-circle" style="color: #f59e0b;"><i class="bi bi-cpu"></i></div>
+                        <span class="fw-800 text-slate-700 extra-small">Add Node</span>
+                    </a>
+                </div>
+                <div class="col-6 col-md-3 col-lg-2">
+                    <a href="{% url 'jb_create' %}?te={{ te.id }}" class="action-pill-btn accent-blue">
+                        <div class="action-icon-circle" style="color: #3b82f6;"><i class="bi bi-box-seam"></i></div>
+                        <span class="fw-800 text-slate-700 extra-small">Add Junction Box</span>
+                    </a>
+                </div>
+                <div class="col-6 col-md-3 col-lg-2">
+                    <a href="{% url 'bulk_upload' %}?te={{ te.id }}" class="action-pill-btn accent-slate">
+                        <div class="action-icon-circle" style="color: #64748b;"><i class="bi bi-cloud-arrow-up"></i></div>
+                        <span class="fw-800 text-slate-700 extra-small">Bulk Import</span>
+                    </a>
+                </div>
+                <div class="col-6 col-md-3 col-lg-2">
+                    <a href="{% url 'te_liu_setup' te.id %}" class="action-pill-btn accent-violet">
+                        <div class="action-icon-circle" style="color: #8b5cf6;"><i class="bi bi-patch-check"></i></div>
+                        <span class="fw-800 text-slate-700 extra-small">Bulk LIU Setup</span>
+                    </a>
+                </div>
+                <div class="col-6 col-md-3 col-lg-2">
+                    <a href="{% url 'oh_maintenance_list' %}?te={{ te.id }}" class="action-pill-btn accent-rose">
+                        <div class="action-icon-circle" style="color: #f43f5e;"><i class="bi bi-tools"></i></div>
+                        <span class="fw-800 text-slate-700 extra-small">OH Maintenance</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Metrics Row -->
+    <div class="te-stats-grid">
+        <div class="te-metric-card accent-blue">
+            <span class="v">{{ te.ebcircuit_set.count }}</span>
+            <span class="l">EB Circuits</span>
+        </div>
+        <div class="te-metric-card accent-emerald">
+            <span class="v">{{ in_cables }}</span>
+            <span class="l">Inbound</span>
+        </div>
+        <div class="te-metric-card accent-rose">
+            <span class="v">{{ out_cables }}</span>
+            <span class="l">Outbound</span>
+        </div>
+        <div class="te-metric-card accent-amber">
+            <span class="v">{{ equipments.count }}</span>
+            <span class="l">Core Nodes</span>
+        </div>
+        <div class="te-metric-card accent-violet">
+            <span class="v">{{ bts_count }}</span>
+            <span class="l">BTS Assets</span>
+        </div>
+    </div>
+
+    <!-- Main Analytics Row -->
+    <div class="row g-4 mb-5">
+        <!-- GIS Map -->
+        <div class="col-lg-8">
+            <div class="panel-premium">
+                <div class="panel-header">
+                    <h6 class="panel-title"><i class="bi bi-map-fill me-2 text-primary"></i>GIS Route Analytics</h6>
+                    <span class="badge-premium badge-live">Live Network</span>
+                </div>
+                <div id="map" class="map-frame"></div>
+            </div>
+        </div>
+
+        <!-- Infrastructure Health -->
+        <div class="col-lg-4">
+            <div class="panel-premium">
+                <div class="panel-header">
+                    <h6 class="panel-title"><i class="bi bi-activity me-2 text-info"></i>Node Utilization</h6>
+                </div>
+                <div class="p-4 overflow-auto" style="max-height: 520px;">
+                    {% for eq in equipments %}
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="fw-800 small text-slate-700">{{ eq.name }}</span>
+                            <span class="fw-700 extra-small text-muted">{{ eq.used_ports }}/{{ eq.total_ports }}</span>
+                        </div>
+                        <div class="usage-bar">
+                            {% with util=eq.used_ports|divide:eq.total_ports|multiply:100 %}
+                            <div class="progress-bar {% if util > 80 %}bg-danger{% elif util > 50 %}bg-warning{% else %}bg-primary{% endif %}" style="width: {{ util }}%;"></div>
+                            {% endwith %}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-5 opacity-50">
+                        <i class="bi bi-cpu fs-1 mb-2 d-block"></i>
+                        <p class="small fw-700">No active nodes</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Secondary Data Row -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-6">
+            <div class="panel-premium p-4">
+                <h6 class="panel-title mb-4">Underground Fiber (UG)</h6>
+                {% for type, count in ug_summary.items %}
+                <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-slate-50 rounded-16 border border-slate-100">
+                    <span class="fw-700 text-slate-600">{{ type }}</span>
+                    <span class="fw-900 text-slate-900">{{ count }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="panel-premium p-4">
+                <h6 class="panel-title mb-4">Overhead Fiber (OH)</h6>
+                {% for type, count in oh_summary.items %}
+                <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-slate-50 rounded-16 border border-slate-100">
+                    <span class="fw-700 text-slate-600">{{ type }}</span>
+                    <span class="fw-900 text-slate-900">{{ count }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('#toggleActions').on('click', function() {
+            $('#actionPanel').slideToggle(400);
+        });
+
+        // Initialize GIS Map
+        var mapEl = document.getElementById('map');
+        if (mapEl) {
+            var map = L.map('map', { zoomControl: false }).setView([9.9816, 76.2999], 13);
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+            
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            const colors = {'JB': '#10b981', 'EQUIPMENT': '#ef4444', 'TE': '#4f46e5'};
+
+            {% for jb in jbs %}
+                {% if jb.latitude and jb.longitude %}
+                L.circleMarker([{{ jb.latitude }}, {{ jb.longitude }}], {
+                    color: colors.JB, fillOpacity: 0.9, radius: 6, weight: 2, fillColor: 'white'
+                }).addTo(map).bindPopup("<b>JB: {{ jb.jb_id }}</b>");
+                {% endif %}
+            {% endfor %}
+
+            {% for eq in equipments %}
+                {% if eq.latitude and eq.longitude %}
+                L.circleMarker([{{ eq.latitude }}, {{ eq.longitude }}], {
+                    color: colors.EQUIPMENT, fillOpacity: 0.9, radius: 8, weight: 2, fillColor: 'white'
+                }).addTo(map).bindPopup("<b>Node: {{ eq.name }}</b>");
+                {% endif %}
+            {% endfor %}
+
+            {% for route in cable_routes %}
+                var latlngs = {{ route.points|safe }};
+                L.polyline(latlngs, {
+                    color: '{{ route.mode }}' === 'OH' ? '#f59e0b' : '#3b82f6',
+                    weight: 4, opacity: 0.8, lineCap: 'round', lineJoin: 'round'
+                }).addTo(map);
+            {% endfor %}
+        }
+    });
+</script>
+{% endblock %}

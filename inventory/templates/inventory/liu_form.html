@@ -1,0 +1,129 @@
+{% extends 'inventory/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Add LIU - NWO Portal{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Add New LIU</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" id="liu_create_form">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+
+                    <!-- Fiber Detail Container -->
+                    <div id="fiber_details_container" class="mt-4 d-none">
+                        <hr>
+                        <h6 class="text-primary mb-3"><i class="bi bi-list-ol"></i> Fiber Color Coding & Circuit Info</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="80">Fiber #</th>
+                                        <th width="120">Color Code</th>
+                                        <th>Circuit Information</th>
+                                        <th>System Port Connectivity</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="fiber_rows_body">
+                                    <!-- Fibers will be injected here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{% url 'liu_list' %}" class="btn btn-secondary">Back to List</a>
+                        <button type="submit" class="btn btn-success">Create LIU</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const capacitySelect = document.querySelector('select[name="capacity"]');
+        const fiberContainer = document.getElementById('fiber_details_container');
+        const rowsBody = document.getElementById('fiber_rows_body');
+
+        const fiberColors = [
+            "Blue", "Orange", "Green", "Brown", "Slate", "White", 
+            "Red", "Black", "Yellow", "Violet", "Rose", "Aqua"
+        ];
+
+        function getFiberColor(n) {
+            const baseColor = fiberColors[(n - 1) % 12];
+            const ringCount = Math.floor((n - 1) / 12);
+            if (ringCount === 0) return baseColor;
+            if (ringCount === 1) return baseColor + " (Black Ring)";
+            if (ringCount === 2) return baseColor + " (Yellow Ring)";
+            if (ringCount === 3) return baseColor + " (White Ring)";
+            return baseColor + " (Multi Ring)";
+        }
+
+        function getColorHex(colorName) {
+            const base = colorName.split(' ')[0];
+            const colors = {
+                "Blue": "#0000FF", "Orange": "#FFA500", "Green": "#008000",
+                "Brown": "#A52A2A", "Slate": "#708090", "White": "#FFFFFF",
+                "Red": "#FF0000", "Black": "#000000", "Yellow": "#FFFF00",
+                "Violet": "#EE82EE", "Rose": "#FFC0CB", "Aqua": "#00FFFF"
+            };
+            return colors[base] || "#FFFFFF";
+        }
+
+        function getTextColor(colorName) {
+            const base = colorName.split(' ')[0];
+            const darkColors = ["Blue", "Green", "Brown", "Slate", "Red", "Black"];
+            return darkColors.includes(base) ? "#FFFFFF" : "#000000";
+        }
+
+        function updateFiberRows() {
+            const capacity = parseInt(capacitySelect.value);
+            rowsBody.innerHTML = '';
+            
+            if (capacity > 0) {
+                fiberContainer.classList.remove('d-none');
+                let html = '';
+                for (let i = 1; i <= capacity; i++) {
+                    const color = getFiberColor(i);
+                    html += `
+                        <tr>
+                            <td class="text-center fw-bold">${i}</td>
+                            <td>
+                                <span class="badge w-100" style="background-color: ${getColorHex(color)}; border: 1px solid #ddd; color: ${getTextColor(color)}">
+                                    ${color}
+                                </span>
+                            </td>
+                            <td>
+                                <input type="text" name="fiber_${i}_circuit" class="form-control form-control-sm" placeholder="e.g. LL-1234">
+                            </td>
+                            <td>
+                                <input type="text" name="fiber_${i}_port" class="form-control form-control-sm" placeholder="e.g. GE 0/1/1">
+                            </td>
+                        </tr>
+                    `;
+                }
+                rowsBody.innerHTML = html;
+            } else {
+                fiberContainer.classList.add('d-none');
+            }
+        }
+
+        capacitySelect.addEventListener('change', updateFiberRows);
+        
+        // Run on load if capacity is already selected
+        if (capacitySelect.value) {
+            updateFiberRows();
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,144 @@
+{% extends 'inventory/base.html' %}
+
+{% block title %}JB Routes - {{ te.name }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'te_dashboard' te.id %}">{{ te.name|upper }}</a></li>
+        <li class="breadcrumb-item active">JB Routes</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0"><i class="bi bi-box-seam"></i> JB Routes</h2>
+    <a class="btn btn-primary" href="{% url 'jb_list' %}">
+        <i class="bi bi-list-ul"></i> JB List
+    </a>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="fw-bold">UG Route Map</span>
+                    <span class="badge" style="background:#3b82f6;">UG</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="ug-map" style="height: 360px; border-radius: 12px; overflow: hidden;"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="fw-bold">OH Route Map</span>
+                    <span class="badge" style="background:#f97316;">OH</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="oh-map" style="height: 360px; border-radius: 12px; overflow: hidden;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">UG Routes</h5>
+            </div>
+            <div class="card-body">
+                {% if ug_routes %}
+                    <div class="list-group">
+                        {% for route in ug_routes %}
+                            <div class="list-group-item">
+                                {% for jb in route %}
+                                    <a href="{% url 'jb_detail' jb.id %}" class="text-decoration-none fw-bold">{{ jb.jb_id }}</a>{% if not forloop.last %} <span class="text-muted">→</span> {% endif %}
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-muted">No UG route data found for this TE.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">OH Routes</h5>
+            </div>
+            <div class="card-body">
+                {% if oh_routes %}
+                    <div class="list-group">
+                        {% for route in oh_routes %}
+                            <div class="list-group-item">
+                                {% for jb in route %}
+                                    <a href="{% url 'jb_detail' jb.id %}" class="text-decoration-none fw-bold">{{ jb.jb_id }}</a>{% if not forloop.last %} <span class="text-muted">→</span> {% endif %}
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-muted">No OH route data found for this TE.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function() {
+        if (typeof L === 'undefined') return;
+
+        function renderMap(elId, pointsJson, color, defaultCenter) {
+            const el = document.getElementById(elId);
+            if (!el) return;
+
+            const points = JSON.parse(pointsJson || '[]');
+            const map = L.map(elId, { zoomControl: true });
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+
+            if (!points.length) {
+                map.setView(defaultCenter, 11);
+                return;
+            }
+
+            const bounds = [];
+            points.forEach(p => {
+                const marker = L.circleMarker([p.lat, p.lng], {
+                    radius: 7,
+                    color,
+                    weight: 2,
+                    fillColor: 'white',
+                    fillOpacity: 0.95
+                }).addTo(map);
+                marker.bindPopup(
+                    `<div style="min-width:220px;">
+                        <div><strong>${p.jb_id}</strong></div>
+                        ${p.name ? `<div class="small text-muted">${p.name}</div>` : ''}
+                        <div class="mt-2"><a class="btn btn-sm btn-primary" href="${p.url}">View</a></div>
+                    </div>`
+                );
+                bounds.push([p.lat, p.lng]);
+            });
+            map.fitBounds(bounds, { padding: [30, 30] });
+        }
+
+        renderMap('ug-map', '{{ ug_points_json|escapejs }}', '#3b82f6', [9.9312, 76.2673]);
+        renderMap('oh-map', '{{ oh_points_json|escapejs }}', '#f97316', [9.9312, 76.2673]);
+    })();
+</script>
+{% endblock %}

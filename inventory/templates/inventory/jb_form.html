@@ -1,0 +1,318 @@
+{% extends 'inventory/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Add/Edit Junction Box - NWO Portal{% endblock %}
+
+{% block extra_css %}
+<style>
+    .fiber-checkbox-group {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 15px;
+        margin-top: 10px;
+    }
+    .fiber-checkbox-group label {
+        display: flex;
+        align-items: center;
+        margin: 0;
+        font-weight: 500;
+    }
+    .fiber-checkbox-group input[type="checkbox"] {
+        margin-right: 8px;
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+    .form-section {
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 25px;
+        border-left: 4px solid #007bff;
+    }
+    .form-section h5 {
+        color: #007bff;
+        margin-bottom: 15px;
+        font-weight: 600;
+    }
+    .form-group label {
+        font-weight: 500;
+        color: #333;
+        margin-bottom: 8px;
+    }
+    .form-text {
+        font-size: 0.85rem;
+        color: #6c757d;
+        margin-top: 5px;
+    }
+    .gps-button {
+        width: 100%;
+        margin-top: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Home</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'jb_list' %}">Junction Boxes</a></li>
+    <li class="breadcrumb-item active">{% if form.instance.pk %}Edit{% else %}Add{% endif %} Junction Box</li>
+  </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="bi bi-box-seam"></i>
+                    {% if form.instance.pk %}Edit Junction Box: {{ form.instance.jb_id }}{% else %}Create New Junction Box{% endif %}
+                </h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" enctype="multipart/form-data" id="jbForm">
+                    {% csrf_token %}
+
+                    <!-- Basic Details Section -->
+                    <div class="form-section">
+                        <h5><i class="bi bi-info-circle"></i> Basic Details</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="id_jb_id" class="form-label">Junction Box ID <span class="text-danger">*</span></label>
+                                    <input type="text" name="jb_id" value="{{ form.instance.jb_id }}" placeholder="e.g., TE-JB-001" class="form-control" required>
+                                    {% if form.jb_id.errors %}
+                                        <div class="alert alert-danger mt-2">{{ form.jb_id.errors }}</div>
+                                    {% endif %}
+                                    <small class="form-text">Must be unique. Suggested format: TE-JB-001</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="id_jb_name" class="form-label">Junction Box Name</label>
+                                    <input type="text" name="jb_name" value="{{ form.instance.jb_name }}" placeholder="Friendly name" class="form-control">
+                                    <small class="form-text">Optional: Descriptive name for this JB</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="id_te" class="form-label">TE Name (Main Module) <span class="text-danger">*</span></label>
+                                    {{ form.te }}
+                                    {% if form.te.errors %}
+                                        <div class="alert alert-danger mt-2">{{ form.te.errors }}</div>
+                                    {% endif %}
+                                    <small class="form-text">Auto-filled from selected TE</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="id_cable_mode" class="form-label">JB Category <span class="text-danger">*</span></label>
+                                    {{ form.cable_mode }}
+                                    <small class="form-text">UG: Underground | OH: Overhead</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="id_jb_type" class="form-label">JB Type <span class="text-danger">*</span></label>
+                                    {{ form.jb_type }}
+                                    <small class="form-text">Choose JB structure type</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fiber Details Section -->
+                    <div class="form-section">
+                        <h5><i class="bi bi-diagram-3"></i> Fiber Details</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">Fiber Entering Details</label>
+                                    <div class="fiber-checkbox-group">
+                                        {% for value, label in form.fiber_entering.field.choices %}
+                                            <label>
+                                                <input type="checkbox" name="fiber_entering" value="{{ value }}"
+                                                    {% if value in form.fiber_entering.value %}checked{% endif %}>
+                                                {{ label }}
+                                            </label>
+                                        {% endfor %}
+                                    </div>
+                                    <small class="form-text">Select fiber types entering the JB</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">Fiber Out Details</label>
+                                    <div class="fiber-checkbox-group">
+                                        {% for value, label in form.fiber_out.field.choices %}
+                                            <label>
+                                                <input type="checkbox" name="fiber_out" value="{{ value }}"
+                                                    {% if value in form.fiber_out.value %}checked{% endif %}>
+                                                {{ label }}
+                                            </label>
+                                        {% endfor %}
+                                    </div>
+                                    <small class="form-text">Select fiber types leaving the JB</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Splicing Section -->
+                    <div class="form-section">
+                        <h5><i class="bi bi-diagram-2"></i> Splicing Information</h5>
+                        <div class="form-group">
+                            <label for="id_splicing_info" class="form-label">Splicing Details</label>
+                            <textarea name="splicing_info" rows="3" placeholder="e.g., 96F → 48F + 48F split" class="form-control">{{ form.instance.splicing_info }}</textarea>
+                            <small class="form-text">Document how fibers are split/merged at this JB</small>
+                        </div>
+                    </div>
+
+                    <!-- Location & Identification Section -->
+                    <div class="form-section">
+                        <h5><i class="bi bi-geo-alt"></i> Location & Identification</h5>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <label for="id_landmark" class="form-label">JB Landmark</label>
+                                    <textarea name="landmark" rows="2" placeholder="Landmark or nearby reference" class="form-control">{{ form.instance.landmark }}</textarea>
+                                    <small class="form-text">Describe the location landmark</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="id_latitude" class="form-label">Latitude</label>
+                                    {{ form.latitude }}
+                                    <small class="form-text">GPS Latitude (e.g., 9.9312)</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="id_longitude" class="form-label">Longitude</label>
+                                    {{ form.longitude }}
+                                    <small class="form-text">GPS Longitude (e.g., 76.2673)</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12">
+                                <button type="button" onclick="getLocation()" class="btn btn-outline-info gps-button">
+                                    <i class="bi bi-geo-alt"></i> Capture Current GPS Location
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cable Connections Section -->
+                    <div class="form-section">
+                        <h5><i class="bi bi-cable"></i> Cable Connections</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">Input Cables</label>
+                                    {{ form.input_cables }}
+                                    <small class="form-text">Select cables entering this JB</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">Output Cables</label>
+                                    {{ form.output_cables }}
+                                    <small class="form-text">Select cables leaving this JB</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Additional Details Section -->
+                    <div class="form-section">
+                        <h5><i class="bi bi-file-text"></i> Additional Details</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="id_jb_image" class="form-label">JB Image</label>
+                                    {{ form.jb_image }}
+                                    <small class="form-text">Upload JB file (JPG/JPEG/PDF)</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="id_remarks" class="form-label">Remarks</label>
+                                    {{ form.remarks }}
+                                    <small class="form-text">Additional notes or comments</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="d-flex justify-content-between gap-2 mt-4">
+                        <a href="{% url 'jb_list' %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> Save Junction Box
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function getLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(showPosition, showError);
+    } else {
+        alert("Geolocation is not supported by this browser.");
+    }
+}
+
+function showPosition(position) {
+    document.getElementById('id_latitude').value = position.coords.latitude.toFixed(4);
+    document.getElementById('id_longitude').value = position.coords.longitude.toFixed(4);
+    // Show success message
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 end-0 m-3';
+    alert.style.zIndex = '9999';
+    alert.innerHTML = '<strong>Success!</strong> GPS location captured.<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+    document.body.appendChild(alert);
+    setTimeout(() => alert.remove(), 3000);
+}
+
+function showError(error) {
+    let message = '';
+    switch(error.code) {
+        case error.PERMISSION_DENIED:
+            message = "Please enable location access in your browser settings.";
+            break;
+        case error.POSITION_UNAVAILABLE:
+            message = "Location information is unavailable at this time.";
+            break;
+        case error.TIMEOUT:
+            message = "The request to get your location timed out.";
+            break;
+        case error.UNKNOWN_ERROR:
+            message = "An unknown error occurred.";
+            break;
+    }
+    alert('Location Error: ' + message);
+}
+
+// Handle form submission with validation
+document.getElementById('jbForm').addEventListener('submit', function(e) {
+    const jbId = document.querySelector('input[name="jb_id"]').value;
+    if (!jbId.trim()) {
+        e.preventDefault();
+        alert('Please enter a Junction Box ID');
+        return false;
+    }
+});
+</script>
+{% endblock %}

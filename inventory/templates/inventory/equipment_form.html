@@ -1,0 +1,1316 @@
+{% extends 'inventory/base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}Add/Edit Equipment - NWO Portal{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Equipment Details</h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">{{ form.name|as_crispy_field }}</div>
+                        <div class="col-md-6">{{ form.equipment_type|as_crispy_field }}</div>
+                    </div>
+                    <div id="equipment-node-ip-section" style="display: none;">
+                        <label class="form-label fw-bold">Node IP Address*</label>
+                        <input
+                            type="text"
+                            id="equipment-node-ip"
+                            class="form-control"
+                            placeholder="e.g., 192.168.1.10"
+                            inputmode="decimal"
+                            autocomplete="off"
+                        >
+                        <small class="text-muted">Enter a valid IPv4 address.</small>
+                    </div>
+                    {{ form.te|as_crispy_field }}
+                    {{ form.uplink_connectivity|as_crispy_field }}
+                    <div class="row">
+                        <div class="col-md-4">{{ form.total_ports|as_crispy_field }}</div>
+                        <div class="col-md-4">{{ form.used_ports|as_crispy_field }}</div>
+                        <div class="col-md-4">{{ form.free_ports|as_crispy_field }}</div>
+                    </div>
+                    {{ form.remarks|as_crispy_field }}
+                    <div id="cpan-config-sections" style="display: none;">
+                        <hr>
+                        <h5 class="mb-3 text-primary">CPAN B Node Configuration</h5>
+                        
+                        <!-- XSV3 Card Section -->
+                        <div class="card mb-3 border-info shadow-sm">
+                            <div class="card-header bg-info text-white py-2">XSV3 Card Section</div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-bold">Number of XSV3 Cards Available*</label>
+                                        <select id="xsv3-count" class="form-select">
+                                            <option value="">Select...</option>
+                                            <option value="1">1</option>
+                                            <option value="2">2</option>
+                                            <option value="3">3</option>
+                                            <option value="4">4</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-bold">XSV3 Card Inserted Slots*</label>
+                                        <div id="xsv3-slots" class="border rounded-3 p-2 bg-light">
+                                            <div class="row g-2">
+                                                {% for i in "123456789"|make_list %}
+                                                <div class="col-4 col-sm-3">
+                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                        <input class="form-check-input m-0 xsv3-slot" type="checkbox" value="{{ i }}">
+                                                        <span class="fw-bold">{{ i }}</span>
+                                                    </label>
+                                                </div>
+                                                {% endfor %}
+                                                <div class="col-4 col-sm-3">
+                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                        <input class="form-check-input m-0 xsv3-slot" type="checkbox" value="10">
+                                                        <span class="fw-bold">10</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">Tick the required slots. Selected count must match number of cards.</small>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Uplink Ports (Auto-derived)</label>
+                                    <input type="text" id="xsv3-uplink-ports" class="form-control bg-light" readonly>
+                                </div>
+                                <div id="xsv3-port-details" class="row"></div>
+                            </div>
+                        </div>
+
+                        <!-- STM Card S1V1 Section -->
+                        <div class="card mb-3 border-info shadow-sm">
+                            <div class="card-header bg-info text-white py-2">STM Card S1V1 Section</div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-bold">STM Card S1V1 Available*</label>
+                                        <select id="stm-available" class="form-select">
+                                            <option value="N">N</option>
+                                            <option value="Y">Y</option>
+                                        </select>
+                                    </div>
+                                    <div id="stm-slots-container" class="col-md-6 mb-3" style="display: none;">
+                                        <label class="form-label fw-bold">Inserted Slot*</label>
+                                        <div id="stm-slots" class="border rounded-3 p-2 bg-light">
+                                            <div class="row g-2">
+                                                {% for i in "12345678"|make_list %}
+                                                <div class="col-4 col-sm-3">
+                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                        <input class="form-check-input m-0 stm-slot" type="checkbox" value="{{ i }}">
+                                                        <span class="fw-bold">{{ i }}</span>
+                                                    </label>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">Tick the required slots.</small>
+                                    </div>
+                                </div>
+                                <div id="stm-port-details" class="row"></div>
+                            </div>
+                        </div>
+
+                        <!-- MSV1 Card Section -->
+                        <div class="card mb-3 border-info shadow-sm">
+                            <div class="card-header bg-info text-white py-2">MSV1 Card Section</div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Number of MSV1 Card Slots*</label>
+                                    <div id="msv1-slots" class="border rounded-3 p-2 bg-light">
+                                        <div class="row g-2">
+                                            {% for i in "123456789"|make_list %}
+                                            <div class="col-4 col-sm-3">
+                                                <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                    <input class="form-check-input m-0 msv1-slot" type="checkbox" value="{{ i }}">
+                                                    <span class="fw-bold">{{ i }}</span>
+                                                </label>
+                                            </div>
+                                            {% endfor %}
+                                            <div class="col-4 col-sm-3">
+                                                <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                    <input class="form-check-input m-0 msv1-slot" type="checkbox" value="10">
+                                                    <span class="fw-bold">10</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">Tick the required slots.</small>
+                                </div>
+                                <div id="msv1-port-details" class="row"></div>
+                            </div>
+                        </div>
+
+                        <!-- GSV4 Card Section -->
+                        <div class="card mb-3 border-primary shadow-sm">
+                            <div class="card-header bg-primary text-white py-2">GSV4 Card Section</div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-bold">GSV4 Card Available*</label>
+                                        <select id="gsv4-available" class="form-select">
+                                            <option value="N">N</option>
+                                            <option value="Y">Y</option>
+                                        </select>
+                                    </div>
+                                    <div id="gsv4-slots-container" class="col-md-6 mb-3" style="display: none;">
+                                        <label class="form-label fw-bold">Inserted Slots*</label>
+                                        <div id="gsv4-slots" class="border rounded-3 p-2 bg-light">
+                                            <div class="row g-2">
+                                                {% for i in "123456789"|make_list %}
+                                                <div class="col-4 col-sm-3">
+                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                        <input class="form-check-input m-0 gsv4-slot" type="checkbox" value="{{ i }}">
+                                                        <span class="fw-bold">{{ i }}</span>
+                                                    </label>
+                                                </div>
+                                                {% endfor %}
+                                                <div class="col-4 col-sm-3">
+                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                        <input class="form-check-input m-0 gsv4-slot" type="checkbox" value="10">
+                                                        <span class="fw-bold">10</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">Select slots (1-10).</small>
+                                    </div>
+                                </div>
+                                <div id="gsv4-port-details" class="row"></div>
+                            </div>
+                        </div>
+
+                        <!-- SNCV1 Card Section -->
+                        <div class="card mb-3 border-primary shadow-sm">
+                            <div class="card-header bg-primary text-white py-2">SNCV1 Card Section</div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-bold">SNCV1 Card Available*</label>
+                                        <select id="sncv1-available" class="form-select">
+                                            <option value="N">N</option>
+                                            <option value="Y">Y</option>
+                                        </select>
+                                    </div>
+                                    <div id="sncv1-slots-container" class="col-md-6 mb-3" style="display: none;">
+                                        <label class="form-label fw-bold">Inserted Slots*</label>
+                                        <div id="sncv1-slots" class="border rounded-3 p-2 bg-light">
+                                            <div class="row g-2">
+                                                <div class="col-4 col-sm-3">
+                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                        <input class="form-check-input m-0 sncv1-slot" type="checkbox" value="10">
+                                                        <span class="fw-bold">10</span>
+                                                    </label>
+                                                </div>
+                                                <div class="col-4 col-sm-3">
+                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                        <input class="form-check-input m-0 sncv1-slot" type="checkbox" value="11">
+                                                        <span class="fw-bold">11</span>
+                                                    </label>
+                                                </div>
+                                                <div class="col-4 col-sm-3">
+                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                        <input class="form-check-input m-0 sncv1-slot" type="checkbox" value="12">
+                                                        <span class="fw-bold">12</span>
+                                                    </label>
+                                                </div>
+                                                <div class="col-4 col-sm-3">
+                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                        <input class="form-check-input m-0 sncv1-slot" type="checkbox" value="13">
+                                                        <span class="fw-bold">13</span>
+                                                    </label>
+                                                </div>
+                                                <div class="col-4 col-sm-3">
+                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                        <input class="form-check-input m-0 sncv1-slot" type="checkbox" value="14">
+                                                        <span class="fw-bold">14</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">Select slots (10-14).</small>
+                                    </div>
+                                </div>
+                                <div id="sncv1-port-details" class="row"></div>
+                            </div>
+                        </div>
+
+                        <!-- E1CV1 Card Section -->
+                        <div class="card mb-3 border-primary shadow-sm">
+                            <div class="card-header bg-primary text-white py-2">E1CV1 Card Section</div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-bold">E1CV1 Card Available*</label>
+                                        <select id="e1cv1-available" class="form-select">
+                                            <option value="N">N</option>
+                                            <option value="Y">Y</option>
+                                        </select>
+                                    </div>
+                                    <div id="e1cv1-details-container" class="col-md-6 mb-3" style="display: none;">
+                                        <label class="form-label fw-bold">DDF Details*</label>
+                                        <input type="text" id="e1cv1-ddf-details" class="form-control" placeholder="Enter DDF Details">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MAAN A3/A4 Section -->
+                    <div id="maan-a3a4-config-sections" style="display: none;">
+                        <hr>
+                        <h5 class="mb-3 text-primary">MAAN A3/A4 Node Configuration</h5>
+                        <div class="card mb-3 border-success shadow-sm">
+                            <div class="card-header bg-success text-white py-2">Port Configuration (P1-P24, E1-E4)</div>
+                            <div class="card-body">
+                                <div id="maan-a3a4-port-details" class="row"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="maan-c-config-sections" style="display: none;">
+                        <hr>
+                        <h5 class="mb-3 text-primary">MAAN C Node – Card Configuration</h5>
+
+                        <div class="accordion" id="maanCAccordion">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="maan-c-cel16-heading">
+                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#maan-c-cel16-collapse" aria-expanded="true" aria-controls="maan-c-cel16-collapse">
+                                        CEL 16
+                                    </button>
+                                </h2>
+                                <div id="maan-c-cel16-collapse" class="accordion-collapse collapse show" aria-labelledby="maan-c-cel16-heading" data-bs-parent="#maanCAccordion">
+                                    <div class="accordion-body">
+                                        <div class="row g-3 align-items-end">
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-bold">CEL 16 Available?</label>
+                                                <select id="maan-c-cel16-available" class="form-select">
+                                                    <option value="N">N</option>
+                                                    <option value="Y">Y</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div id="maan-c-cel16-fields" class="mt-3" style="display: none;">
+                                            <div class="row g-3">
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-bold">Number of Cards</label>
+                                                    <input id="maan-c-cel16-count" type="number" class="form-control" min="1" max="22" step="1">
+                                                </div>
+                                                <div class="col-md-8">
+                                                    <label class="form-label fw-bold">Inserted Slot Number(s)</label>
+                                                    <div id="maan-c-cel16-slots" class="border rounded-3 p-2 bg-light">
+                                                        <div class="row g-2">
+                                                            {% for i in "123456789"|make_list %}
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="{{ i }}" data-card="cel16">
+                                                                    <span class="fw-bold">{{ i }}</span>
+                                                                </label>
+                                                            </div>
+                                                            {% endfor %}
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="10" data-card="cel16">
+                                                                    <span class="fw-bold">10</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="11" data-card="cel16">
+                                                                    <span class="fw-bold">11</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="12" data-card="cel16">
+                                                                    <span class="fw-bold">12</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="13" data-card="cel16">
+                                                                    <span class="fw-bold">13</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="14" data-card="cel16">
+                                                                    <span class="fw-bold">14</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="15" data-card="cel16">
+                                                                    <span class="fw-bold">15</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="16" data-card="cel16">
+                                                                    <span class="fw-bold">16</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="17" data-card="cel16">
+                                                                    <span class="fw-bold">17</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="18" data-card="cel16">
+                                                                    <span class="fw-bold">18</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="19" data-card="cel16">
+                                                                    <span class="fw-bold">19</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="20" data-card="cel16">
+                                                                    <span class="fw-bold">20</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="21" data-card="cel16">
+                                                                    <span class="fw-bold">21</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="22" data-card="cel16">
+                                                                    <span class="fw-bold">22</span>
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <small class="text-muted">Slots 1–22. Occupied slots are disabled. Selected slot count must match number of cards.</small>
+                                                    <div class="mt-3">
+                                                        <label class="form-label fw-bold">Uplink Ports (Auto-derived)</label>
+                                                        <input type="text" id="maan-c-cel16-uplink-ports" class="form-control bg-light" readonly>
+                                                        <small class="text-muted">Derived as SlotNumber/PortNumber for ports 5 and 6 (100G uplinks).</small>
+                                                    </div>
+
+                                                    <div id="maan-c-cel16-port-details" class="mt-3"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="maan-c-cel13-heading">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#maan-c-cel13-collapse" aria-expanded="false" aria-controls="maan-c-cel13-collapse">
+                                        CEL 13
+                                    </button>
+                                </h2>
+                                <div id="maan-c-cel13-collapse" class="accordion-collapse collapse" aria-labelledby="maan-c-cel13-heading" data-bs-parent="#maanCAccordion">
+                                    <div class="accordion-body">
+                                        <div class="row g-3 align-items-end">
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-bold">CEL 13 Available?</label>
+                                                <select id="maan-c-cel13-available" class="form-select">
+                                                    <option value="N">N</option>
+                                                    <option value="Y">Y</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div id="maan-c-cel13-fields" class="mt-3" style="display: none;">
+                                            <div class="row g-3">
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-bold">Number of Cards</label>
+                                                    <input id="maan-c-cel13-count" type="number" class="form-control" min="1" max="22" step="1">
+                                                </div>
+                                                <div class="col-md-8">
+                                                    <label class="form-label fw-bold">Inserted Slot Number(s)</label>
+                                                    <div id="maan-c-cel13-slots" class="border rounded-3 p-2 bg-light">
+                                                        <div class="row g-2">
+                                                            {% for i in "123456789"|make_list %}
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="{{ i }}" data-card="cel13">
+                                                                    <span class="fw-bold">{{ i }}</span>
+                                                                </label>
+                                                            </div>
+                                                            {% endfor %}
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="10" data-card="cel13">
+                                                                    <span class="fw-bold">10</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="11" data-card="cel13">
+                                                                    <span class="fw-bold">11</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="12" data-card="cel13">
+                                                                    <span class="fw-bold">12</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="13" data-card="cel13">
+                                                                    <span class="fw-bold">13</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="14" data-card="cel13">
+                                                                    <span class="fw-bold">14</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="15" data-card="cel13">
+                                                                    <span class="fw-bold">15</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="16" data-card="cel13">
+                                                                    <span class="fw-bold">16</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="17" data-card="cel13">
+                                                                    <span class="fw-bold">17</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="18" data-card="cel13">
+                                                                    <span class="fw-bold">18</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="19" data-card="cel13">
+                                                                    <span class="fw-bold">19</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="20" data-card="cel13">
+                                                                    <span class="fw-bold">20</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="21" data-card="cel13">
+                                                                    <span class="fw-bold">21</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="22" data-card="cel13">
+                                                                    <span class="fw-bold">22</span>
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <small class="text-muted">Slots 1–22. Occupied slots are disabled. Selected slot count must match number of cards.</small>
+                                                    <div id="maan-c-cel13-port-details" class="mt-3"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="maan-c-cel12-heading">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#maan-c-cel12-collapse" aria-expanded="false" aria-controls="maan-c-cel12-collapse">
+                                        CEL 12
+                                    </button>
+                                </h2>
+                                <div id="maan-c-cel12-collapse" class="accordion-collapse collapse" aria-labelledby="maan-c-cel12-heading" data-bs-parent="#maanCAccordion">
+                                    <div class="accordion-body">
+                                        <div class="row g-3 align-items-end">
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-bold">CEL 12 Available?</label>
+                                                <select id="maan-c-cel12-available" class="form-select">
+                                                    <option value="N">N</option>
+                                                    <option value="Y">Y</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div id="maan-c-cel12-fields" class="mt-3" style="display: none;">
+                                            <div class="row g-3">
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-bold">Number of Cards</label>
+                                                    <input id="maan-c-cel12-count" type="number" class="form-control" min="1" max="22" step="1">
+                                                </div>
+                                                <div class="col-md-8">
+                                                    <label class="form-label fw-bold">Inserted Slot Number(s)</label>
+                                                    <div id="maan-c-cel12-slots" class="border rounded-3 p-2 bg-light">
+                                                        <div class="row g-2">
+                                                            {% for i in "123456789"|make_list %}
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="{{ i }}" data-card="cel12">
+                                                                    <span class="fw-bold">{{ i }}</span>
+                                                                </label>
+                                                            </div>
+                                                            {% endfor %}
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="10" data-card="cel12">
+                                                                    <span class="fw-bold">10</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="11" data-card="cel12">
+                                                                    <span class="fw-bold">11</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="12" data-card="cel12">
+                                                                    <span class="fw-bold">12</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="13" data-card="cel12">
+                                                                    <span class="fw-bold">13</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="14" data-card="cel12">
+                                                                    <span class="fw-bold">14</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="15" data-card="cel12">
+                                                                    <span class="fw-bold">15</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="16" data-card="cel12">
+                                                                    <span class="fw-bold">16</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="17" data-card="cel12">
+                                                                    <span class="fw-bold">17</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="18" data-card="cel12">
+                                                                    <span class="fw-bold">18</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="19" data-card="cel12">
+                                                                    <span class="fw-bold">19</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="20" data-card="cel12">
+                                                                    <span class="fw-bold">20</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="21" data-card="cel12">
+                                                                    <span class="fw-bold">21</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="22" data-card="cel12">
+                                                                    <span class="fw-bold">22</span>
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <small class="text-muted">Slots 1–22. Occupied slots are disabled. Selected slot count must match number of cards.</small>
+                                                    <div id="maan-c-cel12-port-details" class="mt-3"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="maan-c-cel6-heading">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#maan-c-cel6-collapse" aria-expanded="false" aria-controls="maan-c-cel6-collapse">
+                                        CEL 6
+                                    </button>
+                                </h2>
+                                <div id="maan-c-cel6-collapse" class="accordion-collapse collapse" aria-labelledby="maan-c-cel6-heading" data-bs-parent="#maanCAccordion">
+                                    <div class="accordion-body">
+                                        <div class="row g-3 align-items-end">
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-bold">CEL 6 Available?</label>
+                                                <select id="maan-c-cel6-available" class="form-select">
+                                                    <option value="N">N</option>
+                                                    <option value="Y">Y</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div id="maan-c-cel6-fields" class="mt-3" style="display: none;">
+                                            <div class="row g-3">
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-bold">Number of Cards</label>
+                                                    <input id="maan-c-cel6-count" type="number" class="form-control" min="1" max="22" step="1">
+                                                </div>
+                                                <div class="col-md-8">
+                                                    <label class="form-label fw-bold">Inserted Slot Number(s)</label>
+                                                    <div id="maan-c-cel6-slots" class="border rounded-3 p-2 bg-light">
+                                                        <div class="row g-2">
+                                                            {% for i in "123456789"|make_list %}
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="{{ i }}" data-card="cel6">
+                                                                    <span class="fw-bold">{{ i }}</span>
+                                                                </label>
+                                                            </div>
+                                                            {% endfor %}
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="10" data-card="cel6">
+                                                                    <span class="fw-bold">10</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="11" data-card="cel6">
+                                                                    <span class="fw-bold">11</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="12" data-card="cel6">
+                                                                    <span class="fw-bold">12</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="13" data-card="cel6">
+                                                                    <span class="fw-bold">13</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="14" data-card="cel6">
+                                                                    <span class="fw-bold">14</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="15" data-card="cel6">
+                                                                    <span class="fw-bold">15</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="16" data-card="cel6">
+                                                                    <span class="fw-bold">16</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="17" data-card="cel6">
+                                                                    <span class="fw-bold">17</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="18" data-card="cel6">
+                                                                    <span class="fw-bold">18</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="19" data-card="cel6">
+                                                                    <span class="fw-bold">19</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="20" data-card="cel6">
+                                                                    <span class="fw-bold">20</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="21" data-card="cel6">
+                                                                    <span class="fw-bold">21</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="22" data-card="cel6">
+                                                                    <span class="fw-bold">22</span>
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <small class="text-muted">Slots 1–22. Occupied slots are disabled. Selected slot count must match number of cards.</small>
+                                                    <div id="maan-c-cel6-port-details" class="mt-3"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="maan-c-csc1-heading">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#maan-c-csc1-collapse" aria-expanded="false" aria-controls="maan-c-csc1-collapse">
+                                        CSC 1
+                                    </button>
+                                </h2>
+                                <div id="maan-c-csc1-collapse" class="accordion-collapse collapse" aria-labelledby="maan-c-csc1-heading" data-bs-parent="#maanCAccordion">
+                                    <div class="accordion-body">
+                                        <div class="row g-3 align-items-end">
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-bold">CSC 1 Available?</label>
+                                                <select id="maan-c-csc1-available" class="form-select">
+                                                    <option value="N">N</option>
+                                                    <option value="Y">Y</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div id="maan-c-csc1-fields" class="mt-3" style="display: none;">
+                                            <div class="row g-3">
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-bold">Number of Cards</label>
+                                                    <input id="maan-c-csc1-count" type="number" class="form-control" min="1" max="22" step="1">
+                                                </div>
+                                                <div class="col-md-8">
+                                                    <label class="form-label fw-bold">Inserted Slot Number(s)</label>
+                                                    <div id="maan-c-csc1-slots" class="border rounded-3 p-2 bg-light">
+                                                        <div class="row g-2">
+                                                            {% for i in "123456789"|make_list %}
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="{{ i }}" data-card="csc1">
+                                                                    <span class="fw-bold">{{ i }}</span>
+                                                                </label>
+                                                            </div>
+                                                            {% endfor %}
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="10" data-card="csc1">
+                                                                    <span class="fw-bold">10</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="11" data-card="csc1">
+                                                                    <span class="fw-bold">11</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="12" data-card="csc1">
+                                                                    <span class="fw-bold">12</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="13" data-card="csc1">
+                                                                    <span class="fw-bold">13</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="14" data-card="csc1">
+                                                                    <span class="fw-bold">14</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="15" data-card="csc1">
+                                                                    <span class="fw-bold">15</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="16" data-card="csc1">
+                                                                    <span class="fw-bold">16</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="17" data-card="csc1">
+                                                                    <span class="fw-bold">17</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="18" data-card="csc1">
+                                                                    <span class="fw-bold">18</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="19" data-card="csc1">
+                                                                    <span class="fw-bold">19</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="20" data-card="csc1">
+                                                                    <span class="fw-bold">20</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="21" data-card="csc1">
+                                                                    <span class="fw-bold">21</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="22" data-card="csc1">
+                                                                    <span class="fw-bold">22</span>
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <small class="text-muted">Slots 1–22. Occupied slots are disabled. Selected slot count must match number of cards.</small>
+                                                    <div id="maan-c-csc1-port-details" class="mt-3"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="maan-c-csc2-heading">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#maan-c-csc2-collapse" aria-expanded="false" aria-controls="maan-c-csc2-collapse">
+                                        CSC 2
+                                    </button>
+                                </h2>
+                                <div id="maan-c-csc2-collapse" class="accordion-collapse collapse" aria-labelledby="maan-c-csc2-heading" data-bs-parent="#maanCAccordion">
+                                    <div class="accordion-body">
+                                        <div class="row g-3 align-items-end">
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-bold">CSC 2 Available?</label>
+                                                <select id="maan-c-csc2-available" class="form-select">
+                                                    <option value="N">N</option>
+                                                    <option value="Y">Y</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div id="maan-c-csc2-fields" class="mt-3" style="display: none;">
+                                            <div class="row g-3">
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-bold">Number of Cards</label>
+                                                    <input id="maan-c-csc2-count" type="number" class="form-control" min="1" max="22" step="1">
+                                                </div>
+                                                <div class="col-md-8">
+                                                    <label class="form-label fw-bold">Inserted Slot Number(s)</label>
+                                                    <div id="maan-c-csc2-slots" class="border rounded-3 p-2 bg-light">
+                                                        <div class="row g-2">
+                                                            {% for i in "123456789"|make_list %}
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="{{ i }}" data-card="csc2">
+                                                                    <span class="fw-bold">{{ i }}</span>
+                                                                </label>
+                                                            </div>
+                                                            {% endfor %}
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="10" data-card="csc2">
+                                                                    <span class="fw-bold">10</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="11" data-card="csc2">
+                                                                    <span class="fw-bold">11</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="12" data-card="csc2">
+                                                                    <span class="fw-bold">12</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="13" data-card="csc2">
+                                                                    <span class="fw-bold">13</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="14" data-card="csc2">
+                                                                    <span class="fw-bold">14</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="15" data-card="csc2">
+                                                                    <span class="fw-bold">15</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="16" data-card="csc2">
+                                                                    <span class="fw-bold">16</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="17" data-card="csc2">
+                                                                    <span class="fw-bold">17</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="18" data-card="csc2">
+                                                                    <span class="fw-bold">18</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="19" data-card="csc2">
+                                                                    <span class="fw-bold">19</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="20" data-card="csc2">
+                                                                    <span class="fw-bold">20</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="21" data-card="csc2">
+                                                                    <span class="fw-bold">21</span>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-4 col-sm-2">
+                                                                <label class="d-flex align-items-center justify-content-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                    <input class="form-check-input m-0 maan-c-slot" type="checkbox" value="22" data-card="csc2">
+                                                                    <span class="fw-bold">22</span>
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <small class="text-muted">Slots 1–22. Occupied slots are disabled. Selected slot count must match number of cards.</small>
+                                                    <div id="maan-c-csc2-port-details" class="mt-3"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="madm-config-sections" style="display: none;">
+                        <hr>
+                        <h5 class="mb-3 text-primary">MADM Slot Layout & Card Configuration</h5>
+
+                        <div class="card mb-3 border-secondary shadow-sm">
+                            <div class="card-header bg-secondary text-white py-2">Slots (1–12)</div>
+                            <div class="card-body">
+                                <div class="row g-2">
+                                    {% for i in "123456789"|make_list %}
+                                    <div class="col-3 col-sm-2 col-md-1">
+                                        <div class="border rounded-3 bg-light text-center py-2 fw-bold">S{{ i }}</div>
+                                    </div>
+                                    {% endfor %}
+                                    {% for i in "101112"|make_list %}
+                                    {% endfor %}
+                                    <div class="col-3 col-sm-2 col-md-1">
+                                        <div class="border rounded-3 bg-light text-center py-2 fw-bold">S10</div>
+                                    </div>
+                                    <div class="col-3 col-sm-2 col-md-1">
+                                        <div class="border rounded-3 bg-light text-center py-2 fw-bold">S11</div>
+                                    </div>
+                                    <div class="col-3 col-sm-2 col-md-1">
+                                        <div class="border rounded-3 bg-light text-center py-2 fw-bold">S12</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion" id="madmAccordion">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="madm-com01-heading">
+                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#madm-com01-collapse" aria-expanded="true" aria-controls="madm-com01-collapse">
+                                        COM01 (Coaxial)
+                                    </button>
+                                </h2>
+                                <div id="madm-com01-collapse" class="accordion-collapse collapse show" aria-labelledby="madm-com01-heading" data-bs-parent="#madmAccordion">
+                                    <div class="accordion-body">
+                                        <div class="row g-3 align-items-end">
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-bold">COM01 Available?</label>
+                                                <select id="madm-com01-available" class="form-select">
+                                                    <option value="N">N</option>
+                                                    <option value="Y">Y</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div id="madm-com01-fields" class="mt-3" style="display: none;">
+                                            <label class="form-label fw-bold">Inserted Slot Number(s)</label>
+                                            <div class="border rounded-3 p-2 bg-light">
+                                                <div class="row g-2">
+                                                    {% for i in "123456789"|make_list %}
+                                                    <div class="col-4 col-sm-3 col-md-2">
+                                                        <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                            <input class="form-check-input m-0 madm-slot" type="checkbox" value="{{ i }}" data-card="com01">
+                                                            <span class="fw-bold">{{ i }}</span>
+                                                        </label>
+                                                    </div>
+                                                    {% endfor %}
+                                                    <div class="col-4 col-sm-3 col-md-2">
+                                                        <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                            <input class="form-check-input m-0 madm-slot" type="checkbox" value="10" data-card="com01">
+                                                            <span class="fw-bold">10</span>
+                                                        </label>
+                                                    </div>
+                                                    <div class="col-4 col-sm-3 col-md-2">
+                                                        <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                            <input class="form-check-input m-0 madm-slot" type="checkbox" value="11" data-card="com01">
+                                                            <span class="fw-bold">11</span>
+                                                        </label>
+                                                    </div>
+                                                    <div class="col-4 col-sm-3 col-md-2">
+                                                        <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                            <input class="form-check-input m-0 madm-slot" type="checkbox" value="12" data-card="com01">
+                                                            <span class="fw-bold">12</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">Slots 1–12. One slot can contain only one card.</small>
+                                            <div id="madm-com01-port-details" class="mt-3"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="madm-agg06-heading">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#madm-agg06-collapse" aria-expanded="false" aria-controls="madm-agg06-collapse">
+                                        AGG06 (Aggregation)
+                                    </button>
+                                </h2>
+                                <div id="madm-agg06-collapse" class="accordion-collapse collapse" aria-labelledby="madm-agg06-heading" data-bs-parent="#madmAccordion">
+                                    <div class="accordion-body">
+                                        <div class="row g-3 align-items-end">
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-bold">AGG06 Available?</label>
+                                                <select id="madm-agg06-available" class="form-select">
+                                                    <option value="N">N</option>
+                                                    <option value="Y">Y</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div id="madm-agg06-fields" class="mt-3" style="display: none;">
+                                            <label class="form-label fw-bold">Inserted Slot Number(s)</label>
+                                            <div class="border rounded-3 p-2 bg-light">
+                                                <div class="row g-2">
+                                                    {% for i in "123456789"|make_list %}
+                                                    <div class="col-4 col-sm-3 col-md-2">
+                                                        <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                            <input class="form-check-input m-0 madm-slot" type="checkbox" value="{{ i }}" data-card="agg06">
+                                                            <span class="fw-bold">{{ i }}</span>
+                                                        </label>
+                                                    </div>
+                                                    {% endfor %}
+                                                    <div class="col-4 col-sm-3 col-md-2">
+                                                        <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                            <input class="form-check-input m-0 madm-slot" type="checkbox" value="10" data-card="agg06">
+                                                            <span class="fw-bold">10</span>
+                                                        </label>
+                                                    </div>
+                                                    <div class="col-4 col-sm-3 col-md-2">
+                                                        <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                            <input class="form-check-input m-0 madm-slot" type="checkbox" value="11" data-card="agg06">
+                                                            <span class="fw-bold">11</span>
+                                                        </label>
+                                                    </div>
+                                                    <div class="col-4 col-sm-3 col-md-2">
+                                                        <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                            <input class="form-check-input m-0 madm-slot" type="checkbox" value="12" data-card="agg06">
+                                                            <span class="fw-bold">12</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">Slots 1–12. One slot can contain only one card.</small>
+                                            <div id="madm-agg06-port-details" class="mt-3"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="madm-elan05d-heading">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#madm-elan05d-collapse" aria-expanded="false" aria-controls="madm-elan05d-collapse">
+                                        ELAN05D (LAN + Optical)
+                                    </button>
+                                </h2>
+                                <div id="madm-elan05d-collapse" class="accordion-collapse collapse" aria-labelledby="madm-elan05d-heading" data-bs-parent="#madmAccordion">
+                                    <div class="accordion-body">
+                                        <div class="row g-3 align-items-end">
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-bold">ELAN05D Available?</label>
+                                                <select id="madm-elan05d-available" class="form-select">
+                                                    <option value="N">N</option>
+                                                    <option value="Y">Y</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div id="madm-elan05d-fields" class="mt-3" style="display: none;">
+                                            <label class="form-label fw-bold">Inserted Slot Number(s)</label>
+                                            <div class="border rounded-3 p-2 bg-light">
+                                                <div class="row g-2">
+                                                    {% for i in "123456789"|make_list %}
+                                                    <div class="col-4 col-sm-3 col-md-2">
+                                                        <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                            <input class="form-check-input m-0 madm-slot" type="checkbox" value="{{ i }}" data-card="elan05d">
+                                                            <span class="fw-bold">{{ i }}</span>
+                                                        </label>
+                                                    </div>
+                                                    {% endfor %}
+                                                    <div class="col-4 col-sm-3 col-md-2">
+                                                        <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                            <input class="form-check-input m-0 madm-slot" type="checkbox" value="10" data-card="elan05d">
+                                                            <span class="fw-bold">10</span>
+                                                        </label>
+                                                    </div>
+                                                    <div class="col-4 col-sm-3 col-md-2">
+                                                        <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                            <input class="form-check-input m-0 madm-slot" type="checkbox" value="11" data-card="elan05d">
+                                                            <span class="fw-bold">11</span>
+                                                        </label>
+                                                    </div>
+                                                    <div class="col-4 col-sm-3 col-md-2">
+                                                        <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                            <input class="form-check-input m-0 madm-slot" type="checkbox" value="12" data-card="elan05d">
+                                                            <span class="fw-bold">12</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">Slots 1–12. One slot can contain only one card.</small>
+                                            <div id="madm-elan05d-port-details" class="mt-3"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="madm-a010000-heading">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#madm-a010000-collapse" aria-expanded="false" aria-controls="madm-a010000-collapse">
+                                        A010000 (Uplink)
+                                    </button>
+                                </h2>
+                                <div id="madm-a010000-collapse" class="accordion-collapse collapse" aria-labelledby="madm-a010000-heading" data-bs-parent="#madmAccordion">
+                                    <div class="accordion-body">
+                                        <div class="row g-3 align-items-end">
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-bold">A010000 Available?</label>
+                                                <select id="madm-a010000-available" class="form-select">
+                                                    <option value="N">N</option>
+                                                    <option value="Y">Y</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div id="madm-a010000-fields" class="mt-3" style="display: none;">
+                                            <label class="form-label fw-bold">Inserted Slot Number(s)</label>
+                                            <div class="border rounded-3 p-2 bg-light">
+                                                <div class="row g-2">
+                                                    {% for i in "123456789"|make_list %}
+                                                    <div class="col-4 col-sm-3 col-md-2">
+                                                        <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                            <input class="form-check-input m-0 madm-slot" type="checkbox" value="{{ i }}" data-card="a010000">
+                                                            <span class="fw-bold">{{ i }}</span>
+                                                        </label>
+                                                    </div>
+                                                    {% endfor %}
+                                                    <div class="col-4 col-sm-3 col-md-2">
+                                                        <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                            <input class="form-check-input m-0 madm-slot" type="checkbox" value="10" data-card="a010000">
+                                                            <span class="fw-bold">10</span>
+                                                        </label>
+                                                    </div>
+                                                    <div class="col-4 col-sm-3 col-md-2">
+                                                        <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                            <input class="form-check-input m-0 madm-slot" type="checkbox" value="11" data-card="a010000">
+                                                            <span class="fw-bold">11</span>
+                                                        </label>
+                                                    </div>
+                                                    <div class="col-4 col-sm-3 col-md-2">
+                                                        <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                            <input class="form-check-input m-0 madm-slot" type="checkbox" value="12" data-card="a010000">
+                                                            <span class="fw-bold">12</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div id="madm-a010000-warning" class="alert alert-warning mt-3 mb-0" style="display: none;">
+                                                A010000 usually inserted between Slots 7–12.
+                                            </div>
+                                            <div id="madm-a010000-port-details" class="mt-3"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="configuration_json" id="id_configuration_json">
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{% url 'equipment_list' %}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" id="save-btn" class="btn btn-success px-4 py-2 fw-bold">Save Equipment</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'inventory/js/cpan_b_engine.js' %}?v=1"></script>
+<script src="{% static 'inventory/js/equipment_logic.js' %}?v=18"></script>
+{% endblock %}

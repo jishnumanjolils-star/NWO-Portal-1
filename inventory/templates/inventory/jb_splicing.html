@@ -1,0 +1,130 @@
+{% extends 'inventory/base.html' %}
+
+{% block title %}JB Splicing - NWO Portal{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Add New Splice</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Input Cable</label>
+                        <select id="cable_in" class="form-select" onchange="loadFibers(this.value, 'fiber_in')">
+                            <option value="">Select Cable</option>
+                            {% for cable in cables %}
+                            <option value="{{ cable.id }}">{{ cable.name }} ({{ cable.fiber_count }}F)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Fiber In</label>
+                        <select name="fiber_in" id="fiber_in" class="form-select" required>
+                            <option value="">Select Fiber</option>
+                        </select>
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <label class="form-label">Output Cable</label>
+                        <select id="cable_out" class="form-select" onchange="loadFibers(this.value, 'fiber_out')">
+                            <option value="">Select Cable</option>
+                            {% for cable in cables %}
+                            <option value="{{ cable.id }}">{{ cable.name }} ({{ cable.fiber_count }}F)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Fiber Out</label>
+                        <select name="fiber_out" id="fiber_out" class="form-select" required>
+                            <option value="">Select Fiber</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Remarks</label>
+                        <textarea name="remarks" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success">Record Splice</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Existing Splices in {{ jb.jb_id }}</h5>
+                <span class="badge bg-light text-dark">{{ splices.count }} Connections</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Fiber In</th>
+                                <th><i class="bi bi-arrow-left-right"></i></th>
+                                <th>Fiber Out</th>
+                                <th>Remarks</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for splice in splices %}
+                            <tr>
+                                <td>
+                                    <small class="text-muted d-block">{{ splice.fiber_in.cable.name }}</small>
+                                    <strong>F-{{ splice.fiber_in.fiber_number }}</strong>
+                                </td>
+                                <td class="align-middle"><i class="bi bi-link"></i></td>
+                                <td>
+                                    <small class="text-muted d-block">{{ splice.fiber_out.cable.name }}</small>
+                                    <strong>F-{{ splice.fiber_out.fiber_number }}</strong>
+                                </td>
+                                <td>{{ splice.remarks|default:"-" }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4">No splicing data available.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function loadFibers(cableId, targetId) {
+    const select = document.getElementById(targetId);
+    select.innerHTML = '<option value="">Loading...</option>';
+    
+    if (!cableId) {
+        select.innerHTML = '<option value="">Select Fiber</option>';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/cable/${cableId}/fibers/`);
+        const data = await response.json();
+        
+        select.innerHTML = '<option value="">Select Fiber</option>';
+        data.fibers.forEach(f => {
+            select.innerHTML += `<option value="${f.id}">Fiber ${f.fiber_number} (${f.status})</option>`;
+        });
+    } catch (error) {
+        console.error('Error loading fibers:', error);
+        select.innerHTML = '<option value="">Error loading</option>';
+    }
+}
+</script>
+{% endblock %}

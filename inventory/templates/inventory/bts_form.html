@@ -1,0 +1,231 @@
+{% extends 'inventory/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Add Mobile BTS - NWO Portal{% endblock %}
+
+{% block extra_css %}
+<style>
+    body { background-color: #f4f7f6; }
+    .card-custom { border-radius: 15px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+    .section-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px; margin-bottom: 0.5rem; display: block; }
+    .form-control-custom { border-radius: 10px; border: 1px solid #e2e8f0; padding: 0.6rem 1rem; font-size: 0.9rem; transition: all 0.2s; }
+    .form-control-custom:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); outline: none; }
+    .toggle-card { background: white; padding: 10px 16px; border-radius: 12px; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.2rem; }
+    .toggle-label { font-weight: 600; color: #475569; font-size: 0.85rem; }
+    .compact-toggle { display: inline-flex !important; background: #f1f5f9 !important; padding: 4px !important; border-radius: 8px !important; border: 1px solid #e2e8f0 !important; }
+    .compact-toggle .btn-check + .btn { border: none !important; border-radius: 6px !important; font-size: 0.75rem !important; font-weight: 700 !important; padding: 4px 16px !important; color: #64748b !important; transition: all 0.2s !important; }
+    .compact-toggle .btn-check:checked + .btn-outline-primary { background: #3b82f6 !important; color: white !important; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3) !important; }
+    .compact-toggle .btn-check:checked + .btn-outline-secondary { background: #94a3b8 !important; color: white !important; box-shadow: 0 2px 4px rgba(148, 163, 184, 0.3) !important; }
+    .port-box { background: white; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 1rem; position: relative; overflow: hidden; }
+    .port-box::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: #3b82f6; }
+    .port-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .port-name { font-weight: 700; color: #1e293b; font-size: 0.95rem; }
+    .port-speed { font-size: 0.7rem; font-weight: 800; padding: 3px 10px; border-radius: 20px; }
+    .speed-1g { background: #dcfce7; color: #166534; }
+    .speed-10g { background: #dbeafe; color: #1e40af; }
+    .hidden-content { display: none; }
+    .btn-save { border-radius: 10px; padding: 0.7rem 2.5rem; font-weight: 700; letter-spacing: 0.5px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-4">
+    <div class="col-md-10 col-lg-8">
+        <div class="card card-custom">
+            <div class="card-header bg-white p-4 border-0">
+                <div class="d-flex align-items-center">
+                    <div class="bg-primary bg-opacity-10 p-2 rounded-3 me-3">
+                        <i class="bi bi-broadcast fs-4 text-primary"></i>
+                    </div>
+                    <div>
+                        <h4 class="mb-0 fw-bold text-dark">{% if form.instance.pk %}Edit BTS{% else %}Add Mobile BTS{% endif %}</h4>
+                        <p class="text-muted small mb-0">Quick Action Module</p>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-4 pt-0">
+                <form method="post" enctype="multipart/form-data" id="btsForm">
+                    {% csrf_token %}
+                    
+                    <!-- Basic Info -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <span class="section-label">RP ID</span>
+                            <input type="text" name="rp_id" value="{{ form.rp_id.value|default:'' }}" class="form-control form-control-custom" placeholder="e.g. RP1234" required>
+                        </div>
+                        <div class="col-md-6">
+                            <span class="section-label">BTS Name</span>
+                            <input type="text" name="bts_name" value="{{ form.bts_name.value|default:'' }}" class="form-control form-control-custom" placeholder="e.g. Kochi Main" required>
+                        </div>
+                    </div>
+
+                    <!-- Location -->
+                    <div class="card bg-light border-0 mb-4" style="border-radius: 15px;">
+                        <div class="card-body p-4">
+                            <span class="section-label mb-3">Location Details</span>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <input type="number" step="any" name="latitude" id="id_latitude" value="{{ form.latitude.value|default:'' }}" class="form-control form-control-custom" placeholder="Latitude">
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="number" step="any" name="longitude" id="id_longitude" value="{{ form.longitude.value|default:'' }}" class="form-control form-control-custom" placeholder="Longitude">
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="button" class="btn btn-dark w-100 py-2 rounded-3 small fw-bold" onclick="getLocation()">
+                                        <i class="bi bi-geo-alt-fill me-1"></i> Auto Capture
+                                    </button>
+                                </div>
+                                <div class="col-12">
+                                    <input type="text" name="place_name" value="{{ form.place_name.value|default:'' }}" class="form-control form-control-custom" placeholder="Place Name (Optional)">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CEF Toggle -->
+                    <div class="toggle-card">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-cpu text-primary me-2"></i>
+                            <span class="toggle-label">Is CEF Having 12T?</span>
+                        </div>
+                        <div class="compact-toggle" role="group">
+                            <input type="radio" class="btn-check" name="has_cef_12t" id="cef_yes" value="True" {% if form.has_cef_12t.value == True or form.has_cef_12t.value == 'True' or form.has_cef_12t.value == '1' %}checked{% endif %}>
+                            <label class="btn btn-outline-primary" for="cef_yes">Yes</label>
+                            
+                            <input type="radio" class="btn-check" name="has_cef_12t" id="cef_no" value="False" {% if form.has_cef_12t.value == False or form.has_cef_12t.value == 'False' or form.has_cef_12t.value == '0' or not form.has_cef_12t.value %}checked{% endif %}>
+                            <label class="btn btn-outline-secondary" for="cef_no">No</label>
+                        </div>
+                    </div>
+
+                    <!-- Ports Container -->
+                    <div id="ports-container">
+                        <!-- P2 Always visible if CEF exists, but following user logic: P2 is always there if CEF -->
+                        <div id="port-p2-section" class="port-box">
+                            <div class="port-header">
+                                <span class="port-name">Port P2</span>
+                                <span class="port-speed speed-1g">1G</span>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-md-4"><input type="text" name="p2_circuit" value="{{ form.p2_circuit.value|default:'' }}" class="form-control form-control-custom small" placeholder="Circuit Name"></div>
+                                <div class="col-md-4"><input type="text" name="p2_system_end" value="{{ form.p2_system_end.value|default:'' }}" class="form-control form-control-custom small" placeholder="System End"></div>
+                                <div class="col-md-4"><input type="text" name="p2_cable" value="{{ form.p2_cable.value|default:'' }}" class="form-control form-control-custom small" placeholder="Cable Name"></div>
+                            </div>
+                        </div>
+
+                        <!-- Extra Ports -->
+                        <div id="extra-ports" class="hidden-content">
+                            {% for p in "345" %}
+                            <div class="port-box">
+                                <div class="port-header">
+                                    <span class="port-name">Port P{{ p }}</span>
+                                    {% if p == "3" %}
+                                    <span class="port-speed speed-1g">1G</span>
+                                    {% else %}
+                                    <span class="port-speed speed-10g">10G</span>
+                                    {% endif %}
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-md-4"><input type="text" name="p{{ p }}_circuit" value="{% if p == '3' %}{{ form.p3_circuit.value|default:'' }}{% elif p == '4' %}{{ form.p4_circuit.value|default:'' }}{% else %}{{ form.p5_circuit.value|default:'' }}{% endif %}" class="form-control form-control-custom small" placeholder="Circuit Name"></div>
+                                    <div class="col-md-4"><input type="text" name="p{{ p }}_system_end" value="{% if p == '3' %}{{ form.p3_system_end.value|default:'' }}{% elif p == '4' %}{{ form.p4_system_end.value|default:'' }}{% else %}{{ form.p5_system_end.value|default:'' }}{% endif %}" class="form-control form-control-custom small" placeholder="System End"></div>
+                                    <div class="col-md-4"><input type="text" name="p{{ p }}_cable" value="{% if p == '3' %}{{ form.p3_cable.value|default:'' }}{% elif p == '4' %}{{ form.p4_cable.value|default:'' }}{% else %}{{ form.p5_cable.value|default:'' }}{% endif %}" class="form-control form-control-custom small" placeholder="Cable Name"></div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Ring Toggle -->
+                    <div class="toggle-card">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-diagram-3 text-primary me-2"></i>
+                            <span class="toggle-label">Is BTS in Ring?</span>
+                        </div>
+                        <div class="compact-toggle" role="group">
+                            <input type="radio" class="btn-check" name="is_ring" id="ring_yes" value="True" {% if form.is_ring.value == True or form.is_ring.value == 'True' or form.is_ring.value == '1' %}checked{% endif %}>
+                            <label class="btn btn-outline-primary" for="ring_yes">Yes</label>
+                            
+                            <input type="radio" class="btn-check" name="is_ring" id="ring_no" value="False" {% if form.is_ring.value == False or form.is_ring.value == 'False' or form.is_ring.value == '0' or not form.is_ring.value %}checked{% endif %}>
+                            <label class="btn btn-outline-secondary" for="ring_no">No</label>
+                        </div>
+                    </div>
+
+                    <!-- Ring Image Section -->
+                    <div id="ring-image-section" class="hidden-content mb-4 animate-fade-in">
+                        <div class="p-4 rounded-4" style="background: #fdf2f2; border: 1px dashed #fecaca;">
+                            <label class="section-label text-danger mb-2">ERPS Connectivity Diagram (JPG only)</label>
+                            <input type="file" name="erps_image" class="form-control form-control-custom" accept=".jpg,.jpeg">
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-flex justify-content-end gap-3 mt-5">
+                        <a href="{% url 'bts_list' %}" class="btn btn-light px-4 fw-bold text-muted">Cancel</a>
+                        <button type="submit" class="btn btn-primary btn-save shadow-sm">Save BTS Record</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function getLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                document.getElementById("id_latitude").value = position.coords.latitude.toFixed(9);
+                document.getElementById("id_longitude").value = position.coords.longitude.toFixed(9);
+            }, function(error) {
+                alert("Error capturing location: " + error.message);
+            });
+        } else {
+            alert("Geolocation is not supported by this browser.");
+        }
+    }
+
+    $(document).ready(function() {
+        function updateUI() {
+            // CEF Logic
+            const hasCef = $('input[name="has_cef_12t"]:checked').val();
+            console.log('CEF Selected:', hasCef);
+            if (hasCef === 'True' || hasCef === 'true' || hasCef === '1') {
+                $('#extra-ports').fadeIn(300);
+            } else {
+                $('#extra-ports').fadeOut(200);
+            }
+
+            // Ring Logic
+            const isRing = $('input[name="is_ring"]:checked').val();
+            console.log('Ring Selected:', isRing);
+            if (isRing === 'True' || isRing === 'true' || isRing === '1') {
+                $('#ring-image-section').fadeIn(300);
+            } else {
+                $('#ring-image-section').fadeOut(200);
+            }
+        }
+
+        // Trigger on change
+        $('input[name="has_cef_12t"], input[name="is_ring"]').on('click change', function() {
+            updateUI();
+        });
+
+        // Run on load
+        updateUI();
+
+        // Form validation for image
+        $('#btsForm').on('submit', function(e) {
+            const fileInput = $('input[name="erps_image"]');
+            if (fileInput.length && fileInput[0].files.length > 0) {
+                const file = fileInput[0].files[0];
+                const ext = file.name.split('.').pop().toLowerCase();
+                if (ext !== 'jpg' && ext !== 'jpeg') {
+                    alert('Please upload only JPG or JPEG images.');
+                    e.preventDefault();
+                    return false;
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

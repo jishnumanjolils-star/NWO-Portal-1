@@ -1,0 +1,43 @@
+{% extends 'inventory/base.html' %}
+
+{% block title %}Delete Circuit - {{ circuit.client_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Confirm Delete</h5>
+                </div>
+                <div class="card-body">
+                    <p>Are you sure you want to delete the circuit <strong>{{ circuit.client_name }}</strong>?</p>
+                    
+                    <ul class="list-group mb-3">
+                        <li class="list-group-item"><strong>Type:</strong> {{ circuit.circuit_type }}</li>
+                        <li class="list-group-item"><strong>Bandwidth:</strong> {{ circuit.bandwidth }}</li>
+                        <li class="list-group-item"><strong>TE:</strong> {{ circuit.te.name|upper }}</li>
+                        <li class="list-group-item"><strong>End Node:</strong> {{ circuit.customer_end_node }}</li>
+                    </ul>
+                    
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-circle"></i> 
+                        <strong>Warning:</strong> This action cannot be undone.
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> Yes, Delete
+                        </button>
+                        <a href="{% url 'circuit_list' %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

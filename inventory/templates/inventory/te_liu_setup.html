@@ -1,0 +1,285 @@
+{% extends 'inventory/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}LIU Setup - {{ te.name|upper }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-patch-check"></i> Bulk LIU Setup for {{ te.name|upper }}</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Select the number of LIUs to install at this Exchange. Each LIU will automatically generate ports based on its capacity.
+                </div>
+
+                <div class="mb-4">
+                    <label for="liu_count_select" class="form-label fw-bold">Number of LIUs connected at TE:</label>
+                    <select id="liu_count_select" class="form-select form-select-lg border-primary" style="width: 200px;">
+                        <option value="0">Select Count</option>
+                        {% for i in range_10 %}
+                        <option value="{{ i }}">{{ i }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <form method="post" id="liu_setup_form" class="d-none" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="hidden" name="liu_count" id="liu_count_hidden" value="0">
+                    
+                    <div id="liu_forms_container">
+                        <!-- Dynamic LIU forms will be injected here -->
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4 border-top pt-3">
+                        <a href="{% url 'te_dashboard' te.id %}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-save"></i> Register All LIUs
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<template id="liu_form_template">
+    <div class="liu-form-card card mb-4 border-info">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">LIU #<span class="liu-number"></span> Details</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">LIU Name/Identifier</label>
+                    <input type="text" name="liu_X_name" class="form-control" placeholder="e.g. Main OLT LIU 1" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Connected Cable (Termination)</label>
+                    <div class="input-group mb-2">
+                        <select name="liu_X_cable" class="form-select cable-select" data-liu-index="X" title="Select from inventory">
+                            <option value="">Select Cable</option>
+                            {% for cable in cables %}
+                            <option value="{{ cable.id }}">{{ cable.name }} ({{ cable.cable_type }})</option>
+                            {% endfor %}
+                        </select>
+                        <span class="input-group-text" title="Or enter manually">OR</span>
+                    </div>
+                    <input type="text" name="liu_X_cable_manual" class="form-control form-control-sm mb-2" placeholder="Manual entry: cable name or identifier">
+                    <div class="cable-details-container d-none" id="cable_details_X">
+                        <div class="alert alert-info p-2 small">
+                            <strong>Cable Details:</strong>
+                            <div id="cable_info_X"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Capacity (Ports)</label>
+                    <select name="liu_X_capacity" class="form-select capacity-select" data-liu-index="X" required>
+                        <option value="">Select Capacity</option>
+                        <option value="12">12 Ports</option>
+                        <option value="24">24 Ports</option>
+                        <option value="48">48 Ports</option>
+                        <option value="96">96 Ports</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Remarks / Location Details</label>
+                    <textarea name="liu_X_remarks" class="form-control" rows="1" placeholder="Optional remarks..."></textarea>
+                </div>
+            </div>
+            
+            <!-- Fiber Detail Container -->
+            <div id="fiber_details_X" class="mt-4 d-none">
+                <hr>
+                <h6 class="text-primary mb-3"><i class="bi bi-list-ol"></i> Fiber Color Coding & Circuit Info</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="80">Fiber #</th>
+                                <th width="120">Color Code</th>
+                                <th>Circuit Information</th>
+                                <th>System Port Connectivity</th>
+                                <th width="140">OTDR Distance</th>
+                                <th width="150">OTDR Image</th>
+                            </tr>
+                        </thead>
+                        <tbody class="fiber-rows-container">
+                            <!-- Fibers will be injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const countSelect = document.getElementById('liu_count_select');
+        const form = document.getElementById('liu_setup_form');
+        const container = document.getElementById('liu_forms_container');
+        const hiddenCount = document.getElementById('liu_count_hidden');
+        const template = document.getElementById('liu_form_template').innerHTML;
+
+        const fiberColors = [
+            "Blue", "Orange", "Green", "Brown", "Slate", "White", 
+            "Red", "Black", "Yellow", "Violet", "Rose", "Aqua"
+        ];
+
+        function getFiberColor(n) {
+            const baseColor = fiberColors[(n - 1) % 12];
+            const ringCount = Math.floor((n - 1) / 12);
+            if (ringCount === 0) return baseColor;
+            if (ringCount === 1) return baseColor + " (Black Ring)";
+            if (ringCount === 2) return baseColor + " (Yellow Ring)";
+            if (ringCount === 3) return baseColor + " (White Ring)";
+            return baseColor + " (Multi Ring)";
+        }
+
+        function generateFiberRows(liuIndex, capacity) {
+            let html = '';
+            for (let i = 1; i <= capacity; i++) {
+                const color = getFiberColor(i);
+                html += `
+                    <tr>
+                        <td class="text-center fw-bold">${i}</td>
+                        <td>
+                            <span class="badge w-100" style="background-color: ${getColorHex(color)}; border: 1px solid #ddd; color: ${getTextColor(color)}">
+                                ${color}
+                            </span>
+                        </td>
+                        <td>
+                            <input type="text" name="liu_${liuIndex}_fiber_${i}_circuit" class="form-control form-control-sm" placeholder="e.g. LL-1234">
+                        </td>
+                        <td>
+                            <input type="text" name="liu_${liuIndex}_fiber_${i}_port" class="form-control form-control-sm" placeholder="e.g. GE 0/1/1">
+                        </td>
+                        <td>
+                            <input type="text" name="liu_${liuIndex}_fiber_${i}_otdr_distance" class="form-control form-control-sm" placeholder="e.g. 2.5 km">
+                        </td>
+                        <td>
+                            <input type="file" name="liu_${liuIndex}_fiber_${i}_otdr_image" class="form-control form-control-sm" accept=".jpg,.jpeg,.pdf">
+                        </td>
+                    </tr>
+                `;
+            }
+            return html;
+        }
+
+        function getColorHex(colorName) {
+            const base = colorName.split(' ')[0];
+            const colors = {
+                "Blue": "#0000FF", "Orange": "#FFA500", "Green": "#008000",
+                "Brown": "#A52A2A", "Slate": "#708090", "White": "#FFFFFF",
+                "Red": "#FF0000", "Black": "#000000", "Yellow": "#FFFF00",
+                "Violet": "#EE82EE", "Rose": "#FFC0CB", "Aqua": "#00FFFF"
+            };
+            return colors[base] || "#FFFFFF";
+        }
+
+        function getTextColor(colorName) {
+            const base = colorName.split(' ')[0];
+            const darkColors = ["Blue", "Green", "Brown", "Slate", "Red", "Black"];
+            return darkColors.includes(base) ? "#FFFFFF" : "#000000";
+        }
+
+        countSelect.addEventListener('change', function() {
+            const count = parseInt(this.value);
+            container.innerHTML = '';
+            
+            if (count > 0) {
+                form.classList.remove('d-none');
+                hiddenCount.value = count;
+                
+                for (let i = 1; i <= count; i++) {
+                    let formHtml = template.replace(/liu_X_/g, `liu_${i}_`)
+                                         .replace(/fiber_details_X/g, `fiber_details_${i}`)
+                                         .replace(/data-liu-index="X"/g, `data-liu-index="${i}"`)
+                                         .replace('<span class="liu-number"></span>', i);
+                    
+                    const div = document.createElement('div');
+                    div.innerHTML = formHtml;
+                    container.appendChild(div);
+                }
+
+                // Add event listeners to new capacity selects
+                document.querySelectorAll('.capacity-select').forEach(select => {
+                    select.addEventListener('change', function() {
+                        const liuIdx = this.getAttribute('data-liu-index');
+                        const capacity = parseInt(this.value);
+                        const detailDiv = document.getElementById(`fiber_details_${liuIdx}`);
+                        const rowsContainer = detailDiv.querySelector('.fiber-rows-container');
+
+                        if (capacity > 0) {
+                            rowsContainer.innerHTML = generateFiberRows(liuIdx, capacity);
+                            detailDiv.classList.remove('d-none');
+                        } else {
+                            detailDiv.classList.add('d-none');
+                            rowsContainer.innerHTML = '';
+                        }
+                    });
+                });
+
+                // Add event listeners to cable selects
+                document.querySelectorAll('.cable-select').forEach(select => {
+                    select.addEventListener('change', function() {
+                        const liuIdx = this.getAttribute('data-liu-index');
+                        const cableId = this.value;
+                        const cableDetailsContainer = document.getElementById(`cable_details_${liuIdx}`);
+                        const cableInfo = document.getElementById(`cable_info_${liuIdx}`);
+
+                        if (cableId) {
+                            fetch(`/inventory/api/cable/${cableId}/details/`)
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.error) {
+                                        cableDetailsContainer.classList.add('d-none');
+                                        return;
+                                    }
+                                    
+                                    let html = `
+                                        <div><strong>Name:</strong> ${data.name}</div>
+                                        <div><strong>Type:</strong> ${data.cable_type} (${data.fiber_count} Fibers)</div>
+                                        <div><strong>Mode:</strong> ${data.mode} | <strong>Category:</strong> ${data.category}</div>
+                                        <div><strong>Structure:</strong> ${data.structure_type}</div>
+                                        <div><strong>Connected TE:</strong> ${data.te}</div>
+                                        <div><strong>OTDR Distance:</strong> ${data.otdr_distance}</div>
+                                    `;
+                                    if (data.otdr_image_url) {
+                                        html += `<div><a href="${data.otdr_image_url}" target="_blank" class="badge bg-success">View OTDR Image</a></div>`;
+                                    }
+                                    cableInfo.innerHTML = html;
+                                    cableDetailsContainer.classList.remove('d-none');
+                                })
+                                .catch(error => {
+                                    console.error('Error fetching cable details:', error);
+                                    cableDetailsContainer.classList.add('d-none');
+                                });
+                        } else {
+                            cableDetailsContainer.classList.add('d-none');
+                        }
+                    });
+                });
+            } else {
+                form.classList.add('d-none');
+                hiddenCount.value = 0;
+            }
+        });
+    });
+</script>
+<style>
+    .liu-form-card {
+        transition: transform 0.2s;
+    }
+    .liu-form-card:hover {
+        transform: translateY(-2px);
+    }
+</style>
+{% endblock %}

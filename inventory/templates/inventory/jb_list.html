@@ -1,0 +1,168 @@
+{% extends 'inventory/base.html' %}
+
+{% block title %}Junction Boxes - NWO Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-box-seam"></i> Junction Box Inventory</h2>
+    <a href="{% url 'jb_create' %}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Add Junction Box
+    </a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div id="jb-map" style="height: 380px; border-radius: 12px; overflow: hidden;"></div>
+        <div class="d-flex gap-3 mt-3 small">
+            <span><span class="badge" style="background:#3b82f6;">&nbsp;</span> UG</span>
+            <span><span class="badge" style="background:#f97316;">&nbsp;</span> OH</span>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>JB ID</th>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Category</th>
+                        <th>TE</th>
+                        <th>Fiber Entering</th>
+                        <th>Fiber Out</th>
+                        <th>Location</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for jb in jbs %}
+                    <tr>
+                        <td><strong>{{ jb.jb_id }}</strong></td>
+                        <td>{{ jb.jb_name|default:"—" }}</td>
+                        <td>{{ jb.get_jb_type_display }}</td>
+                        <td>
+                            {% if jb.cable_mode == 'UG' %}
+                                <span class="badge bg-secondary">Underground</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Overhead</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ jb.te.name|upper }}</td>
+                        <td>
+                            {% if jb.fiber_entering %}
+                                {% for fiber in jb.fiber_entering|split:", " %}
+                                    <span class="badge bg-light text-dark" style="font-size: 0.75rem;">{{ fiber }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="text-muted text-small">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if jb.fiber_out %}
+                                {% for fiber in jb.fiber_out|split:", " %}
+                                    <span class="badge bg-light text-dark" style="font-size: 0.75rem;">{{ fiber }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="text-muted text-small">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if jb.latitude and jb.longitude %}
+                                <small>{{ jb.latitude|floatformat:4 }}, {{ jb.longitude|floatformat:4 }}</small>
+                            {% else %}
+                                <span class="text-muted">No GPS</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'jb_detail' jb.id %}" class="btn btn-info" title="View Details">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'jb_update' jb.id %}" class="btn btn-outline-primary" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="{% url 'jb_splicing' jb.id %}" class="btn btn-outline-success" title="Splicing">
+                                    <i class="bi bi-link-45deg"></i>
+                                </a>
+                                <a href="{% url 'jb_delete' jb.id %}" class="btn btn-outline-danger" title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-4">
+                            <p class="text-muted mb-0">No Junction Boxes found.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function() {
+        const el = document.getElementById('jb-map');
+        if (!el || typeof L === 'undefined') return;
+
+        const points = [
+            {% for jb in jbs %}
+                {% if jb.latitude and jb.longitude %}
+                    {
+                        id: {{ jb.id }},
+                        jb_id: "{{ jb.jb_id|escapejs }}",
+                        name: "{{ jb.jb_name|default:''|escapejs }}",
+                        te: "{{ jb.te.name|default:''|escapejs }}",
+                        mode: "{{ jb.cable_mode|escapejs }}",
+                        lat: {{ jb.latitude }},
+                        lng: {{ jb.longitude }},
+                        url: "{% url 'jb_detail' jb.id %}"
+                    },
+                {% endif %}
+            {% endfor %}
+        ];
+
+        const map = L.map('jb-map', { zoomControl: true });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
+
+        if (!points.length) {
+            map.setView([9.9312, 76.2673], 10);
+            return;
+        }
+
+        const bounds = [];
+        points.forEach(p => {
+            const color = p.mode === 'UG' ? '#3b82f6' : '#f97316';
+            const marker = L.circleMarker([p.lat, p.lng], {
+                radius: 7,
+                color,
+                weight: 2,
+                fillColor: 'white',
+                fillOpacity: 0.95
+            }).addTo(map);
+            marker.bindPopup(
+                `<div style="min-width:220px;">
+                    <div><strong>${p.jb_id}</strong></div>
+                    ${p.name ? `<div class="small text-muted">${p.name}</div>` : ''}
+                    ${p.te ? `<div class="small">TE: ${p.te}</div>` : ''}
+                    <div class="mt-2"><a class="btn btn-sm btn-primary" href="${p.url}">View</a></div>
+                </div>`
+            );
+            bounds.push([p.lat, p.lng]);
+        });
+
+        map.fitBounds(bounds, { padding: [30, 30] });
+    })();
+</script>
+{% endblock %}

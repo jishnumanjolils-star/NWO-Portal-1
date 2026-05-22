@@ -1,0 +1,16 @@
+Django==6.0.4
+psycopg2-binary==2.9.12
+pandas==3.0.2
+openpyxl==3.1.5
+django-leaflet==0.33.0
+djangorestframework==3.17.1
+django-crispy-forms==2.6
+crispy-bootstrap5==2026.3
+django-import-export==4.4.0
+whitenoise==6.12.0
+gunicorn==25.3.0
+dj-database-url==3.1.2
+python-dotenv==1.2.2
+mangum==0.17.0
+Pillow>=10.0.0
+

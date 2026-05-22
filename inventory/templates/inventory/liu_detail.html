@@ -1,0 +1,95 @@
+{% extends 'inventory/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}LIU Detail - {{ liu.name }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'liu_list' %}">LIU List</a></li>
+    <li class="breadcrumb-item active">{{ liu.name }}</li>
+  </ol>
+</nav>
+
+<div class="card mb-4">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <h4 class="mb-0">{{ liu.name }} at {{ liu.te.name|upper }}</h4>
+        <span class="badge bg-primary">Capacity: {{ liu.capacity }}</span>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>Cable:</strong> 
+                    {% if liu.cable %}
+                        {{ liu.cable.name }} ({{ liu.cable.cable_type }})
+                    {% else %}
+                        {{ liu.cable_manual_entry }} <span class="badge bg-secondary">Manual Entry</span>
+                    {% endif %}
+                </p>
+                <p><strong>TE:</strong> {{ liu.te.name|upper }}</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Remarks:</strong> {{ liu.remarks }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-secondary text-white">
+        <h5 class="mb-0">Port Mapping</h5>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="80">Port #</th>
+                            <th>Cable Termination (Fiber)</th>
+                            <th>System End Connectivity (Equipment/Port)</th>
+                            <th>Status</th>
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for port in ports %}
+                        <tr>
+                            <td class="text-center fw-bold">{{ port.port_number }}</td>
+                            <td>
+                                <select name="port_{{ port.id }}_fiber" class="form-select form-select-sm">
+                                    <option value="">Select Fiber</option>
+                                    {% for fiber in fibers %}
+                                    <option value="{{ fiber.id }}" {% if port.fiber_id == fiber.id %}selected{% endif %}>
+                                        Fiber {{ fiber.fiber_number }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                <input type="text" name="port_{{ port.id }}_connected" value="{{ port.connected_to|default:'' }}" class="form-control form-control-sm">
+                            </td>
+                            <td>
+                                <select name="port_{{ port.id }}_status" class="form-select form-select-sm">
+                                    <option value="Available" {% if port.status == 'Available' %}selected{% endif %}>Available</option>
+                                    <option value="Used" {% if port.status == 'Used' %}selected{% endif %}>Used</option>
+                                    <option value="Faulty" {% if port.status == 'Faulty' %}selected{% endif %}>Faulty</option>
+                                    <option value="Reserved" {% if port.status == 'Reserved' %}selected{% endif %}>Reserved</option>
+                                </select>
+                            </td>
+                            <td>
+                                <input type="text" name="port_{{ port.id }}_remarks" value="{{ port.remarks|default:'' }}" class="form-control form-control-sm">
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="d-flex justify-content-end mt-3">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

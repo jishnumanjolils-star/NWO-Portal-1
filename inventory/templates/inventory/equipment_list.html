@@ -1,0 +1,113 @@
+{% extends 'inventory/base.html' %}
+
+{% block title %}Equipment - NWO Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-hdd-network"></i> Equipment Inventory</h2>
+    <div class="btn-group">
+        <a href="{% url 'export_equipment' %}" class="btn btn-outline-success">
+            <i class="bi bi-download"></i> Export Excel
+        </a>
+        {% if perms.inventory.add_equipment %}
+        <a href="{% url 'equipment_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Add New Equipment
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" id="searchForm" class="row g-2 align-items-center">
+            <div class="col-md-8">
+                <div class="input-group">
+                    <span class="input-group-text bg-primary text-white"><i class="bi bi-search"></i></span>
+                    <input type="text" name="search" id="searchInput" class="form-control" 
+                           placeholder="Search Equipment 🔍 __________________" 
+                           value="{{ request.GET.search|default:'' }}" 
+                           autocomplete="off">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary">Search</button>
+                <a href="{% url 'equipment_list' %}" class="btn btn-outline-secondary">Reset</a>
+            </div>
+            
+            <!-- Hidden inputs to preserve other filters if they exist -->
+            {% if request.GET.equipment_type %}
+            <input type="hidden" name="equipment_type" value="{{ request.GET.equipment_type }}">
+            {% endif %}
+            {% if request.GET.te %}
+            <input type="hidden" name="te" value="{{ request.GET.te }}">
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>TE Name</th>
+                        <th>Uplink</th>
+                        <th>Ports (Used/Total)</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for eq in equipments %}
+                    <tr>
+                        <td>{{ eq.name }}</td>
+                        <td>{{ eq.get_equipment_type_display }}</td>
+                        <td>{{ eq.te.name|upper }}</td>
+                        <td>{{ eq.uplink_connectivity|truncatechars:20 }}</td>
+                        <td>
+                            <span class="badge {% if eq.used_ports == eq.total_ports %}bg-danger{% else %}bg-success{% endif %}">
+                                {{ eq.used_ports }} / {{ eq.total_ports }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="#" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4">No equipment found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% block extra_js %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const searchInput = document.getElementById('searchInput');
+        
+        if (searchInput) {
+            // Put cursor at the end of the input if it has value (after reload)
+            if (searchInput.value) {
+                searchInput.focus();
+                const val = searchInput.value;
+                searchInput.value = '';
+                searchInput.value = val;
+            }
+
+            let timeout = null;
+            searchInput.addEventListener('input', function() {
+                clearTimeout(timeout);
+                timeout = setTimeout(function() {
+                    document.getElementById('searchForm').submit();
+                }, 600); // Wait 600ms after user stops typing
+            });
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %}

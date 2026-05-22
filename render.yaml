@@ -1,0 +1,47 @@
+# Render Blueprint Configuration for OFCNetTracker
+# Reference: https://render.com/docs/blueprints
+
+databases:
+  - name: ofcnet_db
+    databaseName: ofcnet
+    user: ofcnet_user
+    plan: free # Use the free database plan
+
+services:
+  - type: web
+    name: ofc-net-tracker
+    runtime: python
+    plan: free
+    
+    # Build Command: Runs during build, executes the root build.sh script
+    buildCommand: "./build.sh"
+    
+    # Pre-Deploy Command: Runs after build finishes and database is active
+    # Safely runs Django database migrations on PostgreSQL before serving traffic
+    preDeployCommand: "python manage.py migrate --noinput"
+    
+    # Start Command: Launches Gunicorn pointing to our root WSGI module
+    startCommand: "gunicorn --bind 0.0.0.0:$PORT nwo_portal.wsgi:application"
+    
+    envVars:
+      # Automatically connect the database created above
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ofcnet_db
+          property: connectionString
+          
+      # Django environment configurations
+      - key: SECRET_KEY
+        generateValue: true # Render will automatically generate a secure 50-character random key
+        
+      - key: DEBUG
+        value: "False" # Production security: Set to False
+        
+      - key: ALLOWED_HOSTS
+        value: "*" # Allow Render domains to access the site
+        
+      - key: USE_GIS
+        value: "False" # Standard SQLite/Postgres native setup (GeoDjango requires heavy system packages)
+        
+      - key: PYTHON_VERSION
+        value: "3.11.9" # Match active Python version

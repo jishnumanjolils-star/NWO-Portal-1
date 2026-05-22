@@ -1,0 +1,154 @@
+{% extends 'inventory/base.html' %}
+
+{% block title %}BTS Details - {{ bts.rp_id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'bts_list' %}">Mobile BTS</a></li>
+                    <li class="breadcrumb-item active">{{ bts.rp_id }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-7">
+            <!-- Basic Information -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-primary text-white py-3">
+                    <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>General Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-sm-4 text-muted">RP ID:</div>
+                        <div class="col-sm-8 fw-bold">{{ bts.rp_id }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4 text-muted">BTS Name:</div>
+                        <div class="col-sm-8">{{ bts.bts_name|default:"-" }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4 text-muted">Location:</div>
+                        <div class="col-sm-8">
+                            {% if bts.latitude %}
+                                <a href="https://www.google.com/maps?q={{ bts.latitude }},{{ bts.longitude }}" target="_blank" class="text-decoration-none">
+                                    <i class="bi bi-geo-alt-fill text-danger"></i> {{ bts.latitude }}, {{ bts.longitude }}
+                                </a>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4 text-muted">Place Name:</div>
+                        <div class="col-sm-8">{{ bts.place_name|default:"-" }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4 text-muted">Is in Ring:</div>
+                        <div class="col-sm-8">
+                            {% if bts.is_ring %}
+                                <span class="badge bg-info">Yes</span>
+                            {% else %}
+                                <span class="badge bg-secondary">No</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-4 text-muted">CEF 12T:</div>
+                        <div class="col-sm-8">
+                            {% if bts.has_cef_12t %}
+                                <span class="badge bg-success">Yes</span>
+                            {% else %}
+                                <span class="badge bg-secondary">No</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0 pt-0 pb-4 ps-4">
+                    <a href="{% url 'bts_update' bts.pk %}" class="btn btn-primary btn-sm px-4">
+                        <i class="bi bi-pencil me-1"></i> Edit
+                    </a>
+                    <a href="{% url 'bts_delete' bts.pk %}" class="btn btn-outline-danger btn-sm px-4 ms-2">
+                        <i class="bi bi-trash me-1"></i> Delete
+                    </a>
+                </div>
+            </div>
+
+            <!-- CEF Port Details -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-dark text-white py-3">
+                    <h5 class="mb-0"><i class="bi bi-ethernet me-2"></i>CEF Port Details</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">Port</th>
+                                    <th>Circuit Name</th>
+                                    <th>Other System End</th>
+                                    <th>Cable Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if bts.cef_ports_data %}
+                                    {% for port_key, data in bts.cef_ports_data.items %}
+                                        {% if port_key == 'p2' or bts.has_cef_12t %}
+                                        <tr>
+                                            <td class="ps-4 fw-bold text-primary">{{ port_key|upper }}</td>
+                                            <td>{{ data.circuit|default:"-" }}</td>
+                                            <td>{{ data.system_end|default:"-" }}</td>
+                                            <td>{{ data.cable|default:"-" }}</td>
+                                        </tr>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="4" class="text-center py-3 text-muted">No port data available.</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-5">
+            <!-- Diagram Section -->
+            {% if bts.is_ring and bts.erps_image %}
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-success text-white py-3">
+                    <h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>ERPS Connectivity Diagram</h5>
+                </div>
+                <div class="card-body text-center p-2">
+                    <a href="{{ bts.erps_image.url }}" target="_blank">
+                        <img src="{{ bts.erps_image.url }}" class="img-fluid rounded border" alt="ERPS Diagram">
+                    </a>
+                </div>
+                <div class="card-footer bg-light py-2 text-center">
+                    <small class="text-muted">Click image to enlarge</small>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Legacy Info (if any) -->
+            {% if bts.remarks %}
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-warning text-dark py-3">
+                    <h5 class="mb-0"><i class="bi bi-sticky me-2"></i>Remarks</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ bts.remarks }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

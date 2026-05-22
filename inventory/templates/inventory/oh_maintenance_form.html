@@ -1,0 +1,304 @@
+{% extends 'inventory/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if object %}Edit{% else %}New{% endif %} OH Maintenance Entry - NET-TRACKER{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-12">
+            <div class="card card-premium shadow-lg border-0 animate-fade">
+                <div class="card-header bg-primary text-white py-3">
+                    <h5 class="mb-0"><i class="bi bi-tools me-2"></i>{% if object %}Edit{% else %}New{% endif %} OH Maintenance Entry</h5>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" id="oh-maintenance-form">
+                        {% csrf_token %}
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                {{ form.maintenance_date|as_crispy_field }}
+                            </div>
+                            <div class="col-md-4">
+                                {{ form.team_name|as_crispy_field }}
+                            </div>
+                            <div class="col-md-4">
+                                {{ form.work_order_no|as_crispy_field }}
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                {{ form.te|as_crispy_field }}
+                            </div>
+                            <div class="col-md-4">
+                                {{ form.location|as_crispy_field }}
+                            </div>
+                            <div class="col-md-4">
+                                {{ form.route_name|as_crispy_field }}
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                {{ form.pole_span_details|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.remarks|as_crispy_field }}
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+                        
+                        <!-- Fault Information Section -->
+                        <h5 class="mb-3 text-primary"><i class="bi bi-clock-history me-2"></i>Fault Information</h5>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-3">
+                                {{ form.fault_occurrence_date|as_crispy_field }}
+                            </div>
+                            <div class="col-md-3">
+                                {{ form.fault_occurrence_time|as_crispy_field }}
+                            </div>
+                            <div class="col-md-3">
+                                {{ form.fault_clearance_date|as_crispy_field }}
+                            </div>
+                            <div class="col-md-3">
+                                {{ form.fault_clearance_time|as_crispy_field }}
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-12">
+                                {{ form.fault_duration|as_crispy_field }}
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <!-- Additional Fault Details Section -->
+                        <h5 class="mb-3 text-primary"><i class="bi bi-info-circle me-2"></i>Additional Fault Details</h5>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-3">
+                                {{ form.fault_ticket_no|as_crispy_field }}
+                            </div>
+                            <div class="col-md-3">
+                                {{ form.fault_type|as_crispy_field }}
+                            </div>
+                            <div class="col-md-3">
+                                {{ form.fault_severity|as_crispy_field }}
+                            </div>
+                            <div class="col-md-3">
+                                {{ form.fault_cause|as_crispy_field }}
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+                        
+                        <h5 class="mb-3 text-primary"><i class="bi bi-list-check me-2"></i>Maintenance Activities</h5>
+                        
+                        <div class="table-responsive">
+                            {{ activities.management_form }}
+                            <table class="table table-bordered align-middle" id="activities-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 30%;">Activity Type*</th>
+                                        <th style="width: 15%;">Quantity*</th>
+                                        <th style="width: 15%;">Unit Type</th>
+                                        <th style="width: 15%;">Unit Rate</th>
+                                        <th style="width: 15%;">Amount</th>
+                                        <th style="width: 5%;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for activity_form in activities %}
+                                    <tr class="activity-row">
+                                        <td>
+                                            {{ activity_form.id }}
+                                            {{ activity_form.activity_type }}
+                                            {% if activity_form.activity_type.errors %}
+                                                <div class="invalid-feedback d-block">{{ activity_form.activity_type.errors }}</div>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {{ activity_form.quantity }}
+                                            {% if activity_form.quantity.errors %}
+                                                <div class="invalid-feedback d-block">{{ activity_form.quantity.errors }}</div>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ activity_form.unit_type }}</td>
+                                        <td>{{ activity_form.unit_rate }}</td>
+                                        <td>{{ activity_form.amount }}</td>
+                                        <td class="text-center">
+                                            {% if activities.can_delete %}
+                                                <div class="form-check d-none">
+                                                    {{ activity_form.DELETE }}
+                                                </div>
+                                                <button type="button" class="btn btn-outline-danger btn-sm remove-activity-btn">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-outline-success btn-sm" id="add-activity-btn">
+                                <i class="bi bi-plus-circle me-1"></i> Add Activity
+                            </button>
+                        </div>
+
+                        <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center">
+                            <div class="h5 mb-0 text-primary">
+                                Total Amount: ₹ <span id="total-bill-amount">0.00</span>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <a href="{% url 'oh_maintenance_list' %}" class="btn btn-light px-4">Cancel</a>
+                                <button type="submit" class="btn btn-primary px-5">
+                                    <i class="bi bi-save me-2"></i> Save Entry
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Template for new rows -->
+<table class="d-none">
+    <tr id="empty-row" class="activity-row">
+        <td>
+            {{ activities.empty_form.activity_type }}
+        </td>
+        <td>
+            {{ activities.empty_form.quantity }}
+        </td>
+        <td>{{ activities.empty_form.unit_type }}</td>
+        <td>{{ activities.empty_form.unit_rate }}</td>
+        <td>{{ activities.empty_form.amount }}</td>
+        <td class="text-center">
+            <button type="button" class="btn btn-outline-danger btn-sm remove-activity-btn">
+                <i class="bi bi-trash"></i>
+            </button>
+        </td>
+    </tr>
+</table>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    let rateMaster = [];
+    
+    // Fetch rates from API
+    $.get("{% url 'api_oh_rates' %}", function(data) {
+        rateMaster = data;
+    });
+
+    function calculateDuration() {
+        const occDate = $('#id_fault_occurrence_date').val();
+        const occTime = $('#id_fault_occurrence_time').val();
+        const clrDate = $('#id_fault_clearance_date').val();
+        const clrTime = $('#id_fault_clearance_time').val();
+
+        if (occDate && occTime && clrDate && clrTime) {
+            const start = new Date(`${occDate}T${occTime}`);
+            const end = new Date(`${clrDate}T${clrTime}`);
+
+            if (end > start) {
+                const diffMs = end - start;
+                const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                const diffHrs = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+                let duration = "";
+                if (diffDays > 0) duration += `${diffDays} Day${diffDays > 1 ? 's' : ''} `;
+                if (diffHrs > 0) duration += `${diffHrs} Hour${diffHrs > 1 ? 's' : ''} `;
+                if (diffMins > 0) duration += `${diffMins} Minute${diffMins > 1 ? 's' : ''}`;
+                
+                $('#id_fault_duration').val(duration.trim() || "0 Minutes");
+            } else {
+                $('#id_fault_duration').val("Invalid Duration");
+            }
+        } else {
+            $('#id_fault_duration').val("");
+        }
+    }
+
+    $(document).on('change', '#id_fault_occurrence_date, #id_fault_occurrence_time, #id_fault_clearance_date, #id_fault_clearance_time', function() {
+        calculateDuration();
+    });
+
+    function calculateRowAmount($row) {
+        const qty = parseFloat($row.find('.quantity-input').val()) || 0;
+        const rate = parseFloat($row.find('.unit-rate-input').val()) || 0;
+        const amount = qty * rate;
+        $row.find('.amount-input').val(amount.toFixed(2));
+        updateTotalAmount();
+    }
+
+    function updateTotalAmount() {
+        let total = 0;
+        $('.amount-input').each(function() {
+            total += parseFloat($(this).val()) || 0;
+        });
+        $('#total-bill-amount').text(total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
+    }
+
+    $(document).on('change', '.activity-type-select', function() {
+        const $row = $(this).closest('tr');
+        const selectedActivity = $(this).val();
+        const rateInfo = rateMaster.find(r => r.activity_type === selectedActivity);
+        
+        if (rateInfo) {
+            $row.find('.unit-type-input').val(rateInfo.unit_type);
+            $row.find('.unit-rate-input').val(rateInfo.unit_rate);
+        } else {
+            $row.find('.unit-type-input').val('');
+            $row.find('.unit-rate-input').val('0.00');
+        }
+        calculateRowAmount($row);
+    });
+
+    $(document).on('input', '.quantity-input, .unit-rate-input', function() {
+        calculateRowAmount($(this).closest('tr'));
+    });
+
+    // Dynamic Formset Logic
+    const $totalForms = $('#id_activities-TOTAL_FORMS');
+    
+    $('#add-activity-btn').click(function() {
+        const formIdx = parseInt($totalForms.val());
+        const newRow = $('#empty-row').clone(true).get(0);
+        
+        // Update IDs and Names
+        $(newRow).removeClass('d-none').removeAttr('id');
+        $(newRow).html($(newRow).html().replace(/__prefix__/g, formIdx));
+        
+        $('#activities-table tbody').append(newRow);
+        $totalForms.val(formIdx + 1);
+    });
+
+    $(document).on('click', '.remove-activity-btn', function() {
+        const $row = $(this).closest('tr');
+        const $deleteCheckbox = $row.find('input[name$="-DELETE"]');
+        
+        if ($deleteCheckbox.length) {
+            $deleteCheckbox.prop('checked', true);
+            $row.hide();
+        } else {
+            $row.remove();
+            const formIdx = parseInt($totalForms.val());
+            $totalForms.val(formIdx - 1);
+        }
+        updateTotalAmount();
+    });
+
+    // Initial calculation
+    updateTotalAmount();
+});
+</script>
+{% endblock %}

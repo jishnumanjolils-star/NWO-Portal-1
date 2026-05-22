@@ -1,0 +1,230 @@
+{% extends 'inventory/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Add/Edit Cable - NWO Portal{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Cable Details</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">{{ form.name|as_crispy_field }}</div>
+                        <div class="col-md-6">{{ form.transnet_id|as_crispy_field }}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">{{ form.cable_type|as_crispy_field }}</div>
+                        <div class="col-md-6">{{ form.structure_type|as_crispy_field }}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">{{ form.mode|as_crispy_field }}</div>
+                        <div class="col-md-6">{{ form.category|as_crispy_field }}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">{{ form.te|as_crispy_field }}</div>
+                        <div class="col-md-6">{{ form.connected_te|as_crispy_field }}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">{{ form.otdr_distance_display|as_crispy_field }}</div>
+                        <div class="col-md-6">{{ form.otdr_image|as_crispy_field }}</div>
+                    </div>
+                    {{ form.remarks|as_crispy_field }}
+                </div>
+            </div>
+            
+            <div class="card mt-4" id="fiberDetailsCard" style="display: none;">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-list-columns"></i> Fiber Details</h5>
+                </div>
+                <div class="card-body p-2">
+                    <div class="alert alert-secondary mb-3">
+                        <i class="bi bi-info-circle"></i> Expand ribbons below to input data for individual fibers. Fibers are grouped by 12.
+                    </div>
+                    <div class="accordion" id="ribbonAccordion">
+                        <!-- Ribbons will be injected here via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between mt-4 mb-5">
+                <a href="{% url 'cable_list' %}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-success btn-lg px-5">Save Cable</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const FIBER_COLORS = ['Blue', 'Orange', 'Green', 'Brown', 'Slate', 'White', 'Red', 'Black', 'Yellow', 'Violet', 'Rose', 'Aqua'];
+
+    function getColorHex(colorName) {
+        const base = (colorName || '').split(' ')[0];
+        const colors = {
+            Blue: '#2563EB',
+            Orange: '#F97316',
+            Green: '#16A34A',
+            Brown: '#8B5E34',
+            Slate: '#64748B',
+            White: '#FFFFFF',
+            Red: '#DC2626',
+            Black: '#000000',
+            Yellow: '#FACC15',
+            Violet: '#8B5CF6',
+            Rose: '#F43F5E',
+            Aqua: '#06B6D4',
+        };
+        return colors[base] || '#FFFFFF';
+    }
+
+    function getTextColor(colorName) {
+        const base = (colorName || '').split(' ')[0];
+        const darkColors = ['Blue', 'Green', 'Brown', 'Slate', 'Red', 'Black', 'Violet', 'Rose'];
+        return darkColors.includes(base) ? '#FFFFFF' : '#111827';
+    }
+    
+    const existingFibersData = {
+        {% if fibers %}
+            {% for f in fibers %}
+                {{ f.fiber_number }}: {
+                    system_end: "{{ f.system_end|default:''|escapejs }}",
+                    circuit_name: "{{ f.circuit_name|default:''|escapejs }}",
+                    otdr_distance: "{% if f.otdr_distance %}{{ f.otdr_distance_formatted }}{% endif %}",
+                    otdr_image_url: "{% if f.otdr_image %}{{ f.otdr_image.url }}{% endif %}"
+                },
+            {% endfor %}
+        {% endif %}
+    };
+
+    function getTableHeader() {
+        return `
+            <thead class="table-primary text-center">
+                <tr>
+                    <th width="5%">#</th>
+                    <th width="10%">Color</th>
+                    <th width="25%">System End</th>
+                    <th width="25%">Circuit Name</th>
+                    <th width="15%">OTDR Dist.</th>
+                    <th width="20%">OTDR Image (.jpg)</th>
+                </tr>
+            </thead>
+        `;
+    }
+
+    function buildTableRow(i, color, data) {
+        return `
+            <tr>
+                <td class="text-center align-middle">${i}</td>
+                <td class="align-middle">
+                    <span class="badge" style="background-color: ${getColorHex(color)}; color: ${getTextColor(color)}; border: 1px solid rgba(0, 0, 0, 0.15);">
+                        ${color}
+                    </span>
+                </td>
+                <td><input type="text" class="form-control form-control-sm" name="fiber_${i}_system_end" value="${data.system_end || ''}"></td>
+                <td><input type="text" class="form-control form-control-sm" name="fiber_${i}_circuit_name" value="${data.circuit_name || ''}"></td>
+                <td><input type="text" class="form-control form-control-sm" name="fiber_${i}_otdr_distance" placeholder="e.g. 2.5 km" value="${data.otdr_distance || ''}"></td>
+                <td>
+                    <input type="file" class="form-control form-control-sm mb-1" name="fiber_${i}_otdr_image" accept=".jpg,.jpeg">
+                    ${data.otdr_image_url ? `<a href="${data.otdr_image_url}" target="_blank" class="badge bg-success text-decoration-none">View Current Image</a>` : ''}
+                </td>
+            </tr>
+        `;
+    }
+
+    function renderFibers(totalFibers, existingData, isRibbon) {
+        const container = document.getElementById('ribbonAccordion');
+        container.innerHTML = '';
+        
+        if (!totalFibers || totalFibers === 0 || isNaN(totalFibers)) {
+            document.getElementById('fiberDetailsCard').style.display = 'none';
+            return;
+        }
+        
+        document.getElementById('fiberDetailsCard').style.display = 'block';
+        
+        if (isRibbon) {
+            let numRibbons = Math.ceil(totalFibers / 12);
+            for (let r = 1; r <= numRibbons; r++) {
+                let startFiber = (r - 1) * 12 + 1;
+                let endFiber = Math.min(r * 12, totalFibers);
+                
+                let tableRows = '';
+                for (let i = startFiber; i <= endFiber; i++) {
+                    let color = FIBER_COLORS[(i - 1) % 12];
+                    let data = existingData[i] || {};
+                    tableRows += buildTableRow(i, color, data);
+                }
+                
+                let accordionItem = `
+                    <div class="accordion-item border-primary mb-2 shadow-sm">
+                        <h2 class="accordion-header" id="heading${r}">
+                            <button class="accordion-button collapsed bg-light text-primary fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${r}" aria-expanded="false" aria-controls="collapse${r}">
+                                Ribbon ${r} (Fibers ${startFiber} - ${endFiber})
+                            </button>
+                        </h2>
+                        <div id="collapse${r}" class="accordion-collapse collapse" aria-labelledby="heading${r}" data-bs-parent="#ribbonAccordion">
+                            <div class="accordion-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover table-bordered mb-0 align-middle">
+                                        ${getTableHeader()}
+                                        <tbody>
+                                            ${tableRows}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += accordionItem;
+            }
+        } else {
+            // Flat Table
+            let tableRows = '';
+            for (let i = 1; i <= totalFibers; i++) {
+                let color = FIBER_COLORS[(i - 1) % 12];
+                let data = existingData[i] || {};
+                tableRows += buildTableRow(i, color, data);
+            }
+            container.innerHTML = `
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover table-bordered mb-0 align-middle">
+                        ${getTableHeader()}
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const typeSelect = document.getElementById('id_cable_type');
+        const structSelect = document.getElementById('id_structure_type');
+        
+        function updateFibers() {
+            let val = typeSelect ? typeSelect.value : null;
+            let struct = structSelect ? structSelect.value : 'NORMAL';
+            if (val) {
+                let count = parseInt(val.replace('F', ''));
+                renderFibers(count, existingFibersData, struct === 'RIBBON');
+            } else {
+                renderFibers(0, {}, false);
+            }
+        }
+        
+        if (typeSelect) typeSelect.addEventListener('change', updateFibers);
+        if (structSelect) structSelect.addEventListener('change', updateFibers);
+        
+        // Initial render
+        updateFibers();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,593 @@
+{% extends 'inventory/base.html' %}
+{% load crispy_forms_tags %}
+{% load inventory_extras %}
+
+{% block title %}Add/Edit EB Circuit - NWO Portal{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">EB Circuit Details</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">{% if form.client_name %}{{ form.client_name|as_crispy_field }}{% endif %}</div>
+                        <div class="col-md-6">{% if form.circuit_type_multi %}{{ form.circuit_type_multi|as_crispy_field }}{% endif %}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">{% if form.bandwidth %}{{ form.bandwidth|as_crispy_field }}{% endif %}</div>
+                        <div class="col-md-4">{% if form.customer_end_node %}{{ form.customer_end_node|as_crispy_field }}{% endif %}</div>
+                        <div class="col-md-4">{% if form.fiber_mode %}{{ form.fiber_mode|as_crispy_field }}{% endif %}</div>
+                    </div>
+
+                    <div id="section-circuit-ring" style="display: none;">
+                        <div class="card border-primary mb-3">
+                            <div class="card-header bg-primary text-white py-2">Ring Connectivity Section</div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-bold">Circuit in Ring?</label>
+                                        {{ form.is_ring }}
+                                    </div>
+                                </div>
+                                <div id="section-circuit-ring-details" style="display: none;">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Ring Details Upload</label>
+                                            {{ form.ring_image }}
+                                            <small class="text-muted">Allowed: .jpg / .jpeg only, max 5 MB.</small>
+                                            <div class="mt-2" style="display: none;" id="ring-image-preview-wrap">
+                                                <img id="ring-image-preview" src="" alt="Ring diagram preview" class="img-thumbnail" style="max-height: 180px;">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Ring Summary</label>
+                                            {{ form.ring_summary }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">{% if form.te %}{{ form.te|as_crispy_field }}{% endif %}</div>
+                        <div class="col-md-4">{% if form.cable %}{{ form.cable|as_crispy_field }}{% endif %}</div>
+                        <div class="col-md-4">{% if form.equipment %}{{ form.equipment|as_crispy_field }}{% endif %}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">{% if form.customer_premise_location %}{{ form.customer_premise_location|as_crispy_field }}{% endif %}</div>
+                        <div class="col-md-6">{% if form.otdr_distance %}{{ form.otdr_distance|as_crispy_field }}{% endif %}</div>
+                    </div>
+                    <div class="row align-items-end">
+                        <div class="col-md-5">{% if form.latitude %}{{ form.latitude|as_crispy_field }}{% endif %}</div>
+                        <div class="col-md-5">{% if form.longitude %}{{ form.longitude|as_crispy_field }}{% endif %}</div>
+                        <div class="col-md-2 mb-3">
+                            <button type="button" id="btn-capture-gps" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-geo-alt-fill"></i> Capture
+                            </button>
+                        </div>
+                    </div>
+                    {% if form.remarks %}{{ form.remarks|as_crispy_field }}{% endif %}
+                    
+                    <div id="dynamic-node-sections" class="mt-3">
+                        <div id="section-node-ip" style="display: none;">
+                            <div class="card border-warning mb-3">
+                                <div class="card-header bg-warning text-dark py-2">Node IP Address</div>
+                                <div class="card-body">
+                                    <label class="form-label fw-bold">Node IP Address*</label>
+                                    <input
+                                        type="text"
+                                        id="node-ip"
+                                        class="form-control"
+                                        placeholder="e.g., 192.168.1.10"
+                                        inputmode="decimal"
+                                        autocomplete="off"
+                                    >
+                                    <small class="text-muted">Enter a valid IPv4 address.</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Media Converter Section -->
+                        <div id="section-media-converter" class="node-section" style="display: none;">
+                            <div class="card border-info mb-3">
+                                <div class="card-header bg-info text-white py-2">Media Converter Details</div>
+                                <div class="card-body">
+                                    {% if form.mc_type %}{{ form.mc_type|as_crispy_field }}{% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Port Configuration Section (A-Node, MAAN) -->
+                        <div id="section-port-config" class="node-section" style="display: none;">
+                            <div class="card border-success mb-3">
+                                <div class="card-header bg-success text-white py-2 d-flex justify-content-between align-items-center">
+                                    <span>Port Configuration</span>
+                                    <span id="port-logic-label" class="badge bg-light text-success"></span>
+                                </div>
+                                <div class="card-body">
+                                    <div id="port-details-container" class="row">
+                                        <!-- Ports will be generated here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="section-madm" class="node-section" style="display: none;">
+                            <div class="card border-secondary mb-3">
+                                <div class="card-header bg-secondary text-white py-2">MADM Slot Layout & Card Configuration</div>
+                                <div class="card-body">
+                                    <div class="row g-2 mb-3">
+                                        {% for i in "123456789"|make_list %}
+                                        <div class="col-3 col-sm-2 col-md-1">
+                                            <div class="border rounded-3 bg-light text-center py-2 fw-bold">S{{ i }}</div>
+                                        </div>
+                                        {% endfor %}
+                                        <div class="col-3 col-sm-2 col-md-1">
+                                            <div class="border rounded-3 bg-light text-center py-2 fw-bold">S10</div>
+                                        </div>
+                                        <div class="col-3 col-sm-2 col-md-1">
+                                            <div class="border rounded-3 bg-light text-center py-2 fw-bold">S11</div>
+                                        </div>
+                                        <div class="col-3 col-sm-2 col-md-1">
+                                            <div class="border rounded-3 bg-light text-center py-2 fw-bold">S12</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion" id="circuitMadmAccordion">
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header" id="circuit-madm-com01-heading">
+                                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#circuit-madm-com01-collapse" aria-expanded="true" aria-controls="circuit-madm-com01-collapse">
+                                                    COM01 (Coaxial)
+                                                </button>
+                                            </h2>
+                                            <div id="circuit-madm-com01-collapse" class="accordion-collapse collapse show" aria-labelledby="circuit-madm-com01-heading" data-bs-parent="#circuitMadmAccordion">
+                                                <div class="accordion-body">
+                                                    <div class="row g-3 align-items-end">
+                                                        <div class="col-md-4">
+                                                            <label class="form-label fw-bold">COM01 Available?</label>
+                                                            <select id="circuit-madm-com01-available" class="form-select">
+                                                                <option value="N">N</option>
+                                                                <option value="Y">Y</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div id="circuit-madm-com01-fields" class="mt-3" style="display: none;">
+                                                        <label class="form-label fw-bold">Inserted Slot Number(s)</label>
+                                                        <div class="border rounded-3 p-2 bg-light">
+                                                            <div class="row g-2">
+                                                                {% for i in "123456789"|make_list %}
+                                                                <div class="col-4 col-sm-3">
+                                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                        <input class="form-check-input m-0 circuit-madm-slot" type="checkbox" value="{{ i }}" data-card="com01">
+                                                                        <span class="fw-bold">{{ i }}</span>
+                                                                    </label>
+                                                                </div>
+                                                                {% endfor %}
+                                                                <div class="col-4 col-sm-3">
+                                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                        <input class="form-check-input m-0 circuit-madm-slot" type="checkbox" value="10" data-card="com01">
+                                                                        <span class="fw-bold">10</span>
+                                                                    </label>
+                                                                </div>
+                                                                <div class="col-4 col-sm-3">
+                                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                        <input class="form-check-input m-0 circuit-madm-slot" type="checkbox" value="11" data-card="com01">
+                                                                        <span class="fw-bold">11</span>
+                                                                    </label>
+                                                                </div>
+                                                                <div class="col-4 col-sm-3">
+                                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                        <input class="form-check-input m-0 circuit-madm-slot" type="checkbox" value="12" data-card="com01">
+                                                                        <span class="fw-bold">12</span>
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div id="circuit-madm-com01-port-details" class="mt-3"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header" id="circuit-madm-agg06-heading">
+                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#circuit-madm-agg06-collapse" aria-expanded="false" aria-controls="circuit-madm-agg06-collapse">
+                                                    AGG06 (Aggregation)
+                                                </button>
+                                            </h2>
+                                            <div id="circuit-madm-agg06-collapse" class="accordion-collapse collapse" aria-labelledby="circuit-madm-agg06-heading" data-bs-parent="#circuitMadmAccordion">
+                                                <div class="accordion-body">
+                                                    <div class="row g-3 align-items-end">
+                                                        <div class="col-md-4">
+                                                            <label class="form-label fw-bold">AGG06 Available?</label>
+                                                            <select id="circuit-madm-agg06-available" class="form-select">
+                                                                <option value="N">N</option>
+                                                                <option value="Y">Y</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div id="circuit-madm-agg06-fields" class="mt-3" style="display: none;">
+                                                        <label class="form-label fw-bold">Inserted Slot Number(s)</label>
+                                                        <div class="border rounded-3 p-2 bg-light">
+                                                            <div class="row g-2">
+                                                                {% for i in "123456789"|make_list %}
+                                                                <div class="col-4 col-sm-3">
+                                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                        <input class="form-check-input m-0 circuit-madm-slot" type="checkbox" value="{{ i }}" data-card="agg06">
+                                                                        <span class="fw-bold">{{ i }}</span>
+                                                                    </label>
+                                                                </div>
+                                                                {% endfor %}
+                                                                <div class="col-4 col-sm-3">
+                                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                        <input class="form-check-input m-0 circuit-madm-slot" type="checkbox" value="10" data-card="agg06">
+                                                                        <span class="fw-bold">10</span>
+                                                                    </label>
+                                                                </div>
+                                                                <div class="col-4 col-sm-3">
+                                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                        <input class="form-check-input m-0 circuit-madm-slot" type="checkbox" value="11" data-card="agg06">
+                                                                        <span class="fw-bold">11</span>
+                                                                    </label>
+                                                                </div>
+                                                                <div class="col-4 col-sm-3">
+                                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                        <input class="form-check-input m-0 circuit-madm-slot" type="checkbox" value="12" data-card="agg06">
+                                                                        <span class="fw-bold">12</span>
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div id="circuit-madm-agg06-port-details" class="mt-3"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header" id="circuit-madm-elan05d-heading">
+                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#circuit-madm-elan05d-collapse" aria-expanded="false" aria-controls="circuit-madm-elan05d-collapse">
+                                                    ELAN05D (LAN + Optical)
+                                                </button>
+                                            </h2>
+                                            <div id="circuit-madm-elan05d-collapse" class="accordion-collapse collapse" aria-labelledby="circuit-madm-elan05d-heading" data-bs-parent="#circuitMadmAccordion">
+                                                <div class="accordion-body">
+                                                    <div class="row g-3 align-items-end">
+                                                        <div class="col-md-4">
+                                                            <label class="form-label fw-bold">ELAN05D Available?</label>
+                                                            <select id="circuit-madm-elan05d-available" class="form-select">
+                                                                <option value="N">N</option>
+                                                                <option value="Y">Y</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div id="circuit-madm-elan05d-fields" class="mt-3" style="display: none;">
+                                                        <label class="form-label fw-bold">Inserted Slot Number(s)</label>
+                                                        <div class="border rounded-3 p-2 bg-light">
+                                                            <div class="row g-2">
+                                                                {% for i in "123456789"|make_list %}
+                                                                <div class="col-4 col-sm-3">
+                                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                        <input class="form-check-input m-0 circuit-madm-slot" type="checkbox" value="{{ i }}" data-card="elan05d">
+                                                                        <span class="fw-bold">{{ i }}</span>
+                                                                    </label>
+                                                                </div>
+                                                                {% endfor %}
+                                                                <div class="col-4 col-sm-3">
+                                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                        <input class="form-check-input m-0 circuit-madm-slot" type="checkbox" value="10" data-card="elan05d">
+                                                                        <span class="fw-bold">10</span>
+                                                                    </label>
+                                                                </div>
+                                                                <div class="col-4 col-sm-3">
+                                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                        <input class="form-check-input m-0 circuit-madm-slot" type="checkbox" value="11" data-card="elan05d">
+                                                                        <span class="fw-bold">11</span>
+                                                                    </label>
+                                                                </div>
+                                                                <div class="col-4 col-sm-3">
+                                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                        <input class="form-check-input m-0 circuit-madm-slot" type="checkbox" value="12" data-card="elan05d">
+                                                                        <span class="fw-bold">12</span>
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div id="circuit-madm-elan05d-port-details" class="mt-3"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header" id="circuit-madm-a010000-heading">
+                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#circuit-madm-a010000-collapse" aria-expanded="false" aria-controls="circuit-madm-a010000-collapse">
+                                                    A010000 (Uplink)
+                                                </button>
+                                            </h2>
+                                            <div id="circuit-madm-a010000-collapse" class="accordion-collapse collapse" aria-labelledby="circuit-madm-a010000-heading" data-bs-parent="#circuitMadmAccordion">
+                                                <div class="accordion-body">
+                                                    <div class="row g-3 align-items-end">
+                                                        <div class="col-md-4">
+                                                            <label class="form-label fw-bold">A010000 Available?</label>
+                                                            <select id="circuit-madm-a010000-available" class="form-select">
+                                                                <option value="N">N</option>
+                                                                <option value="Y">Y</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div id="circuit-madm-a010000-fields" class="mt-3" style="display: none;">
+                                                        <label class="form-label fw-bold">Inserted Slot Number(s)</label>
+                                                        <div class="border rounded-3 p-2 bg-light">
+                                                            <div class="row g-2">
+                                                                {% for i in "123456789"|make_list %}
+                                                                <div class="col-4 col-sm-3">
+                                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                        <input class="form-check-input m-0 circuit-madm-slot" type="checkbox" value="{{ i }}" data-card="a010000">
+                                                                        <span class="fw-bold">{{ i }}</span>
+                                                                    </label>
+                                                                </div>
+                                                                {% endfor %}
+                                                                <div class="col-4 col-sm-3">
+                                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                        <input class="form-check-input m-0 circuit-madm-slot" type="checkbox" value="10" data-card="a010000">
+                                                                        <span class="fw-bold">10</span>
+                                                                    </label>
+                                                                </div>
+                                                                <div class="col-4 col-sm-3">
+                                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                        <input class="form-check-input m-0 circuit-madm-slot" type="checkbox" value="11" data-card="a010000">
+                                                                        <span class="fw-bold">11</span>
+                                                                    </label>
+                                                                </div>
+                                                                <div class="col-4 col-sm-3">
+                                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                                        <input class="form-check-input m-0 circuit-madm-slot" type="checkbox" value="12" data-card="a010000">
+                                                                        <span class="fw-bold">12</span>
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div id="circuit-madm-a010000-warning" class="alert alert-warning mt-3 mb-0" style="display: none;">
+                                                            A010000 usually inserted between Slots 7–12.
+                                                        </div>
+                                                        <div id="circuit-madm-a010000-port-details" class="mt-3"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Detailed CPAN B-Node Sections -->
+                        <div id="section-cpan-details" class="node-section" style="display: none;">
+                            <!-- XSV3 Card Section -->
+                            <div class="card mb-3 border-info shadow-sm">
+                                <div class="card-header bg-info text-white py-2">XSV3 Card Section</div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label fw-bold">Number of XSV3 Cards Available*</label>
+                                            <select id="xsv3-count" class="form-select">
+                                                <option value="">Select...</option>
+                                                <option value="1">1</option>
+                                                <option value="2">2</option>
+                                                <option value="3">3</option>
+                                                <option value="4">4</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label fw-bold">XSV3 Card Inserted Slots*</label>
+                                            <div id="xsv3-slots" class="border rounded-3 p-2 bg-light">
+                                                <div class="row g-2">
+                                                    {% for i in "123456789"|make_list %}
+                                                    <div class="col-4 col-sm-3">
+                                                        <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                            <input class="form-check-input m-0 xsv3-slot" type="checkbox" value="{{ i }}">
+                                                            <span class="fw-bold">{{ i }}</span>
+                                                        </label>
+                                                    </div>
+                                                    {% endfor %}
+                                                    <div class="col-4 col-sm-3">
+                                                        <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                            <input class="form-check-input m-0 xsv3-slot" type="checkbox" value="10">
+                                                            <span class="fw-bold">10</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">Tick the required slots. Selected count must match number of cards.</small>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Uplink Ports (Auto-derived)</label>
+                                        <input type="text" id="xsv3-uplink-ports" class="form-control bg-light" readonly>
+                                    </div>
+                                    <div id="xsv3-port-details" class="row"></div>
+                                </div>
+                            </div>
+
+                            <!-- STM Card S1V1 Section -->
+                            <div class="card mb-3 border-info shadow-sm">
+                                <div class="card-header bg-info text-white py-2">STM Card S1V1 Section</div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label fw-bold">STM Card S1V1 Available*</label>
+                                            <select id="stm-available" class="form-select">
+                                                <option value="N">N</option>
+                                                <option value="Y">Y</option>
+                                            </select>
+                                        </div>
+                                        <div id="stm-slots-container" class="col-md-6 mb-3" style="display: none;">
+                                            <label class="form-label fw-bold">Inserted Slot*</label>
+                                            <div id="stm-slots" class="border rounded-3 p-2 bg-light">
+                                                <div class="row g-2">
+                                                    {% for i in "12345678"|make_list %}
+                                                    <div class="col-4 col-sm-3">
+                                                        <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                            <input class="form-check-input m-0 stm-slot" type="checkbox" value="{{ i }}">
+                                                            <span class="fw-bold">{{ i }}</span>
+                                                        </label>
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">Tick the required slots.</small>
+                                        </div>
+                                    </div>
+                                    <div id="stm-port-details" class="row"></div>
+                                </div>
+                            </div>
+
+                            <!-- MSV1 Card Section -->
+                            <div class="card mb-3 border-info shadow-sm">
+                                <div class="card-header bg-info text-white py-2">MSV1 Card Section</div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Number of MSV1 Card Slots*</label>
+                                        <div id="msv1-slots" class="border rounded-3 p-2 bg-light">
+                                            <div class="row g-2">
+                                                {% for i in "123456789"|make_list %}
+                                                <div class="col-4 col-sm-3">
+                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                        <input class="form-check-input m-0 msv1-slot" type="checkbox" value="{{ i }}">
+                                                        <span class="fw-bold">{{ i }}</span>
+                                                    </label>
+                                                </div>
+                                                {% endfor %}
+                                                <div class="col-4 col-sm-3">
+                                                    <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                        <input class="form-check-input m-0 msv1-slot" type="checkbox" value="10">
+                                                        <span class="fw-bold">10</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">Tick the required slots.</small>
+                                    </div>
+                                    <div id="msv1-port-details" class="row"></div>
+                                </div>
+                            </div>
+
+                            <!-- GSV4 Card Section -->
+                            <div class="card mb-3 border-primary shadow-sm">
+                                <div class="card-header bg-primary text-white py-2">GSV4 Card Section</div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label fw-bold">GSV4 Card Available*</label>
+                                            <select id="gsv4-available" class="form-select">
+                                                <option value="N">N</option>
+                                                <option value="Y">Y</option>
+                                            </select>
+                                        </div>
+                                        <div id="gsv4-slots-container" class="col-md-6 mb-3" style="display: none;">
+                                            <label class="form-label fw-bold">Inserted Slots*</label>
+                                            <div id="gsv4-slots" class="border rounded-3 p-2 bg-light">
+                                                <div class="row g-2">
+                                                    {% for i in "123456789"|make_list %}
+                                                    <div class="col-4 col-sm-3">
+                                                        <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                            <input class="form-check-input m-0 gsv4-slot" type="checkbox" value="{{ i }}">
+                                                            <span class="fw-bold">{{ i }}</span>
+                                                        </label>
+                                                    </div>
+                                                    {% endfor %}
+                                                    <div class="col-4 col-sm-3">
+                                                        <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                            <input class="form-check-input m-0 gsv4-slot" type="checkbox" value="10">
+                                                            <span class="fw-bold">10</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">Select slots (1-10).</small>
+                                        </div>
+                                    </div>
+                                    <div id="gsv4-port-details" class="row"></div>
+                                </div>
+                            </div>
+
+                            <!-- SNCV1 Card Section -->
+                            <div class="card mb-3 border-primary shadow-sm">
+                                <div class="card-header bg-primary text-white py-2">SNCV1 Card Section</div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label fw-bold">SNCV1 Card Available*</label>
+                                            <select id="sncv1-available" class="form-select">
+                                                <option value="N">N</option>
+                                                <option value="Y">Y</option>
+                                            </select>
+                                        </div>
+                                        <div id="sncv1-slots-container" class="col-md-6 mb-3" style="display: none;">
+                                            <label class="form-label fw-bold">Inserted Slots*</label>
+                                            <div id="sncv1-slots" class="border rounded-3 p-2 bg-light">
+                                                <div class="row g-2">
+                                                    {% with "10,11,12,13,14" as slots %}
+                                                    {% for i in slots|split:"," %}
+                                                    <div class="col-4 col-sm-3">
+                                                        <label class="d-flex align-items-center gap-2 bg-white border rounded-3 px-2 py-2 w-100">
+                                                            <input class="form-check-input m-0 sncv1-slot" type="checkbox" value="{{ i }}">
+                                                            <span class="fw-bold">{{ i }}</span>
+                                                        </label>
+                                                    </div>
+                                                    {% endfor %}
+                                                    {% endwith %}
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">Select slots (10-14).</small>
+                                        </div>
+                                    </div>
+                                    <div id="sncv1-port-details" class="row"></div>
+                                </div>
+                            </div>
+
+                            <!-- E1CV1 Card Section -->
+                            <div class="card mb-3 border-primary shadow-sm">
+                                <div class="card-header bg-primary text-white py-2">E1CV1 Card Section</div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label fw-bold">E1CV1 Card Available*</label>
+                                            <select id="e1cv1-available" class="form-select">
+                                                <option value="N">N</option>
+                                                <option value="Y">Y</option>
+                                            </select>
+                                        </div>
+                                        <div id="e1cv1-details-container" class="col-md-6 mb-3" style="display: none;">
+                                            <label class="form-label fw-bold">DDF Details*</label>
+                                            <input type="text" id="e1cv1-ddf-details" class="form-control" placeholder="Enter DDF Details">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="node_configuration_json" id="id_node_configuration_json">
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{% url 'circuit_list' %}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" id="save-circuit-btn" class="btn btn-success px-4 fw-bold">Save Circuit</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% load static %}
+<script src="{% static 'inventory/js/cpan_b_engine.js' %}?v=1"></script>
+<script src="{% static 'inventory/js/circuit_logic.js' %}?v=8"></script>
+{% endblock %}
