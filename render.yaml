@@ -11,7 +11,6 @@ services:
   - type: web
     name: nwo-portal
     runtime: python
-    runtimeVersion: "3.11.9"
     plan: free
     
     buildCommand: "bash build.sh"
@@ -22,18 +21,13 @@ services:
         fromDatabase:
           name: ofcnet_db
           property: connectionString
-          
       - key: SECRET_KEY
         generateValue: true
-        
       - key: DEBUG
         value: "False"
-        
       - key: ALLOWED_HOSTS
         value: "*"
-        
       - key: USE_GIS
         value: "False"
-        
       - key: PYTHONUNBUFFERED
         value: "1"
