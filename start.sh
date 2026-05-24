@@ -10,4 +10,4 @@ python manage.py migrate --noinput
 echo "[start.sh] migrations complete"
 
 echo "[start.sh] launching gunicorn"
-exec gunicorn --bind 0.0.0.0:$PORT nwo_portal.wsgi:application
+exec python -m gunicorn --bind 0.0.0.0:$PORT nwo_portal.wsgi:application
