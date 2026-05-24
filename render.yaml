@@ -16,12 +16,9 @@ services:
     # Build Command: Runs during build, executes the root build.sh script
     buildCommand: "./build.sh"
     
-    # Pre-Deploy Command: Runs after build finishes and database is active
-    # Safely runs Django database migrations on PostgreSQL before serving traffic
-    preDeployCommand: "python manage.py migrate --noinput"
-    
-    # Start Command: Launches Gunicorn pointing to our root WSGI module
-    startCommand: "gunicorn --bind 0.0.0.0:$PORT nwo_portal.wsgi:application"
+    # Start Command: Run migrations at startup and launch Gunicorn.
+    # Render free tier does not support pre-deploy commands.
+    startCommand: "./start.sh"
     
     envVars:
       # Automatically connect the database created above
