@@ -2,6 +2,7 @@
 Django management command to create NWO divisions and their users
 Usage: python manage.py create_division_users
 """
+import os
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 from inventory.models import NWO, UserProfile
@@ -12,11 +13,12 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         # Division data: name, username, password
+        # Keep passwords in sync with _get_division_default_password() in views.py
         DIVISIONS = [
             ('NWO CENTRAL', 'nwo_central', 'Nwo@Central@2026!'),
             ('NWO PALARIVATTOM', 'nwo_palarivattom', 'Nwo@Palarivattom@2026!'),
-            ('NWO KOCHI', 'nwo_kochi', 'Nwo@Kochi@2026!'),
-            ('NWO TRIPUNITHARA', 'nwo_tripunithara', 'Nwo@Tripunithara@2026!'),
+            ('NWO KOCHI', 'nwo_kochi', 'Nwo@Kochi2026!'),
+            ('NWO TRIPUNITHARA', 'nwo_tripunithara', 'Nwo@Tripunithura@2026!'),
             ('NWO ANGAMALY', 'nwo_angamaly', 'Nwo@Angamaly@2026!'),
             ('NWO THODUPUZHA', 'nwo_thodupuzha', 'Nwo@Thodupuzha@2026!'),
             ('NWO ALUVA', 'nwo_aluva', 'Nwo@Aluva@2026!'),
@@ -83,7 +85,40 @@ class Command(BaseCommand):
         self.stdout.write('=' * 70)
         self.stdout.write(self.style.SUCCESS('\n✅ All divisions and users created successfully!\n'))
 
-        # Display credentials
+        admin_username = os.environ.get('ADMIN_USERNAME')
+        admin_password = os.environ.get('ADMIN_PASSWORD')
+        admin_email = os.environ.get('ADMIN_EMAIL')
+
+        if admin_username and admin_password and admin_email:
+            self.stdout.write(self.style.WARNING('Creating default superuser account...'))
+            admin_user, admin_created = User.objects.get_or_create(
+                username=admin_username,
+                defaults={
+                    'email': admin_email,
+                    'is_staff': True,
+                    'is_superuser': True,
+                    'is_active': True,
+                }
+            )
+            admin_user.email = admin_email
+            admin_user.is_staff = True
+            admin_user.is_superuser = True
+            admin_user.is_active = True
+            admin_user.set_password(admin_password)
+            admin_user.save()
+
+            if admin_created:
+                self.stdout.write(self.style.SUCCESS(f'  ✓ Created superuser: {admin_username}'))
+            else:
+                self.stdout.write(f'  → Updated superuser: {admin_username}')
+            self.stdout.write('=' * 70)
+            self.stdout.write(self.style.WARNING('SUPERUSER LOGIN CREDENTIALS:'))
+            self.stdout.write(f'  Username: {self.style.SUCCESS(admin_username)}')
+            self.stdout.write(f'  Password: {self.style.SUCCESS(admin_password)}')
+            self.stdout.write(f'  Email: {self.style.SUCCESS(admin_email)}')
+            self.stdout.write('\n' + '=' * 70)
+
+        # Display division credentials
         self.stdout.write(self.style.WARNING('DIVISION LOGIN CREDENTIALS:'))
         self.stdout.write('=' * 70)
         for division_name, username, password in DIVISIONS:
