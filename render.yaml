@@ -20,8 +20,8 @@ services:
     # Safely runs Django database migrations on PostgreSQL before serving traffic
     preDeployCommand: "python manage.py migrate --noinput"
     
-    # Start Command: Launches Gunicorn pointing to our root WSGI module
-    startCommand: "gunicorn --bind 0.0.0.0:$PORT nwo_portal.wsgi:application"
+    # Start Command: Launches Gunicorn via python -m to avoid PATH issues on Render
+    startCommand: "./start.sh"
     
     envVars:
       # Automatically connect the database created above
