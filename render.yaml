@@ -1,44 +1,39 @@
-# Render Blueprint Configuration for OFCNetTracker
+# Render Blueprint Configuration for NWO Portal
 # Reference: https://render.com/docs/blueprints
 
 databases:
   - name: ofcnet_db
     databaseName: ofcnet
     user: ofcnet_user
-    plan: free # Use the free database plan
+    plan: free
 
 services:
   - type: web
-    name: ofc-net-tracker
+    name: nwo-portal
     runtime: python
+    runtimeVersion: "3.11.9"
     plan: free
     
-    # Build Command: Runs during build, executes the root build.sh script
     buildCommand: "bash build.sh"
-    
-    # Start Command: Runs migrations and launches Gunicorn via python -m to avoid PATH issues on Render
-    # Using python -m gunicorn ensures proper module resolution on Render's environment
     startCommand: "bash start.sh"
     
     envVars:
-      # Automatically connect the database created above
       - key: DATABASE_URL
         fromDatabase:
           name: ofcnet_db
           property: connectionString
           
-      # Django environment configurations
       - key: SECRET_KEY
-        generateValue: true # Render will automatically generate a secure 50-character random key
+        generateValue: true
         
       - key: DEBUG
-        value: "False" # Production security: Set to False
+        value: "False"
         
       - key: ALLOWED_HOSTS
-        value: "*" # Allow Render domains to access the site
+        value: "*"
         
       - key: USE_GIS
-        value: "False" # Standard SQLite/Postgres native setup (GeoDjango requires heavy system packages)
+        value: "False"
         
-      - key: PYTHON_VERSION
-        value: "3.11.9" # Match active Python version
+      - key: PYTHONUNBUFFERED
+        value: "1"
