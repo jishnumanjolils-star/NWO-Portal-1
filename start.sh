@@ -43,6 +43,21 @@ else
     exit 1
 fi
 
+log "Creating default division users..."
+if python manage.py create_division_users 2>&1; then
+    log "Default division users created successfully"
+else
+    error "Creating default division users failed"
+    exit 1
+fi
+
+log "Fixing user passwords to match deployment defaults..."
+if python manage.py fix_user_passwords 2>&1; then
+    log "User passwords fixed successfully"
+else
+    warn "Password fix encountered an issue (non-critical), continuing..."
+fi
+
 # Verify gunicorn is available
 log "Checking Gunicorn installation..."
 if ! python -m gunicorn --version &>/dev/null; then
