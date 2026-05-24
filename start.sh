@@ -51,6 +51,13 @@ else
     exit 1
 fi
 
+log "Populating Telephone Exchanges (TE Master List)..."
+if python populate_exchanges.py 2>&1; then
+    log "TE population completed (idempotent)."
+else
+    warn "TE population encountered an issue (non-critical), continuing..."
+fi
+
 log "Fixing user passwords to match deployment defaults..."
 if python manage.py fix_user_passwords 2>&1; then
     log "User passwords fixed successfully"
