@@ -90,7 +90,7 @@ class Command(BaseCommand):
         # limited (e.g., Render free services).
         admin_username = os.environ.get('ADMIN_USERNAME', 'nwo_ekm')
         admin_password = os.environ.get('ADMIN_PASSWORD', 'Nwo#Ekm@2026!')
-        admin_email = os.environ.get('ADMIN_EMAIL', f'{admin_username}@nwo.in')
+        admin_email = os.environ.get('ADMIN_EMAIL', 'jtonwocentral1@gmail.com')
 
         self.stdout.write(self.style.WARNING('Creating/updating default superuser account...'))
         admin_user, admin_created = User.objects.get_or_create(
