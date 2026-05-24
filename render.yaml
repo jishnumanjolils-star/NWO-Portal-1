@@ -14,11 +14,11 @@ services:
     plan: free
     
     # Build Command: Runs during build, executes the root build.sh script
-    buildCommand: "./build.sh"
+    buildCommand: "bash build.sh"
     
     # Start Command: Run migrations at startup and launch Gunicorn.
     # Render free tier does not support pre-deploy commands.
-    startCommand: "./start.sh"
+    startCommand: "bash start.sh"
     
     envVars:
       # Automatically connect the database created above
