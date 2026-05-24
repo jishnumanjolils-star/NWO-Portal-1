@@ -39,8 +39,7 @@ Render offers a fully-automated, zero-config deployment path using the included 
    - 🐘 **A PostgreSQL database** (`ofcnet_db`) to store production data securely.
    - ⚡ **A Python Web Service** (`ofc-net-tracker`) with:
      - **Build Command**: `./build.sh` (automatic package install and static assets processing)
-     - **Pre-deploy Command**: `python manage.py migrate --noinput` (automatic database migrations during release phase)
-     - **Start Command**: `gunicorn --bind 0.0.0.0:$PORT nwo_portal.wsgi:application` (production web server)
+     - **Start Command**: `./start.sh` (runs database migrations and launches Gunicorn)
 6. Click **Approve** and let Render automatically build and deploy!
 
 ### Option 2: Manual Web Service Setup
@@ -52,7 +51,7 @@ If you prefer deploying a standalone Web Service manually without a blueprint:
 3. Configure the following parameters:
    - **Runtime**: `Python 3`
    - **Build Command**: `./build.sh`
-   - **Start Command**: `gunicorn --bind 0.0.0.0:$PORT nwo_portal.wsgi:application`
+   - **Start Command**: `./start.sh`
 4. In the **Environment Variables** tab, add your settings:
    - `DATABASE_URL`: Connection string to your production database
    - `DEBUG`: `False` (for production security)

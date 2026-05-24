@@ -14,14 +14,11 @@ services:
     plan: free
     
     # Build Command: Runs during build, executes the root build.sh script
-    buildCommand: "./build.sh"
+    buildCommand: "bash build.sh"
     
-    # Pre-Deploy Command: Runs after build finishes and database is active
-    # Safely runs Django database migrations on PostgreSQL before serving traffic
-    preDeployCommand: "python manage.py migrate --noinput"
-    
-    # Start Command: Launches Gunicorn via python -m to avoid PATH issues on Render
-    startCommand: "./start.sh"
+    # Start Command: Runs migrations and launches Gunicorn via python -m to avoid PATH issues on Render
+    # Using python -m gunicorn ensures proper module resolution on Render's environment
+    startCommand: "bash start.sh"
     
     envVars:
       # Automatically connect the database created above
