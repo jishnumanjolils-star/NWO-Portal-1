@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 set -o errexit
+set -o pipefail
 
-# Run database migrations at service startup since Render free tier does not support pre-deploy commands.
+ echo "[start.sh] starting application startup script"
+
+echo "[start.sh] running migrations"
 python manage.py migrate --noinput
 
-# Launch the production WSGI server.
+echo "[start.sh] migrations complete"
+
+echo "[start.sh] launching gunicorn"
 exec gunicorn --bind 0.0.0.0:$PORT nwo_portal.wsgi:application
