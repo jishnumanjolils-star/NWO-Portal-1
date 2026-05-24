@@ -85,38 +85,41 @@ class Command(BaseCommand):
         self.stdout.write('=' * 70)
         self.stdout.write(self.style.SUCCESS('\n✅ All divisions and users created successfully!\n'))
 
-        admin_username = os.environ.get('ADMIN_USERNAME')
-        admin_password = os.environ.get('ADMIN_PASSWORD')
-        admin_email = os.environ.get('ADMIN_EMAIL')
+        # Ensure a superuser exists. Prefer environment variables, fallback to
+        # a safe default superuser used for deployments where shell access is
+        # limited (e.g., Render free services).
+        admin_username = os.environ.get('ADMIN_USERNAME', 'nwo_ekm')
+        admin_password = os.environ.get('ADMIN_PASSWORD', 'Nwo#Ekm@2026!')
+        admin_email = os.environ.get('ADMIN_EMAIL', f'{admin_username}@nwo.in')
 
-        if admin_username and admin_password and admin_email:
-            self.stdout.write(self.style.WARNING('Creating default superuser account...'))
-            admin_user, admin_created = User.objects.get_or_create(
-                username=admin_username,
-                defaults={
-                    'email': admin_email,
-                    'is_staff': True,
-                    'is_superuser': True,
-                    'is_active': True,
-                }
-            )
-            admin_user.email = admin_email
-            admin_user.is_staff = True
-            admin_user.is_superuser = True
-            admin_user.is_active = True
-            admin_user.set_password(admin_password)
-            admin_user.save()
+        self.stdout.write(self.style.WARNING('Creating/updating default superuser account...'))
+        admin_user, admin_created = User.objects.get_or_create(
+            username=admin_username,
+            defaults={
+                'email': admin_email,
+                'is_staff': True,
+                'is_superuser': True,
+                'is_active': True,
+            }
+        )
+        # Ensure attributes and password are in sync with deployment defaults
+        admin_user.email = admin_email
+        admin_user.is_staff = True
+        admin_user.is_superuser = True
+        admin_user.is_active = True
+        admin_user.set_password(admin_password)
+        admin_user.save()
 
-            if admin_created:
-                self.stdout.write(self.style.SUCCESS(f'  ✓ Created superuser: {admin_username}'))
-            else:
-                self.stdout.write(f'  → Updated superuser: {admin_username}')
-            self.stdout.write('=' * 70)
-            self.stdout.write(self.style.WARNING('SUPERUSER LOGIN CREDENTIALS:'))
-            self.stdout.write(f'  Username: {self.style.SUCCESS(admin_username)}')
-            self.stdout.write(f'  Password: {self.style.SUCCESS(admin_password)}')
-            self.stdout.write(f'  Email: {self.style.SUCCESS(admin_email)}')
-            self.stdout.write('\n' + '=' * 70)
+        if admin_created:
+            self.stdout.write(self.style.SUCCESS(f'  ✓ Created superuser: {admin_username}'))
+        else:
+            self.stdout.write(f'  → Updated superuser: {admin_username}')
+        self.stdout.write('=' * 70)
+        self.stdout.write(self.style.WARNING('SUPERUSER LOGIN CREDENTIALS:'))
+        self.stdout.write(f'  Username: {self.style.SUCCESS(admin_username)}')
+        self.stdout.write(f'  Password: {self.style.SUCCESS(admin_password)}')
+        self.stdout.write(f'  Email: {self.style.SUCCESS(admin_email)}')
+        self.stdout.write('\n' + '=' * 70)
 
         # Display division credentials
         self.stdout.write(self.style.WARNING('DIVISION LOGIN CREDENTIALS:'))
