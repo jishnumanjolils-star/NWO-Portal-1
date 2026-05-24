@@ -280,7 +280,8 @@ def dashboard(request):
     # 4. Build data structure
     nwo_data_list = []
     for nwo in sorted_nwos:
-        exchanges = nwo.exchanges.all().order_by('name')
+        # Use explicit queryset to avoid any related_name/attribute resolution issues
+        exchanges = TelephoneExchange.objects.filter(nwo=nwo).order_by('name')
         te_list = []
         for te in exchanges:
             te_list.append({
