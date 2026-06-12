@@ -98,11 +98,9 @@
                     <h5 class="mb-0"><i class="bi bi-collection"></i> Fiber Summary</h5>
                 </div>
                 <div class="card-body">
-                    {% with used_count=fibers|length %}
                     <p><strong>Total Fibers:</strong> {{ cable.fiber_count }}</p>
-                    <p><strong>Used:</strong> {{ used_count }}</p>
-                    <p><strong>Available:</strong> {{ cable.fiber_count|add:"-"|stringformat:"d"|default:"0" }}</p>
-                    {% endwith %}
+                    <p><strong>Used:</strong> {{ cable.used_fibers_count }}</p>
+                    <p><strong>Available:</strong> {{ cable.available_fibers_count }}</p>
                 </div>
             </div>
 

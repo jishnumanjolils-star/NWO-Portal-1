@@ -93,6 +93,19 @@ class Cable(models.Model):
         return int(self.cable_type.replace('F', ''))
 
     @property
+    def used_fibers_count(self):
+        return self.fibers.filter(
+            models.Q(is_used=True) |
+            ~models.Q(status='Available') |
+            ~models.Q(circuit_name__in=['', None]) |
+            ~models.Q(system_end__in=['', None])
+        ).count()
+
+    @property
+    def available_fibers_count(self):
+        return self.fiber_count - self.used_fibers_count
+
+    @property
     def otdr_distance_formatted(self):
         if self.otdr_distance is None:
             return None

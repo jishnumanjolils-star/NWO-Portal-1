@@ -886,29 +886,39 @@ class CableFiberUpdateMixin:
                 
             updated = False
             if sys_end is not None:
-                fiber.system_end = sys_end
-                updated = True
+                if fiber.system_end != sys_end:
+                    fiber.system_end = sys_end
+                    updated = True
             if circ_name is not None:
-                fiber.circuit_name = circ_name
-                updated = True
-            if dist_str:
-                match = re.search(r'([\d.]+)', dist_str)
-                if match:
-                    try:
-                        val = float(match.group(1))
-                        if 'km' in dist_str.lower():
-                            val = val * 1000
-                        fiber.otdr_distance = val
-                        updated = True
-                    except ValueError:
-                        pass
+                if fiber.circuit_name != circ_name:
+                    fiber.circuit_name = circ_name
+                    updated = True
+            if dist_str is not None:
+                val = None
+                if dist_str.strip():
+                    match = re.search(r'([\d.]+)', dist_str)
+                    if match:
+                        try:
+                            val = float(match.group(1))
+                            if 'km' in dist_str.lower():
+                                val = val * 1000
+                        except ValueError:
+                            pass
+                if fiber.otdr_distance != val:
+                    fiber.otdr_distance = val
+                    updated = True
             if img:
                 fiber.otdr_image = img
                 updated = True
                 
-            if sys_end or circ_name:
-                fiber.is_used = True
-                fiber.status = 'Used'
+            is_currently_used = bool((sys_end and sys_end.strip()) or (circ_name and circ_name.strip()))
+            if fiber.is_used != is_currently_used:
+                fiber.is_used = is_currently_used
+                fiber.status = 'Used' if is_currently_used else 'Available'
+                updated = True
+            elif fiber.status != ('Used' if is_currently_used else 'Available'):
+                fiber.status = 'Used' if is_currently_used else 'Available'
+                updated = True
                 
             if updated:
                 fiber.save()

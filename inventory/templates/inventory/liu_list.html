@@ -50,7 +50,8 @@
                         </td>
                         <td>{{ liu.get_capacity_display }}</td>
                         <td>
-                            {% with used=liu.cable.fibers.filter.is_used.count total=liu.cable.fiber_count %}
+                            {% if liu.cable %}
+                            {% with used=liu.cable.used_fibers_count|default:0 total=liu.cable.fiber_count|default:0 %}
                             <div class="progress" style="height: 20px;">
                                 <div class="progress-bar {% if used == total %}bg-danger{% else %}bg-success{% endif %}" 
                                      role="progressbar" style="width: {% widthratio used total 100 %}%">
@@ -58,6 +59,9 @@
                                 </div>
                             </div>
                             {% endwith %}
+                            {% else %}
+                            <span class="text-muted">N/A</span>
+                            {% endif %}
                         </td>
                         <td>
                             <div class="btn-group">
