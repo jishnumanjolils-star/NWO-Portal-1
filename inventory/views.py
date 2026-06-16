@@ -1583,6 +1583,50 @@ def export_circuits(request):
     wb.save(response)
     return response
 
+def _resolve_te_helper(te_name, division=None):
+    if not te_name:
+        return None
+    name_str = str(te_name).strip()
+    
+    # 1. Exact match
+    qs = TelephoneExchange.objects.filter(name=name_str)
+    if division:
+        qs = qs.filter(nwo=division)
+    te = qs.first()
+    if te:
+        return te
+        
+    # 2. Case-insensitive exact match
+    qs = TelephoneExchange.objects.filter(name__iexact=name_str)
+    if division:
+        qs = qs.filter(nwo=division)
+    te = qs.first()
+    if te:
+        return te
+        
+    # 3. Appending/removing suffix " TE"
+    alt_name = name_str
+    if alt_name.upper().endswith(" TE"):
+        alt_name = alt_name[:-3].strip()
+    else:
+        alt_name = f"{alt_name} TE"
+        
+    qs = TelephoneExchange.objects.filter(name__iexact=alt_name)
+    if division:
+        qs = qs.filter(nwo=division)
+    te = qs.first()
+    if te:
+        return te
+        
+    # 4. Fallback: case-insensitive contains match (only if it matches exactly 1 exchange)
+    qs = TelephoneExchange.objects.filter(name__icontains=name_str)
+    if division:
+        qs = qs.filter(nwo=division)
+    if qs.count() == 1:
+        return qs.first()
+        
+    return None
+
 @login_required
 def bulk_upload(request):
     if request.method == 'POST' and request.FILES.get('excel_file'):
@@ -1624,11 +1668,12 @@ def bulk_upload(request):
                 for i, row in enumerate(rows, start=2):
                     try:
                         te_name = get_value(row, 'TE Name', 'TE', required=True)
-                        te_queryset = TelephoneExchange.objects.filter(name=te_name)
+                        division = None
                         if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
-                            te_queryset = te_queryset.filter(nwo=request.user.profile.division)
-                        te = te_queryset.first()
+                            division = request.user.profile.division
+                        te = _resolve_te_helper(te_name, division)
                         if not te:
+                            row_errors.append(f"Row {i} (SL No {get_value(row, 'SL No', 'Sl No') or i-1}): Telephone Exchange '{te_name}' not found.")
                             skipped_count += 1
                             continue
 
@@ -1696,7 +1741,8 @@ def bulk_upload(request):
                             remarks=get_value(row, 'Remarks', default='Bulk Uploaded') or 'Bulk Uploaded'
                         )
                         created_count += 1
-                    except IntegrityError:
+                    except IntegrityError as e:
+                        row_errors.append(f"Row {i} (SL No {get_value(row, 'SL No', 'Sl No') or i-1}): Database integrity error - {e}")
                         skipped_count += 1
                     except Exception as e:
                         row_errors.append(f"Row {i} (SL No {get_value(row, 'SL No', 'Sl No') or i-1}): {e}")
@@ -1709,11 +1755,12 @@ def bulk_upload(request):
                 for i, row in enumerate(rows, start=2):
                     try:
                         te_name = get_value(row, 'TE', 'TE Name', required=True)
-                        te_queryset = TelephoneExchange.objects.filter(name=te_name)
+                        division = None
                         if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
-                            te_queryset = te_queryset.filter(nwo=request.user.profile.division)
-                        te = te_queryset.first()
+                            division = request.user.profile.division
+                        te = _resolve_te_helper(te_name, division)
                         if not te:
+                            row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found.")
                             skipped_count += 1
                             continue
 
@@ -1726,7 +1773,8 @@ def bulk_upload(request):
                             remarks=get_value(row, 'Remarks', default='Bulk Uploaded') or 'Bulk Uploaded'
                         )
                         created_count += 1
-                    except IntegrityError:
+                    except IntegrityError as e:
+                        row_errors.append(f"Row {i}: Database integrity error - {e}")
                         skipped_count += 1
                     except Exception as e:
                         row_errors.append(f"Row {i}: {e}")
@@ -1739,11 +1787,12 @@ def bulk_upload(request):
                 for i, row in enumerate(rows, start=2):
                     try:
                         te_name = get_value(row, 'TE', 'TE Name', required=True)
-                        te_queryset = TelephoneExchange.objects.filter(name=te_name)
+                        division = None
                         if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
-                            te_queryset = te_queryset.filter(nwo=request.user.profile.division)
-                        te = te_queryset.first()
+                            division = request.user.profile.division
+                        te = _resolve_te_helper(te_name, division)
                         if not te:
+                            row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found.")
                             skipped_count += 1
                             continue
 
@@ -1755,7 +1804,8 @@ def bulk_upload(request):
                             remarks=get_value(row, 'Remarks', default='Bulk Uploaded') or 'Bulk Uploaded'
                         )
                         created_count += 1
-                    except IntegrityError:
+                    except IntegrityError as e:
+                        row_errors.append(f"Row {i}: Database integrity error - {e}")
                         skipped_count += 1
                     except Exception as e:
                         row_errors.append(f"Row {i}: {e}")
@@ -1831,10 +1881,11 @@ def bulk_upload(request):
 
                         te = None
                         if te_name not in (None, ''):
-                            te_queryset = TelephoneExchange.objects.filter(name=str(te_name).strip())
-                            if division is not None:
-                                te_queryset = te_queryset.filter(nwo=division)
-                            te = te_queryset.first()
+                            te = _resolve_te_helper(te_name, division)
+                            if not te:
+                                row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found.")
+                                skipped_count += 1
+                                continue
                             if division is None and te is not None:
                                 division = te.nwo
 
@@ -1850,7 +1901,8 @@ def bulk_upload(request):
                             longitude=Decimal(str(longitude)) if longitude not in (None, '') else None,
                         )
                         created_count += 1
-                    except IntegrityError:
+                    except IntegrityError as e:
+                        row_errors.append(f"Row {i}: Database integrity error - {e}")
                         skipped_count += 1
                     except (InvalidOperation, ValueError) as e:
                         row_errors.append(f"Row {i}: Invalid numeric value ({e})")
