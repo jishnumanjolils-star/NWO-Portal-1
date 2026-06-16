@@ -1728,6 +1728,14 @@ def bulk_upload(request):
                         circuit_type_val = get_value(row, 'TYPE', 'Type')
                         if circuit_type_val not in (None, ''):
                             circuit_type_val = str(circuit_type_val).strip().upper()
+                            type_mapping = {
+                                'MPLS VPN LC': 'MPLS VPN',
+                                'IINTERNET LC': 'INTERNET LC',
+                                'INTERNET': 'INTERNET LC',
+                                'P2P': 'P2P LC',
+                            }
+                            if circuit_type_val in type_mapping:
+                                circuit_type_val = type_mapping[circuit_type_val]
                             valid_types = {'INTERNET LC', 'P2P LC', 'P2P LC ACROSS STATE', 'MPLS VPN', 'ISDN PRI'}
                             if circuit_type_val not in valid_types:
                                 row_errors.append(f"Row {i} (SL No {get_value(row, 'SL No', 'Sl No') or i-1}): Invalid Circuit Type '{circuit_type_val}'. Set to blank.")
@@ -1805,6 +1813,7 @@ def bulk_upload(request):
                         skipped_count += 1
                     except Exception as e:
                         row_errors.append(f"Row {i} (SL No {get_value(row, 'SL No', 'Sl No') or i-1}): {e}")
+                        skipped_count += 1
                 if row_errors:
                     messages.warning(request, f"EB Circuits uploaded with {len(row_errors)} row errors. Created: {created_count}, Skipped: {skipped_count}.")
                 else:
