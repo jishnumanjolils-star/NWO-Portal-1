@@ -193,7 +193,14 @@ class EBCircuit(models.Model):
         ('MADM', 'MADM'),
         ('MAAN_A3_A4', 'MAAN A3 / A4 Node'),
     ]
-    circuit_type = models.CharField(max_length=100) # Support multiple types if needed
+    CIRCUIT_TYPE_CHOICES = [
+        ('INTERNET LC', 'INTERNET LC'),
+        ('P2P LC', 'P2P LC'),
+        ('P2P LC ACROSS STATE', 'P2P LC ACROSS STATE'),
+        ('MPLS VPN', 'MPLS VPN'),
+        ('ISDN PRI', 'ISDN PRI'),
+    ]
+    circuit_type = models.CharField(max_length=100, choices=CIRCUIT_TYPE_CHOICES)
     client_name = models.CharField(max_length=255)
     bandwidth = models.CharField(max_length=50)
     customer_end_node = models.CharField(max_length=50, choices=NODE_CHOICES)

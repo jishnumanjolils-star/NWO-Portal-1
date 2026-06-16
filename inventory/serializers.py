@@ -44,10 +44,20 @@ class EBCircuitSerializer(serializers.ModelSerializer):
     te_name = serializers.CharField(source='te.name', read_only=True)
     cable_name = serializers.CharField(source='cable.name', read_only=True)
     equipment_name = serializers.CharField(source='equipment.name', read_only=True)
+    circuit_type = serializers.CharField()
     
     class Meta:
         model = EBCircuit
         fields = '__all__'
+
+    def validate_circuit_type(self, value):
+        valid_types = ['INTERNET LC', 'P2P LC', 'P2P LC ACROSS STATE', 'MPLS VPN', 'ISDN PRI']
+        cleaned_val = value.strip().upper()
+        if cleaned_val not in valid_types:
+            raise serializers.ValidationError(
+                f"Invalid circuit type: '{value}'. Valid types are: {', '.join(valid_types)}"
+            )
+        return cleaned_val
 
 class MobileBTSSerializer(serializers.ModelSerializer):
     maan_node_name = serializers.CharField(source='maan_node.name', read_only=True)

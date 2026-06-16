@@ -321,18 +321,9 @@ class EquipmentForm(DivisionFilteredFormMixin, forms.ModelForm):
         return instance
 
 class CircuitForm(DivisionFilteredFormMixin, forms.ModelForm):
-    CIRCUIT_TYPES = [
-        ('LL', 'LL'),
-        ('KSWAN', 'KSWAN'),
-        ('ILL', 'ILL'),
-        ('PRI', 'PRI'),
-        ('P2P', 'P2P'),
-        ('POI', 'POI'),
-        ('CAMERA', 'Camera'),
-    ]
-    circuit_type_multi = forms.MultipleChoiceField(
-        choices=CIRCUIT_TYPES,
-        widget=forms.CheckboxSelectMultiple,
+    circuit_type_multi = forms.ChoiceField(
+        choices=[('', '---------')] + EBCircuit.CIRCUIT_TYPE_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-select'}),
         required=True,
         label="Circuit Type"
     )
@@ -374,7 +365,7 @@ class CircuitForm(DivisionFilteredFormMixin, forms.ModelForm):
             self.fields['te'].disabled = True
         
         if self.instance and self.instance.circuit_type:
-            self.fields['circuit_type_multi'].initial = self.instance.circuit_type.split(',')
+            self.fields['circuit_type_multi'].initial = self.instance.circuit_type
         
         if self.instance and self.instance.node_configuration:
             import json
@@ -382,7 +373,7 @@ class CircuitForm(DivisionFilteredFormMixin, forms.ModelForm):
 
     def save(self, commit=True):
         instance = super().save(commit=False)
-        instance.circuit_type = ','.join(self.cleaned_data['circuit_type_multi'])
+        instance.circuit_type = self.cleaned_data['circuit_type_multi']
         
         config_data = self.cleaned_data.get('node_configuration_json')
         if config_data:

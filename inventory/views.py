@@ -1591,9 +1591,14 @@ def bulk_upload(request):
                             skipped_count += 1
                             continue
 
+                        circuit_type_val = str(get_value(row, 'Type', required=True)).strip().upper()
+                        valid_types = {'INTERNET LC', 'P2P LC', 'P2P LC ACROSS STATE', 'MPLS VPN', 'ISDN PRI'}
+                        if circuit_type_val not in valid_types:
+                            raise ValueError(f"Invalid Circuit Type '{circuit_type_val}'. Must be one of: {', '.join(sorted(valid_types))}")
+
                         EBCircuit.objects.create(
                             client_name=get_value(row, 'Client Name', required=True),
-                            circuit_type=get_value(row, 'Type', required=True),
+                            circuit_type=circuit_type_val,
                             bandwidth=get_value(row, 'Bandwidth', required=True),
                             customer_end_node=get_value(row, 'End Node', required=True),
                             fiber_mode=get_value(row, 'Fiber Mode', required=True),
@@ -1781,7 +1786,7 @@ def download_template(request):
     
     if category == 'CIRCUIT':
         columns = ['Client Name', 'Type', 'Bandwidth', 'End Node', 'Fiber Mode', 'TE', 'Remarks']
-        data = ['Reliance JIO', 'ILL', '100 Mbps', 'CPE', 'DUAL', 'Panambilly Nagar', 'Sample circuit']
+        data = ['Reliance JIO', 'INTERNET LC', '100 Mbps', 'CPE', 'DUAL', 'Panambilly Nagar', 'Sample circuit']
     elif category == 'CABLE':
         columns = ['Cable Name', 'Type', 'Fiber Count', 'Mode', 'TE', 'Remarks']
         data = ['PN-CSR-48F-01', '48F', 48, 'UG', 'Panambilly Nagar', 'Sample cable']
@@ -1808,7 +1813,7 @@ def download_template(request):
         data = ['Customer A', '0484XXXXXXX', '-23.45', 'OLT-1', 1, 'NWO KOCHI', 'Panambilly Nagar', 9.931233, 76.267303]
     else:
         columns = ['Client Name', 'Type', 'Bandwidth', 'End Node', 'Fiber Mode', 'TE', 'Remarks']
-        data = ['Reliance JIO', 'ILL', '100 Mbps', 'CPE', 'DUAL', 'Panambilly Nagar', 'Sample circuit']
+        data = ['Reliance JIO', 'INTERNET LC', '100 Mbps', 'CPE', 'DUAL', 'Panambilly Nagar', 'Sample circuit']
         
     ws.append(columns)
     ws.append(data)
