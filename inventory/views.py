@@ -468,7 +468,9 @@ class CircuitListView(LoginRequiredMixin, DivisionRequiredMixin, ListView):
         # Search filter
         search = self.request.GET.get('search')
         if search:
-            queryset = queryset.filter(client_name__icontains=search)
+            queryset = queryset.filter(
+                Q(client_name__icontains=search) | Q(lc_id__icontains=search)
+            )
         
         # Circuit type filter
         circuit_type = self.request.GET.get('circuit_type')
