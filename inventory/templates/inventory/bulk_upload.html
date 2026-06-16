@@ -96,11 +96,11 @@
             <div class="form-group-custom">
                 <label class="label-custom">Select Asset Category</label>
                 <select name="upload_type" class="input-premium" required id="uploadType">
-                    <option value="CIRCUIT">Active EB Circuits</option>
-                    <option value="CABLE">Fiber Cable Routes (UG/OH)</option>
-                    <option value="EQUIPMENT">Network Node Hardware</option>
-                    <option value="BTS">Mobile BTS Sites</option>
-                    <option value="FTTH">FTTH Subscribers</option>
+                    <option value="CIRCUIT" {% if request.GET.category == 'CIRCUIT' or not request.GET.category %}selected{% endif %}>Active EB Circuits</option>
+                    <option value="CABLE" {% if request.GET.category == 'CABLE' %}selected{% endif %}>Fiber Cable Routes (UG/OH)</option>
+                    <option value="EQUIPMENT" {% if request.GET.category == 'EQUIPMENT' %}selected{% endif %}>Network Node Hardware</option>
+                    <option value="BTS" {% if request.GET.category == 'BTS' %}selected{% endif %}>Mobile BTS Sites</option>
+                    <option value="FTTH" {% if request.GET.category == 'FTTH' %}selected{% endif %}>FTTH Subscribers</option>
                 </select>
             </div>
 
@@ -123,12 +123,25 @@
                 <h6><i class="bi bi-shield-check me-2 text-primary"></i>Required Schema Verification</h6>
                 <div id="circuit-instr" class="instr-group">
                     <div class="d-flex flex-wrap">
-                        <span class="col-pill">Client Name</span>
-                        <span class="col-pill">Type</span>
-                        <span class="col-pill">Bandwidth</span>
-                        <span class="col-pill">End Node</span>
-                        <span class="col-pill">Fiber Mode</span>
+                        <span class="col-pill">SL No</span>
                         <span class="col-pill">TE Name</span>
+                        <span class="col-pill">TYPE</span>
+                        <span class="col-pill">NAME</span>
+                        <span class="col-pill">LC ID</span>
+                        <span class="col-pill">A-Media</span>
+                        <span class="col-pill">Bandwidth</span>
+                        <span class="col-pill">A-Address</span>
+                        <span class="col-pill">Node at A-End</span>
+                        <span class="col-pill">Node at B-End</span>
+                        <span class="col-pill">Port – B Side</span>
+                        <span class="col-pill">Status</span>
+                        <span class="col-pill">Working Status</span>
+                        <span class="col-pill">Fiber Mode</span>
+                        <span class="col-pill">Cable Data</span>
+                        <span class="col-pill">Customer Premise Location</span>
+                        <span class="col-pill">OTDR Distance</span>
+                        <span class="col-pill">Latitude</span>
+                        <span class="col-pill">Longitude</span>
                         <span class="col-pill">Remarks</span>
                     </div>
                 </div>
@@ -215,6 +228,9 @@
             
             $('#downloadBtn').attr('href', `{% url 'download_template' %}?category=${type}`);
         });
+        
+        // Trigger event handler on load to sync guide schema columns
+        $('#uploadType').trigger('change');
     });
 </script>
 {% endblock %}

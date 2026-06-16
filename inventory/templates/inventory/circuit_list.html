@@ -17,7 +17,10 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2><i class="bi bi-cpu"></i> EB Circuit Database</h2>
-    <div class="btn-group">
+    <div class="d-flex gap-2">
+        <a href="{% url 'bulk_upload' %}?category=CIRCUIT" class="btn btn-outline-primary">
+            <i class="bi bi-cloud-upload"></i> Bulk Upload
+        </a>
         <a href="{% url 'export_circuits' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success">
             <i class="bi bi-file-earmark-excel"></i> Export Excel
         </a>
