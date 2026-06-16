@@ -1667,51 +1667,62 @@ def bulk_upload(request):
             if upload_type == 'CIRCUIT':
                 for i, row in enumerate(rows, start=2):
                     try:
-                        te_name = get_value(row, 'TE Name', 'TE', required=True)
-                        division = None
-                        if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
-                            division = request.user.profile.division
-                        te = _resolve_te_helper(te_name, division)
-                        if not te:
-                            row_errors.append(f"Row {i} (SL No {get_value(row, 'SL No', 'Sl No') or i-1}): Telephone Exchange '{te_name}' not found.")
-                            skipped_count += 1
-                            continue
+                        te_name = get_value(row, 'TE Name', 'TE')
+                        te = None
+                        if te_name not in (None, ''):
+                            division = None
+                            if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
+                                division = request.user.profile.division
+                            te = _resolve_te_helper(te_name, division)
+                            if not te:
+                                row_errors.append(f"Row {i} (SL No {get_value(row, 'SL No', 'Sl No') or i-1}): Telephone Exchange '{te_name}' not found. Saved with blank Exchange.")
 
-                        circuit_type_val = str(get_value(row, 'TYPE', 'Type', required=True)).strip().upper()
-                        valid_types = {'INTERNET LC', 'P2P LC', 'P2P LC ACROSS STATE', 'MPLS VPN', 'ISDN PRI'}
-                        if circuit_type_val not in valid_types:
-                            raise ValueError(f"Invalid Circuit Type '{circuit_type_val}'. Must be one of: {', '.join(sorted(valid_types))}")
+                        circuit_type_val = get_value(row, 'TYPE', 'Type')
+                        if circuit_type_val not in (None, ''):
+                            circuit_type_val = str(circuit_type_val).strip().upper()
+                            valid_types = {'INTERNET LC', 'P2P LC', 'P2P LC ACROSS STATE', 'MPLS VPN', 'ISDN PRI'}
+                            if circuit_type_val not in valid_types:
+                                row_errors.append(f"Row {i} (SL No {get_value(row, 'SL No', 'Sl No') or i-1}): Invalid Circuit Type '{circuit_type_val}'. Set to blank.")
+                                circuit_type_val = None
+                        else:
+                            circuit_type_val = None
 
                         # Map Node at A-End to DB Choices
-                        end_node_raw = str(get_value(row, 'Node at A-End', 'End Node', default='CPE') or 'CPE').strip().upper()
-                        node_map = {
-                            'CPE': 'CPE',
-                            'MEDIA CONVERTER': 'MEDIA_CONVERTER',
-                            'MEDIA-CONVERTER': 'MEDIA_CONVERTER',
-                            'A-NODE': 'A_NODE',
-                            'A_NODE': 'A_NODE',
-                            'A NODE': 'A_NODE',
-                            'CPAN B-NODE': 'CPAN_B',
-                            'CPAN B': 'CPAN_B',
-                            'CPAN_B': 'CPAN_B',
-                            'MRO TEK': 'MRO_TEK',
-                            'MRO-TEK': 'MRO_TEK',
-                            'FTTH MODEM': 'FTTH_MODEM',
-                            'FTTH-MODEM': 'FTTH_MODEM',
-                            'MADM': 'MADM',
-                            'MAAN A3 / A4': 'MAAN_A3_A4',
-                            'MAAN A3/A4': 'MAAN_A3_A4',
-                        }
-                        customer_end_node = node_map.get(end_node_raw, 'CPE')
+                        end_node_raw = get_value(row, 'Node at A-End', 'End Node')
+                        customer_end_node = None
+                        if end_node_raw not in (None, ''):
+                            end_node_raw = str(end_node_raw).strip().upper()
+                            node_map = {
+                                'CPE': 'CPE',
+                                'MEDIA CONVERTER': 'MEDIA_CONVERTER',
+                                'MEDIA-CONVERTER': 'MEDIA_CONVERTER',
+                                'A-NODE': 'A_NODE',
+                                'A_NODE': 'A_NODE',
+                                'A NODE': 'A_NODE',
+                                'CPAN B-NODE': 'CPAN_B',
+                                'CPAN B': 'CPAN_B',
+                                'CPAN_B': 'CPAN_B',
+                                'MRO TEK': 'MRO_TEK',
+                                'MRO-TEK': 'MRO_TEK',
+                                'FTTH MODEM': 'FTTH_MODEM',
+                                'FTTH-MODEM': 'FTTH_MODEM',
+                                'MADM': 'MADM',
+                                'MAAN A3 / A4': 'MAAN_A3_A4',
+                                'MAAN A3/A4': 'MAAN_A3_A4',
+                            }
+                            customer_end_node = node_map.get(end_node_raw)
 
                         # Normalize Fiber Mode
-                        fiber_mode_raw = str(get_value(row, 'Fiber Mode', required=True)).strip().upper()
-                        if fiber_mode_raw in ('SINGLE', 'S', '1'):
-                            fiber_mode = 'SINGLE'
-                        elif fiber_mode_raw in ('DUAL', 'D', '2'):
-                            fiber_mode = 'DUAL'
-                        else:
-                            raise ValueError(f"Invalid Fiber Mode '{fiber_mode_raw}'. Must be SINGLE or DUAL.")
+                        fiber_mode_raw = get_value(row, 'Fiber Mode')
+                        fiber_mode = None
+                        if fiber_mode_raw not in (None, ''):
+                            fiber_mode_raw = str(fiber_mode_raw).strip().upper()
+                            if fiber_mode_raw in ('SINGLE', 'S', '1'):
+                                fiber_mode = 'SINGLE'
+                            elif fiber_mode_raw in ('DUAL', 'D', '2'):
+                                fiber_mode = 'DUAL'
+                            else:
+                                row_errors.append(f"Row {i} (SL No {get_value(row, 'SL No', 'Sl No') or i-1}): Invalid Fiber Mode '{fiber_mode_raw}'. Set to blank.")
 
                         lat = get_value(row, 'Latitude')
                         lon = get_value(row, 'Longitude')
@@ -1721,10 +1732,10 @@ def bulk_upload(request):
                         EBCircuit.objects.create(
                             te=te,
                             circuit_type=circuit_type_val,
-                            client_name=get_value(row, 'NAME', 'Name', 'Client Name', required=True),
+                            client_name=get_value(row, 'NAME', 'Name', 'Client Name'),
                             lc_id=get_value(row, 'LC ID', 'lc_id'),
                             a_media=get_value(row, 'A-Media', 'A-media'),
-                            bandwidth=get_value(row, 'Bandwidth', required=True),
+                            bandwidth=get_value(row, 'Bandwidth'),
                             a_address=get_value(row, 'A-Address', 'A-address'),
                             node_at_a_end=get_value(row, 'Node at A-End'),
                             node_at_b_end=get_value(row, 'Node at B-End'),

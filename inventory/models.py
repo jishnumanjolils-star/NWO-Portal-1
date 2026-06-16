@@ -200,15 +200,15 @@ class EBCircuit(models.Model):
         ('MPLS VPN', 'MPLS VPN'),
         ('ISDN PRI', 'ISDN PRI'),
     ]
-    circuit_type = models.CharField(max_length=100, choices=CIRCUIT_TYPE_CHOICES)
-    client_name = models.CharField(max_length=255)
-    bandwidth = models.CharField(max_length=50)
-    customer_end_node = models.CharField(max_length=50, choices=NODE_CHOICES)
+    circuit_type = models.CharField(max_length=100, choices=CIRCUIT_TYPE_CHOICES, blank=True, null=True)
+    client_name = models.CharField(max_length=255, blank=True, null=True)
+    bandwidth = models.CharField(max_length=50, blank=True, null=True)
+    customer_end_node = models.CharField(max_length=50, choices=NODE_CHOICES, blank=True, null=True)
     mc_type = models.CharField(max_length=100, blank=True, null=True)
     node_configuration = models.JSONField(blank=True, null=True)
-    fiber_mode = models.CharField(max_length=10, choices=[('SINGLE', 'Single'), ('DUAL', 'Dual')])
+    fiber_mode = models.CharField(max_length=10, choices=[('SINGLE', 'Single'), ('DUAL', 'Dual')], blank=True, null=True)
     cable = models.ForeignKey(Cable, on_delete=models.SET_NULL, null=True, blank=True)
-    te = models.ForeignKey(TelephoneExchange, on_delete=models.CASCADE)
+    te = models.ForeignKey(TelephoneExchange, on_delete=models.SET_NULL, null=True, blank=True)
     equipment = models.ForeignKey(Equipment, on_delete=models.SET_NULL, null=True, blank=True)
     customer_premise_location = models.CharField(max_length=255, blank=True, null=True)
     otdr_distance = models.CharField(max_length=100, blank=True, null=True)
