@@ -1608,6 +1608,21 @@ def _resolve_te_helper(te_name, division=None):
         return None
     name_str = str(te_name).strip()
     
+    # Custom mapping dictionary for spelling variations
+    mapping = {
+        'BOAT JETTY ERNAKULAM': 'Boatjetty TE',
+        'CARRIER STATION ROAD': 'Csr TE',
+        'KALOOR-ERNAKULAM': 'Kaloor TE',
+        'PANAMPILLYNAGAR': 'Panampilly Nagar TE',
+        'SRM ROAD': 'Srm TE',
+    }
+    
+    lookup_upper = name_str.upper().replace(' ', '').replace('-', '')
+    mapping_normalized = {k.upper().replace(' ', '').replace('-', ''): v for k, v in mapping.items()}
+    
+    if lookup_upper in mapping_normalized:
+        name_str = mapping_normalized[lookup_upper]
+    
     # 1. Exact match
     qs = TelephoneExchange.objects.filter(name=name_str)
     if division:
