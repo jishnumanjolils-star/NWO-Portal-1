@@ -1504,25 +1504,31 @@ def export_circuits(request):
     ws.title = "EB Circuits"
 
     columns = [
-        'Client Name', 'Type', 'Bandwidth', 'End Node', 'Fiber Mode',
-        'Division', 'TE', 'Cable', 'Equipment',
-        'Customer Premise Location', 'OTDR Distance', 'Latitude', 'Longitude', 'Remarks'
+        'SL No', 'TE Name', 'TYPE', 'NAME', 'LC ID', 'A-Media', 'Bandwidth', 'A-Address',
+        'Node at A-End', 'Node at B-End', 'Port – B Side', 'Status', 'Working Status',
+        'Fiber Mode', 'Cable Data', 'Customer Premise Location', 'OTDR Distance',
+        'Latitude', 'Longitude', 'Remarks'
     ]
     ws.append(columns)
 
-    for c in queryset.order_by('te__name', 'client_name'):
-        division_name = c.te.nwo.get_name_display() if c.te and c.te.nwo else ''
+    for idx, c in enumerate(queryset.order_by('te__name', 'client_name'), start=1):
         te_name = c.te.name if c.te else ''
         ws.append([
-            c.client_name,
-            c.circuit_type,
-            c.bandwidth,
-            c.customer_end_node,
-            c.fiber_mode,
-            division_name,
+            idx,
             te_name,
-            c.cable.name if c.cable else '',
-            c.equipment.name if c.equipment else '',
+            c.circuit_type,
+            c.client_name,
+            c.lc_id or '',
+            c.a_media or '',
+            c.bandwidth,
+            c.a_address or '',
+            c.node_at_a_end or '',
+            c.node_at_b_end or '',
+            c.port_b_side or '',
+            c.status or '',
+            c.working_status or '',
+            c.fiber_mode,
+            c.cable_data or '',
             c.customer_premise_location or '',
             c.otdr_distance or '',
             c.latitude or '',
@@ -1582,7 +1588,7 @@ def bulk_upload(request):
             if upload_type == 'CIRCUIT':
                 for i, row in enumerate(rows, start=2):
                     try:
-                        te_name = get_value(row, 'TE', 'TE Name', required=True)
+                        te_name = get_value(row, 'TE Name', 'TE', required=True)
                         te_queryset = TelephoneExchange.objects.filter(name=te_name)
                         if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
                             te_queryset = te_queryset.filter(nwo=request.user.profile.division)
@@ -1591,25 +1597,74 @@ def bulk_upload(request):
                             skipped_count += 1
                             continue
 
-                        circuit_type_val = str(get_value(row, 'Type', required=True)).strip().upper()
+                        circuit_type_val = str(get_value(row, 'TYPE', 'Type', required=True)).strip().upper()
                         valid_types = {'INTERNET LC', 'P2P LC', 'P2P LC ACROSS STATE', 'MPLS VPN', 'ISDN PRI'}
                         if circuit_type_val not in valid_types:
                             raise ValueError(f"Invalid Circuit Type '{circuit_type_val}'. Must be one of: {', '.join(sorted(valid_types))}")
 
+                        # Map Node at A-End to DB Choices
+                        end_node_raw = str(get_value(row, 'Node at A-End', 'End Node', default='CPE') or 'CPE').strip().upper()
+                        node_map = {
+                            'CPE': 'CPE',
+                            'MEDIA CONVERTER': 'MEDIA_CONVERTER',
+                            'MEDIA-CONVERTER': 'MEDIA_CONVERTER',
+                            'A-NODE': 'A_NODE',
+                            'A_NODE': 'A_NODE',
+                            'A NODE': 'A_NODE',
+                            'CPAN B-NODE': 'CPAN_B',
+                            'CPAN B': 'CPAN_B',
+                            'CPAN_B': 'CPAN_B',
+                            'MRO TEK': 'MRO_TEK',
+                            'MRO-TEK': 'MRO_TEK',
+                            'FTTH MODEM': 'FTTH_MODEM',
+                            'FTTH-MODEM': 'FTTH_MODEM',
+                            'MADM': 'MADM',
+                            'MAAN A3 / A4': 'MAAN_A3_A4',
+                            'MAAN A3/A4': 'MAAN_A3_A4',
+                        }
+                        customer_end_node = node_map.get(end_node_raw, 'CPE')
+
+                        # Normalize Fiber Mode
+                        fiber_mode_raw = str(get_value(row, 'Fiber Mode', required=True)).strip().upper()
+                        if fiber_mode_raw in ('SINGLE', 'S', '1'):
+                            fiber_mode = 'SINGLE'
+                        elif fiber_mode_raw in ('DUAL', 'D', '2'):
+                            fiber_mode = 'DUAL'
+                        else:
+                            raise ValueError(f"Invalid Fiber Mode '{fiber_mode_raw}'. Must be SINGLE or DUAL.")
+
+                        lat = get_value(row, 'Latitude')
+                        lon = get_value(row, 'Longitude')
+                        latitude = float(lat) if lat not in (None, '') else None
+                        longitude = float(lon) if lon not in (None, '') else None
+
                         EBCircuit.objects.create(
-                            client_name=get_value(row, 'Client Name', required=True),
-                            circuit_type=circuit_type_val,
-                            bandwidth=get_value(row, 'Bandwidth', required=True),
-                            customer_end_node=get_value(row, 'End Node', required=True),
-                            fiber_mode=get_value(row, 'Fiber Mode', required=True),
                             te=te,
+                            circuit_type=circuit_type_val,
+                            client_name=get_value(row, 'NAME', 'Name', 'Client Name', required=True),
+                            lc_id=get_value(row, 'LC ID', 'lc_id'),
+                            a_media=get_value(row, 'A-Media', 'A-media'),
+                            bandwidth=get_value(row, 'Bandwidth', required=True),
+                            a_address=get_value(row, 'A-Address', 'A-address'),
+                            node_at_a_end=get_value(row, 'Node at A-End'),
+                            node_at_b_end=get_value(row, 'Node at B-End'),
+                            port_b_side=get_value(row, 'Port – B Side', 'Port - B Side'),
+                            status=get_value(row, 'Status'),
+                            working_status=get_value(row, 'Working Status'),
+                            customer_end_node=customer_end_node,
+                            fiber_mode=fiber_mode,
+                            cable_data=get_value(row, 'Cable Data'),
+                            customer_premise_location=get_value(row, 'Customer Premise Location'),
+                            otdr_distance=get_value(row, 'OTDR Distance'),
+                            latitude=latitude,
+                            longitude=longitude,
                             remarks=get_value(row, 'Remarks', default='Bulk Uploaded') or 'Bulk Uploaded'
                         )
                         created_count += 1
                     except IntegrityError:
                         skipped_count += 1
                     except Exception as e:
-                        row_errors.append(f"Row {i}: {e}")
+                        row_errors.append(f"Row {i} (SL No {get_value(row, 'SL No', 'Sl No') or i-1}): {e}")
                 if row_errors:
                     messages.warning(request, f"EB Circuits uploaded with {len(row_errors)} row errors. Created: {created_count}, Skipped: {skipped_count}.")
                 else:
@@ -1785,8 +1840,18 @@ def download_template(request):
     ws.title = f"{category} Template"
     
     if category == 'CIRCUIT':
-        columns = ['Client Name', 'Type', 'Bandwidth', 'End Node', 'Fiber Mode', 'TE', 'Remarks']
-        data = ['Reliance JIO', 'INTERNET LC', '100 Mbps', 'CPE', 'DUAL', 'Panambilly Nagar', 'Sample circuit']
+        columns = [
+            'SL No', 'TE Name', 'TYPE', 'NAME', 'LC ID', 'A-Media', 'Bandwidth', 'A-Address',
+            'Node at A-End', 'Node at B-End', 'Port – B Side', 'Status', 'Working Status',
+            'Fiber Mode', 'Cable Data', 'Customer Premise Location', 'OTDR Distance',
+            'Latitude', 'Longitude', 'Remarks'
+        ]
+        data = [
+            1, 'Panambilly Nagar', 'INTERNET LC', 'Reliance JIO', 'LC-9988-KCH', 'Media Converter',
+            '100 Mbps', 'Building A, Kochi', 'CPE', 'CPAN_B', 'GigabitEthernet1/1/1', 'Working',
+            'Active', 'DUAL', 'PN-CSR-48F-01', 'Server Room, Ground Floor', '2.5 km',
+            9.9816, 76.2999, 'Sample EB circuit'
+        ]
     elif category == 'CABLE':
         columns = ['Cable Name', 'Type', 'Fiber Count', 'Mode', 'TE', 'Remarks']
         data = ['PN-CSR-48F-01', '48F', 48, 'UG', 'Panambilly Nagar', 'Sample cable']
@@ -1812,8 +1877,18 @@ def download_template(request):
         columns = ['Customer Name', 'Landline Number', 'Optical Power', 'OLT Name', 'Port Number', 'Division', 'TE', 'Latitude', 'Longitude']
         data = ['Customer A', '0484XXXXXXX', '-23.45', 'OLT-1', 1, 'NWO KOCHI', 'Panambilly Nagar', 9.931233, 76.267303]
     else:
-        columns = ['Client Name', 'Type', 'Bandwidth', 'End Node', 'Fiber Mode', 'TE', 'Remarks']
-        data = ['Reliance JIO', 'INTERNET LC', '100 Mbps', 'CPE', 'DUAL', 'Panambilly Nagar', 'Sample circuit']
+        columns = [
+            'SL No', 'TE Name', 'TYPE', 'NAME', 'LC ID', 'A-Media', 'Bandwidth', 'A-Address',
+            'Node at A-End', 'Node at B-End', 'Port – B Side', 'Status', 'Working Status',
+            'Fiber Mode', 'Cable Data', 'Customer Premise Location', 'OTDR Distance',
+            'Latitude', 'Longitude', 'Remarks'
+        ]
+        data = [
+            1, 'Panambilly Nagar', 'INTERNET LC', 'Reliance JIO', 'LC-9988-KCH', 'Media Converter',
+            '100 Mbps', 'Building A, Kochi', 'CPE', 'CPAN_B', 'GigabitEthernet1/1/1', 'Working',
+            'Active', 'DUAL', 'PN-CSR-48F-01', 'Server Room, Ground Floor', '2.5 km',
+            9.9816, 76.2999, 'Sample EB circuit'
+        ]
         
     ws.append(columns)
     ws.append(data)

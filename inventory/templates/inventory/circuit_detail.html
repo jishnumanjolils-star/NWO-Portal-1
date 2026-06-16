@@ -63,6 +63,42 @@
                             <td>{% if circuit.equipment %}<a href="{% url 'equipment_detail' circuit.equipment.id %}">{{ circuit.equipment.name }}</a>{% else %}Not connected{% endif %}</td>
                         </tr>
                         <tr>
+                            <th>LC ID:</th>
+                            <td>{{ circuit.lc_id|default:"N/A" }}</td>
+                        </tr>
+                        <tr>
+                            <th>A-Media:</th>
+                            <td>{{ circuit.a_media|default:"N/A" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Cable Data:</th>
+                            <td>{{ circuit.cable_data|default:"N/A" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Node at A-End:</th>
+                            <td>{{ circuit.node_at_a_end|default:"N/A" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Node at B-End:</th>
+                            <td>{{ circuit.node_at_b_end|default:"N/A" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Port - B Side:</th>
+                            <td>{{ circuit.port_b_side|default:"N/A" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Status:</th>
+                            <td><span class="badge bg-secondary">{{ circuit.status|default:"N/A" }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>Working Status:</th>
+                            <td><span class="badge bg-secondary">{{ circuit.working_status|default:"N/A" }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>A-Address:</th>
+                            <td>{{ circuit.a_address|default:"N/A" }}</td>
+                        </tr>
+                        <tr>
                             <th>Customer Premise Location:</th>
                             <td>{{ circuit.customer_premise_location|default:"N/A" }}</td>
                         </tr>

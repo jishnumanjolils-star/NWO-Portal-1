@@ -23,6 +23,11 @@
                         <div class="col-md-4">{% if form.customer_end_node %}{{ form.customer_end_node|as_crispy_field }}{% endif %}</div>
                         <div class="col-md-4">{% if form.fiber_mode %}{{ form.fiber_mode|as_crispy_field }}{% endif %}</div>
                     </div>
+                    <div class="row">
+                        <div class="col-md-4">{% if form.lc_id %}{{ form.lc_id|as_crispy_field }}{% endif %}</div>
+                        <div class="col-md-4">{% if form.a_media %}{{ form.a_media|as_crispy_field }}{% endif %}</div>
+                        <div class="col-md-4">{% if form.cable_data %}{{ form.cable_data|as_crispy_field }}{% endif %}</div>
+                    </div>
 
                     <div id="section-circuit-ring" style="display: none;">
                         <div class="card border-primary mb-3">
@@ -61,6 +66,18 @@
                     <div class="row">
                         <div class="col-md-6">{% if form.customer_premise_location %}{{ form.customer_premise_location|as_crispy_field }}{% endif %}</div>
                         <div class="col-md-6">{% if form.otdr_distance %}{{ form.otdr_distance|as_crispy_field }}{% endif %}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">{% if form.node_at_a_end %}{{ form.node_at_a_end|as_crispy_field }}{% endif %}</div>
+                        <div class="col-md-4">{% if form.node_at_b_end %}{{ form.node_at_b_end|as_crispy_field }}{% endif %}</div>
+                        <div class="col-md-4">{% if form.port_b_side %}{{ form.port_b_side|as_crispy_field }}{% endif %}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">{% if form.status %}{{ form.status|as_crispy_field }}{% endif %}</div>
+                        <div class="col-md-6">{% if form.working_status %}{{ form.working_status|as_crispy_field }}{% endif %}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">{% if form.a_address %}{{ form.a_address|as_crispy_field }}{% endif %}</div>
                     </div>
                     <div class="row align-items-end">
                         <div class="col-md-5">{% if form.latitude %}{{ form.latitude|as_crispy_field }}{% endif %}</div>
