@@ -482,6 +482,41 @@ class CircuitListView(LoginRequiredMixin, DivisionRequiredMixin, ListView):
         
         return queryset
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Base queryset of circuits for counting, respecting division
+        base_qs = EBCircuit.objects.all()
+        if not self.request.user.is_superuser:
+            if hasattr(self.request.user, 'profile') and self.request.user.profile.division:
+                division = self.request.user.profile.division
+                base_qs = base_qs.filter(te__nwo=division)
+                
+        # Group by and count
+        from django.db.models import Count
+        counts = base_qs.values('circuit_type').annotate(count=Count('id'))
+        counts_dict = {item['circuit_type']: item['count'] for item in counts}
+        
+        categories = [
+            {'type': 'INTERNET LC', 'badge_class': 'bg-tint-blue'},
+            {'type': 'P2P LC', 'badge_class': 'bg-tint-cyan'},
+            {'type': 'P2P LC ACROSS STATE', 'badge_class': 'bg-tint-violet'},
+            {'type': 'MPLS VPN', 'badge_class': 'bg-tint-emerald'},
+            {'type': 'ISDN PRI', 'badge_class': 'bg-tint-amber'},
+        ]
+        
+        dashboard_counts = []
+        for cat in categories:
+            dashboard_counts.append({
+                'type': cat['type'],
+                'count': counts_dict.get(cat['type'], 0),
+                'badge_class': cat['badge_class']
+            })
+            
+        context['dashboard_counts'] = dashboard_counts
+        return context
+
+
 class BTSListView(LoginRequiredMixin, DivisionRequiredMixin, ListView):
     model = MobileBTS
     template_name = 'inventory/bts_list.html'
@@ -1846,8 +1881,13 @@ def download_template(request):
             'Fiber Mode', 'Cable Data', 'Customer Premise Location', 'OTDR Distance',
             'Latitude', 'Longitude', 'Remarks'
         ]
+        circuit_type = request.GET.get('circuit_type', 'INTERNET LC')
+        valid_types = {'INTERNET LC', 'P2P LC', 'P2P LC ACROSS STATE', 'MPLS VPN', 'ISDN PRI'}
+        if circuit_type not in valid_types:
+            circuit_type = 'INTERNET LC'
+            
         data = [
-            1, 'Panambilly Nagar', 'INTERNET LC', 'Reliance JIO', 'LC-9988-KCH', 'Media Converter',
+            1, 'Panambilly Nagar', circuit_type, 'Reliance JIO', 'LC-9988-KCH', 'Media Converter',
             '100 Mbps', 'Building A, Kochi', 'CPE', 'CPAN_B', 'GigabitEthernet1/1/1', 'Working',
             'Active', 'DUAL', 'PN-CSR-48F-01', 'Server Room, Ground Floor', '2.5 km',
             9.9816, 76.2999, 'Sample EB circuit'
@@ -1883,12 +1923,18 @@ def download_template(request):
             'Fiber Mode', 'Cable Data', 'Customer Premise Location', 'OTDR Distance',
             'Latitude', 'Longitude', 'Remarks'
         ]
+        circuit_type = request.GET.get('circuit_type', 'INTERNET LC')
+        valid_types = {'INTERNET LC', 'P2P LC', 'P2P LC ACROSS STATE', 'MPLS VPN', 'ISDN PRI'}
+        if circuit_type not in valid_types:
+            circuit_type = 'INTERNET LC'
+            
         data = [
-            1, 'Panambilly Nagar', 'INTERNET LC', 'Reliance JIO', 'LC-9988-KCH', 'Media Converter',
+            1, 'Panambilly Nagar', circuit_type, 'Reliance JIO', 'LC-9988-KCH', 'Media Converter',
             '100 Mbps', 'Building A, Kochi', 'CPE', 'CPAN_B', 'GigabitEthernet1/1/1', 'Working',
             'Active', 'DUAL', 'PN-CSR-48F-01', 'Server Room, Ground Floor', '2.5 km',
             9.9816, 76.2999, 'Sample EB circuit'
         ]
+
         
     ws.append(columns)
     ws.append(data)
