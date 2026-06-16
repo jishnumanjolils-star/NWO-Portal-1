@@ -18,6 +18,12 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2><i class="bi bi-cpu"></i> EB Circuit Database</h2>
     <div class="d-flex gap-2">
+        <form action="{% url 'clear_circuits' %}" method="post" onsubmit="return confirm('WARNING: This will permanently delete all EB circuits in your division. Are you sure you want to proceed?');" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger">
+                <i class="bi bi-trash"></i> Clear All
+            </button>
+        </form>
         <a href="{% url 'bulk_upload' %}?category=CIRCUIT" class="btn btn-outline-primary">
             <i class="bi bi-cloud-upload"></i> Bulk Upload
         </a>

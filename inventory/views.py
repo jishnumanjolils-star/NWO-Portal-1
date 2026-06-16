@@ -1043,6 +1043,26 @@ class CircuitDetailView(LoginRequiredMixin, DivisionRequiredMixin, DetailView):
     context_object_name = 'circuit'
 
 @login_required
+def clear_circuits(request):
+    if request.method == 'POST':
+        queryset = EBCircuit.objects.all()
+        if not request.user.is_superuser:
+            if hasattr(request.user, 'profile') and request.user.profile.division:
+                division = request.user.profile.division
+                queryset = queryset.filter(te__nwo=division)
+            else:
+                messages.error(request, "You do not have permission to delete circuits.")
+                return redirect('circuit_list')
+                
+        count = queryset.count()
+        queryset.delete()
+        messages.success(request, f"Successfully deleted {count} EB circuits.")
+        return redirect('circuit_list')
+        
+    messages.error(request, "Invalid request method.")
+    return redirect('circuit_list')
+
+@login_required
 def analytics(request):
     from django.db.models import F, ExpressionWrapper, DurationField, Avg, Count, Sum, Q
     from django.utils import timezone

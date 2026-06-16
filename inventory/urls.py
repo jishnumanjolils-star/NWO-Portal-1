@@ -26,6 +26,7 @@ urlpatterns = [
     path('circuits/<int:pk>/', views.CircuitDetailView.as_view(), name='circuit_detail'),
     path('circuits/<int:pk>/edit/', views.CircuitUpdateView.as_view(), name='circuit_update'),
     path('circuits/<int:pk>/delete/', views.CircuitDeleteView.as_view(), name='circuit_delete'),
+    path('circuits/clear/', views.clear_circuits, name='clear_circuits'),
     
     # BTS URLs
     path('bts/', views.BTSListView.as_view(), name='bts_list'),
