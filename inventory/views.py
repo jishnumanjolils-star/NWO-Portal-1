@@ -1703,14 +1703,27 @@ def bulk_upload(request):
                 for i, row in enumerate(rows, start=2):
                     try:
                         te_name = get_value(row, 'TE Name', 'TE')
+                        division = None
+                        if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
+                            division = request.user.profile.division
+                        
                         te = None
                         if te_name not in (None, ''):
-                            division = None
-                            if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
-                                division = request.user.profile.division
                             te = _resolve_te_helper(te_name, division)
-                            if not te:
-                                row_errors.append(f"Row {i} (SL No {get_value(row, 'SL No', 'Sl No') or i-1}): Telephone Exchange '{te_name}' not found. Saved with blank Exchange.")
+                            
+                        if not te:
+                            if not division:
+                                division = NWO.objects.first()
+                            
+                            placeholder_name = f"UNMAPPED - {division.name}" if division else "UNMAPPED - ALL"
+                            te, _ = TelephoneExchange.objects.get_or_create(
+                                name=placeholder_name,
+                                defaults={'nwo': division} if division else {}
+                            )
+                            if te_name not in (None, ''):
+                                row_errors.append(f"Row {i} (SL No {get_value(row, 'SL No', 'Sl No') or i-1}): Telephone Exchange '{te_name}' not found. Saved under '{placeholder_name}'.")
+                            else:
+                                row_errors.append(f"Row {i} (SL No {get_value(row, 'SL No', 'Sl No') or i-1}): Blank Telephone Exchange. Saved under '{placeholder_name}'.")
 
                         circuit_type_val = get_value(row, 'TYPE', 'Type')
                         if circuit_type_val not in (None, ''):
