@@ -1740,6 +1740,23 @@ def _resolve_te_helper(te_name, division=None):
         return None
     name_str = str(te_name).strip()
     
+    import re
+    # Substring spelling corrections to handle spelling variations within larger strings
+    name_upper = name_str.upper()
+    corrections = {
+        'AYAPPANKAV': 'AYYAPPANKAVU',
+        'CHITOOR': 'CHITTOOR',
+        'CHITUR': 'CHITTOOR',
+        'PANAMBILLI': 'PANAMPILLY',
+        'PANAMPILLYNGR': 'PANAMPILLY NAGAR',
+        'BOAT JETTY': 'BOATJETTY',
+        'CARRIER STATION ROAD': 'CSR',
+    }
+    for search, replace in corrections.items():
+        if search in name_upper:
+            name_str = re.sub(re.escape(search), replace, name_str, flags=re.IGNORECASE)
+            name_upper = name_str.upper()
+            
     # Custom mapping dictionary for spelling variations and common abbreviations
     mapping = {
         'BOAT JETTY ERNAKULAM': 'Boatjetty TE',

@@ -234,10 +234,10 @@ def populate_exchanges():
                 if created:
                     total_created += 1
             
-            print(f"  ✓ {len(exchanges)} TEs created/verified")
+            print(f"  [OK] {len(exchanges)} TEs created/verified")
         
         except NWO.DoesNotExist:
-            print(f"\n✗ Division not found: {division_name}")
+            print(f"\n[ERROR] Division not found: {division_name}")
     
     print("\n" + "="*70)
     print(f"Total TEs in database: {TelephoneExchange.objects.count()}")
@@ -246,4 +246,4 @@ def populate_exchanges():
 
 if __name__ == '__main__':
     populate_exchanges()
-    print("\n✓ All TEs populated successfully!")
+    print("\n[OK] All TEs populated successfully!")
