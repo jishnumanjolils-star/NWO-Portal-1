@@ -389,28 +389,70 @@ def te_dashboard(request, te_id):
     # Convert Decimals to floats for JS compatibility in JBs
     jbs_raw = JunctionBox.objects.filter(te=te)
     jbs = []
+    jbs_list = []
     for jb in jbs_raw:
-        jbs.append({
+        jb_item = {
             'jb_id': jb.jb_id,
             'latitude': float(jb.latitude) if jb.latitude else None,
             'longitude': float(jb.longitude) if jb.longitude else None,
-        })
-    
+        }
+        jbs.append(jb_item)
+        if jb_item['latitude'] and jb_item['longitude']:
+            jbs_list.append(jb_item)
+            
+    equipments_list = []
+    for eq in equipments:
+        if eq.latitude and eq.longitude:
+            equipments_list.append({
+                'name': eq.name,
+                'latitude': float(eq.latitude),
+                'longitude': float(eq.longitude),
+                'used_ports': eq.used_ports,
+                'total_ports': eq.total_ports,
+            })
+            
     bts_list = MobileBTS.objects.filter(Q(maan_node__te=te) | Q(te=te)).distinct()
+    bts_list_json = []
+    for b in bts_list:
+        if b.latitude and b.longitude:
+            bts_list_json.append({
+                'bts_name': b.bts_name,
+                'rp_id': b.rp_id,
+                'site_type': b.get_site_type_display(),
+                'latitude': float(b.latitude),
+                'longitude': float(b.longitude),
+                'place_name': b.place_name or '',
+            })
+            
+    eb_circuits_json = []
+    for eb in EBCircuit.objects.filter(te=te):
+        if eb.latitude and eb.longitude:
+            eb_circuits_json.append({
+                'client_name': eb.client_name or 'Unknown',
+                'circuit_type': eb.circuit_type or 'Unknown',
+                'bandwidth': eb.bandwidth or '',
+                'latitude': float(eb.latitude),
+                'longitude': float(eb.longitude),
+                'customer_premise_location': eb.customer_premise_location or '',
+            })
     
     # Fetch route points for cables in this TE
     cable_routes = []
+    cable_routes_list = []
     for cable in cables:
         # Convert Decimals to floats for JS compatibility
         points = [[float(p[0]), float(p[1])] for p in cable.route_points.all().values_list('latitude', 'longitude', flat=False)]
         if points:
-            cable_routes.append({
+            route_item = {
                 'name': cable.name,
                 'type': cable.cable_type,
                 'mode': cable.mode,
+                'category': cable.category or '',
                 'points': points
-            })
-    
+            }
+            cable_routes.append(route_item)
+            cable_routes_list.append(route_item)
+            
     context = {
         'te': te,
         'cables': cables,
@@ -424,6 +466,11 @@ def te_dashboard(request, te_id):
         'tie_cables': tie_cables,
         'jbs': jbs,
         'cable_routes': cable_routes,
+        'jbs_json': json.dumps(jbs_list),
+        'equipments_json': json.dumps(equipments_list),
+        'cable_routes_json': json.dumps(cable_routes_list),
+        'bts_assets_json': json.dumps(bts_list_json),
+        'eb_circuits_json': json.dumps(eb_circuits_json),
     }
     return render(request, 'inventory/te_dashboard.html', context)
 

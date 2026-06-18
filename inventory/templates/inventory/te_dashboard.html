@@ -16,21 +16,27 @@
         transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         box-shadow: var(--shadow-sm);
         position: relative; overflow: hidden;
+        cursor: pointer;
     }
     .te-metric-card::after {
         content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
         background: var(--accent-color, var(--primary)); opacity: 0.8;
     }
-    .te-metric-card:hover { 
+    .te-metric-card:hover, .te-metric-card.active-card { 
         transform: translateY(-5px); 
         border-color: var(--accent-color, var(--primary));
         box-shadow: var(--shadow-md);
+    }
+    .te-metric-card.active-card {
+        border-width: 2px !important;
+        background: var(--slate-50);
     }
     .te-metric-card .v { font-size: 2rem; font-weight: 900; color: var(--slate-900); line-height: 1; margin-bottom: 0.5rem; }
     .te-metric-card .l { font-size: 0.75rem; font-weight: 800; color: var(--slate-500); text-transform: uppercase; letter-spacing: 0.08em; }
     
     body.dark-mode .te-metric-card { background: #161f31; border-color: #243049; }
     body.dark-mode .te-metric-card .v { color: white; }
+    body.dark-mode .te-metric-card.active-card { background: #1e293b; }
 
     /* Modern Action Drawer */
     .drawer-action {
@@ -200,23 +206,23 @@
 
     <!-- Metrics Row -->
     <div class="te-stats-grid">
-        <div class="te-metric-card accent-blue">
+        <div class="te-metric-card accent-blue" data-filter="eb_circuits">
             <span class="v">{{ te.ebcircuit_set.count }}</span>
             <span class="l">EB Circuits</span>
         </div>
-        <div class="te-metric-card accent-emerald">
+        <div class="te-metric-card accent-emerald" data-filter="inbound">
             <span class="v">{{ in_cables }}</span>
             <span class="l">Inbound</span>
         </div>
-        <div class="te-metric-card accent-rose">
+        <div class="te-metric-card accent-rose" data-filter="outbound">
             <span class="v">{{ out_cables }}</span>
             <span class="l">Outbound</span>
         </div>
-        <div class="te-metric-card accent-amber">
+        <div class="te-metric-card accent-amber" data-filter="core_nodes">
             <span class="v">{{ equipments.count }}</span>
             <span class="l">Core Nodes</span>
         </div>
-        <div class="te-metric-card accent-violet">
+        <div class="te-metric-card accent-violet" data-filter="bts_assets">
             <span class="v">{{ bts_count }}</span>
             <span class="l">BTS Assets</span>
         </div>
@@ -228,8 +234,11 @@
         <div class="col-lg-8">
             <div class="panel-premium">
                 <div class="panel-header">
-                    <h6 class="panel-title"><i class="bi bi-map-fill me-2 text-primary"></i>GIS Route Analytics</h6>
-                    <span class="badge-premium badge-live">Live Network</span>
+                    <h6 class="panel-title"><i class="bi bi-map-fill me-2 text-primary"></i>GIS Route Analytics <span id="map-filter-label" class="text-muted small ms-2 fw-700">(Overview)</span></h6>
+                    <div class="d-flex align-items-center gap-2">
+                        <button id="reset-map-btn" class="btn btn-sm btn-outline-secondary rounded-pill fw-800 extra-small px-3" style="display: none;" onclick="filterMap('overview')">Reset Map</button>
+                        <span class="badge-premium badge-live">Live Network</span>
+                    </div>
                 </div>
                 <div id="map" class="map-frame"></div>
             </div>
@@ -295,6 +304,15 @@
 
 {% block extra_js %}
 <script>
+    // Asset datasets passed from Django views
+    const jbsData = {{ jbs_json|safe }};
+    const equipmentsData = {{ equipments_json|safe }};
+    const cableRoutesData = {{ cable_routes_json|safe }};
+    const btsAssetsData = {{ bts_assets_json|safe }};
+    const ebCircuitsData = {{ eb_circuits_json|safe }};
+
+    let filterMap; // Declare globally so reset button/HTML event handlers can call it
+
     $(document).ready(function() {
         $('#toggleActions').on('click', function() {
             $('#actionPanel').slideToggle(400);
@@ -310,31 +328,148 @@
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
 
-            const colors = {'JB': '#10b981', 'EQUIPMENT': '#ef4444', 'TE': '#4f46e5'};
+            // Create a feature group to manage markers dynamically
+            let mapMarkersGroup = L.featureGroup().addTo(map);
 
-            {% for jb in jbs %}
-                {% if jb.latitude and jb.longitude %}
-                L.circleMarker([{{ jb.latitude }}, {{ jb.longitude }}], {
-                    color: colors.JB, fillOpacity: 0.9, radius: 6, weight: 2, fillColor: 'white'
-                }).addTo(map).bindPopup("<b>JB: {{ jb.jb_id }}</b>");
-                {% endif %}
-            {% endfor %}
+            filterMap = function(filterType) {
+                // Clear existing map layers
+                mapMarkersGroup.clearLayers();
+                $('.te-metric-card').removeClass('active-card');
 
-            {% for eq in equipments %}
-                {% if eq.latitude and eq.longitude %}
-                L.circleMarker([{{ eq.latitude }}, {{ eq.longitude }}], {
-                    color: colors.EQUIPMENT, fillOpacity: 0.9, radius: 8, weight: 2, fillColor: 'white'
-                }).addTo(map).bindPopup("<b>Node: {{ eq.name }}</b>");
-                {% endif %}
-            {% endfor %}
+                let bounds = [];
+                let filterLabel = '(Overview)';
+                let showReset = false;
 
-            {% for route in cable_routes %}
-                var latlngs = {{ route.points|safe }};
-                L.polyline(latlngs, {
-                    color: '{{ route.mode }}' === 'OH' ? '#f59e0b' : '#3b82f6',
-                    weight: 4, opacity: 0.8, lineCap: 'round', lineJoin: 'round'
-                }).addTo(map);
-            {% endfor %}
+                if (filterType === 'overview') {
+                    // 1. Plot Junction Boxes
+                    jbsData.forEach(jb => {
+                        let marker = L.circleMarker([jb.latitude, jb.longitude], {
+                            color: '#10b981', fillOpacity: 0.9, radius: 6, weight: 2, fillColor: 'white'
+                        }).bindPopup("<b>Junction Box</b><br>ID: " + jb.jb_id);
+                        mapMarkersGroup.addLayer(marker);
+                        bounds.push([jb.latitude, jb.longitude]);
+                    });
+
+                    // 2. Plot Equipments (Core Nodes)
+                    equipmentsData.forEach(eq => {
+                        let marker = L.circleMarker([eq.latitude, eq.longitude], {
+                            color: '#ef4444', fillOpacity: 0.9, radius: 8, weight: 2, fillColor: 'white'
+                        }).bindPopup("<b>Core Node</b><br>Name: " + eq.name + "<br>Ports: " + eq.used_ports + "/" + eq.total_ports);
+                        mapMarkersGroup.addLayer(marker);
+                        bounds.push([eq.latitude, eq.longitude]);
+                    });
+
+                    // 3. Plot Cables
+                    cableRoutesData.forEach(route => {
+                        let polyline = L.polyline(route.points, {
+                            color: route.mode === 'OH' ? '#f59e0b' : '#3b82f6',
+                            weight: 4, opacity: 0.8, lineCap: 'round', lineJoin: 'round'
+                        }).bindPopup("<b>Cable: " + route.name + "</b><br>Type: " + route.type + "<br>Mode: " + route.mode);
+                        mapMarkersGroup.addLayer(polyline);
+                        route.points.forEach(pt => bounds.push(pt));
+                    });
+
+                    filterLabel = '(Overview)';
+                    showReset = false;
+                }
+                else if (filterType === 'eb_circuits') {
+                    $('.te-metric-card[data-filter="eb_circuits"]').addClass('active-card');
+                    ebCircuitsData.forEach(eb => {
+                        let marker = L.circleMarker([eb.latitude, eb.longitude], {
+                            color: '#3b82f6', fillOpacity: 0.9, radius: 8, weight: 2, fillColor: 'white'
+                        }).bindPopup("<b>EB Circuit</b><br>Client: " + eb.client_name + "<br>Type: " + eb.circuit_type + "<br>Bandwidth: " + eb.bandwidth + "<br>Location: " + eb.customer_premise_location);
+                        mapMarkersGroup.addLayer(marker);
+                        bounds.push([eb.latitude, eb.longitude]);
+                    });
+
+                    filterLabel = ebCircuitsData.length > 0 ? '(EB Circuits)' : '(EB Circuits - No GPS Coordinates)';
+                    showReset = true;
+                }
+                else if (filterType === 'bts_assets') {
+                    $('.te-metric-card[data-filter="bts_assets"]').addClass('active-card');
+                    btsAssetsData.forEach(bts => {
+                        let marker = L.circleMarker([bts.latitude, bts.longitude], {
+                            color: '#8b5cf6', fillOpacity: 0.9, radius: 8, weight: 2, fillColor: 'white'
+                        }).bindPopup("<b>BTS Asset</b><br>Name: " + bts.bts_name + "<br>RP ID: " + bts.rp_id + "<br>Type: " + bts.site_type + "<br>Place: " + bts.place_name);
+                        mapMarkersGroup.addLayer(marker);
+                        bounds.push([bts.latitude, bts.longitude]);
+                    });
+
+                    filterLabel = btsAssetsData.length > 0 ? '(BTS Assets)' : '(BTS Assets - No GPS Coordinates)';
+                    showReset = true;
+                }
+                else if (filterType === 'core_nodes') {
+                    $('.te-metric-card[data-filter="core_nodes"]').addClass('active-card');
+                    equipmentsData.forEach(eq => {
+                        let marker = L.circleMarker([eq.latitude, eq.longitude], {
+                            color: '#ef4444', fillOpacity: 0.9, radius: 8, weight: 2, fillColor: 'white'
+                        }).bindPopup("<b>Core Node</b><br>Name: " + eq.name + "<br>Ports: " + eq.used_ports + "/" + eq.total_ports);
+                        mapMarkersGroup.addLayer(marker);
+                        bounds.push([eq.latitude, eq.longitude]);
+                    });
+
+                    filterLabel = equipmentsData.length > 0 ? '(Core Nodes)' : '(Core Nodes - No GPS Coordinates)';
+                    showReset = true;
+                }
+                else if (filterType === 'inbound') {
+                    $('.te-metric-card[data-filter="inbound"]').addClass('active-card');
+                    let count = 0;
+                    cableRoutesData.filter(r => r.category === 'IN').forEach(route => {
+                        let polyline = L.polyline(route.points, {
+                            color: '#10b981',
+                            weight: 4, opacity: 0.8, lineCap: 'round', lineJoin: 'round'
+                        }).bindPopup("<b>Inbound Cable</b><br>Name: " + route.name + "<br>Type: " + route.type);
+                        mapMarkersGroup.addLayer(polyline);
+                        route.points.forEach(pt => {
+                            bounds.push(pt);
+                            count++;
+                        });
+                    });
+
+                    filterLabel = count > 0 ? '(Inbound Cables)' : '(Inbound Cables - No GPS Coordinates)';
+                    showReset = true;
+                }
+                else if (filterType === 'outbound') {
+                    $('.te-metric-card[data-filter="outbound"]').addClass('active-card');
+                    let count = 0;
+                    cableRoutesData.filter(r => r.category === 'OUT').forEach(route => {
+                        let polyline = L.polyline(route.points, {
+                            color: '#f43f5e',
+                            weight: 4, opacity: 0.8, lineCap: 'round', lineJoin: 'round'
+                        }).bindPopup("<b>Outbound Cable</b><br>Name: " + route.name + "<br>Type: " + route.type);
+                        mapMarkersGroup.addLayer(polyline);
+                        route.points.forEach(pt => {
+                            bounds.push(pt);
+                            count++;
+                        });
+                    });
+
+                    filterLabel = count > 0 ? '(Outbound Cables)' : '(Outbound Cables - No GPS Coordinates)';
+                    showReset = true;
+                }
+
+                // Fit map bounds to show plotted elements
+                if (bounds.length > 0) {
+                    map.fitBounds(bounds, { padding: [50, 50] });
+                }
+
+                // Update UI state
+                $('#map-filter-label').text(filterLabel);
+                if (showReset) {
+                    $('#reset-map-btn').show();
+                } else {
+                    $('#reset-map-btn').hide();
+                }
+            };
+
+            // Bind click events on metric cards
+            $('.te-metric-card[data-filter]').on('click', function() {
+                const filter = $(this).attr('data-filter');
+                filterMap(filter);
+            });
+
+            // Initial plot of overview
+            filterMap('overview');
         }
     });
 </script>
