@@ -255,33 +255,7 @@ def dashboard(request):
 
     # Auto-assign/match unlinked MobileBTS sites on dashboard load
     if user_division:
-        unlinked_bts = MobileBTS.objects.filter(
-            Q(te=None, maan_node=None) | 
-            Q(te__name__startswith="UNMAPPED -", maan_node=None)
-        )
-        if unlinked_bts.exists():
-            placeholder_name = f"UNMAPPED - {user_division.name}"
-            placeholder_te, _ = TelephoneExchange.objects.get_or_create(
-                name=placeholder_name,
-                defaults={'nwo': user_division}
-            )
-            for bts in unlinked_bts:
-                matched_te = None
-                # 1. Try to match by place_name
-                if bts.place_name:
-                    matched_te = _resolve_te_helper(bts.place_name, user_division)
-                # 2. Try to match by bts_name
-                if not matched_te and bts.bts_name:
-                    matched_te = _resolve_te_helper(bts.bts_name, user_division)
-                
-                # 3. Save matching or fallback to placeholder (only if te is currently None)
-                if matched_te:
-                    if bts.te != matched_te:
-                        bts.te = matched_te
-                        bts.save()
-                elif bts.te is None:
-                    bts.te = placeholder_te
-                    bts.save()
+        _auto_assign_bts_helper(user_division)
 
     # 2. Fetch Divisions
     if user_division:
@@ -602,6 +576,8 @@ class BTSListView(LoginRequiredMixin, DivisionRequiredMixin, ListView):
     context_object_name = 'bts_list'
 
     def get_queryset(self):
+        if hasattr(self.request.user, 'profile') and self.request.user.profile.division:
+            _auto_assign_bts_helper(self.request.user.profile.division)
         queryset = super().get_queryset().filter(site_type='4G').select_related('maan_node', 'maan_node__te')
         
         # Search filter
@@ -988,6 +964,8 @@ class No4GBTSListView(LoginRequiredMixin, DivisionRequiredMixin, ListView):
     context_object_name = 'bts_list'
 
     def get_queryset(self):
+        if hasattr(self.request.user, 'profile') and self.request.user.profile.division:
+            _auto_assign_bts_helper(self.request.user.profile.division)
         queryset = super().get_queryset().filter(site_type='NON_4G').select_related('te', 'te__nwo')
         
         # Search filter
@@ -1894,6 +1872,37 @@ def _resolve_te_helper(te_name, division=None):
                 return exchange
                 
     return None
+
+def _auto_assign_bts_helper(division):
+    if not division:
+        return
+    unlinked_bts = MobileBTS.objects.filter(
+        Q(te=None, maan_node=None) | 
+        Q(te__name__startswith="UNMAPPED -", maan_node=None)
+    )
+    if unlinked_bts.exists():
+        placeholder_name = f"UNMAPPED - {division.name}"
+        placeholder_te, _ = TelephoneExchange.objects.get_or_create(
+            name=placeholder_name,
+            defaults={'nwo': division}
+        )
+        for bts in unlinked_bts:
+            matched_te = None
+            # 1. Try to match by place_name
+            if bts.place_name:
+                matched_te = _resolve_te_helper(bts.place_name, division)
+            # 2. Try to match by bts_name
+            if not matched_te and bts.bts_name:
+                matched_te = _resolve_te_helper(bts.bts_name, division)
+            
+            # 3. Save matching or fallback to placeholder (only if te is currently None)
+            if matched_te:
+                if bts.te != matched_te:
+                    bts.te = matched_te
+                    bts.save()
+            elif bts.te is None:
+                bts.te = placeholder_te
+                bts.save()
 
 @login_required
 def bulk_upload(request):
