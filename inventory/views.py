@@ -253,6 +253,17 @@ def dashboard(request):
     if hasattr(request.user, 'profile') and request.user.profile.division:
         user_division = request.user.profile.division
 
+    # Auto-assign unlinked MobileBTS to user's division placeholder if they exist
+    if user_division:
+        unlinked_bts = MobileBTS.objects.filter(te=None, maan_node=None)
+        if unlinked_bts.exists():
+            placeholder_name = f"UNMAPPED - {user_division.name}"
+            placeholder_te, _ = TelephoneExchange.objects.get_or_create(
+                name=placeholder_name,
+                defaults={'nwo': user_division}
+            )
+            unlinked_bts.update(te=placeholder_te)
+
     # 2. Fetch Divisions
     if user_division:
         nwos_to_process = NWO.objects.filter(id=user_division.id)
@@ -1989,6 +2000,28 @@ def bulk_upload(request):
                     try:
                         rp_id = str(get_value(row, 'RP ID', required=True)).strip()
                         bts_name = get_value(row, 'BTS Name', required=True)
+                        
+                        te_name = get_value(row, 'TE Name', 'TE')
+                        division = None
+                        if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
+                            division = request.user.profile.division
+                        
+                        te = None
+                        if te_name not in (None, ''):
+                            te = _resolve_te_helper(te_name, division)
+                            
+                        if not te:
+                            if not division:
+                                division = NWO.objects.first()
+                            
+                            placeholder_name = f"UNMAPPED - {division.name}" if division else "UNMAPPED - ALL"
+                            te, _ = TelephoneExchange.objects.get_or_create(
+                                name=placeholder_name,
+                                defaults={'nwo': division} if division else {}
+                            )
+                            if te_name not in (None, ''):
+                                row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found. Saved under '{placeholder_name}'.")
+
                         place_name = get_value(row, 'Place Name')
                         latitude = get_value(row, 'Latitude')
                         longitude = get_value(row, 'Longitude')
@@ -2004,6 +2037,8 @@ def bulk_upload(request):
                             }
 
                         MobileBTS.objects.create(
+                            site_type='4G',
+                            te=te,
                             rp_id=rp_id,
                             bts_name=bts_name,
                             place_name=place_name,
@@ -2014,12 +2049,15 @@ def bulk_upload(request):
                             cef_ports_data=ports_data,
                         )
                         created_count += 1
-                    except IntegrityError:
+                    except IntegrityError as e:
+                        row_errors.append(f"Row {i}: Database integrity error - {e}")
                         skipped_count += 1
                     except (InvalidOperation, ValueError) as e:
                         row_errors.append(f"Row {i}: Invalid numeric value ({e})")
+                        skipped_count += 1
                     except Exception as e:
                         row_errors.append(f"Row {i}: {e}")
+                        skipped_count += 1
                 if row_errors:
                     messages.warning(request, f"BTS uploaded with {len(row_errors)} row errors. Created: {created_count}, Skipped: {skipped_count}.")
                 else:
@@ -2207,14 +2245,14 @@ def download_template(request):
         data = ['PN-CPAN-01', 'CPAN_B', 24, 'Panambilly Nagar', 'Sample equipment']
     elif category == 'BTS':
         columns = [
-            'RP ID', 'BTS Name', 'Place Name', 'Latitude', 'Longitude', 'Has CEF 12T', 'Is Ring',
+            'RP ID', 'BTS Name', 'TE Name', 'Place Name', 'Latitude', 'Longitude', 'Has CEF 12T', 'Is Ring',
             'P2 Circuit', 'P2 System End', 'P2 Cable',
             'P3 Circuit', 'P3 System End', 'P3 Cable',
             'P4 Circuit', 'P4 System End', 'P4 Cable',
             'P5 Circuit', 'P5 System End', 'P5 Cable',
         ]
         data = [
-            'RP-0001', 'BTS Example Site', 'Sample Location', 9.931233, 76.267303, 'Y', 'N',
+            'RP-0001', 'BTS Example Site', 'Panambilly Nagar', 'Sample Location', 9.931233, 76.267303, 'Y', 'N',
             'CIR-001', 'SYSTEM-A', 'CABLE-001',
             '', '', '',
             '', '', '',
