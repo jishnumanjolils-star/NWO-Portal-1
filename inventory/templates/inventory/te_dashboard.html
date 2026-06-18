@@ -95,6 +95,53 @@
     
     .map-frame { height: 520px; width: 100%; border-radius: 0 0 28px 28px; }
     
+    /* Dynamic GIS Marker Styles */
+    .map-tower-icon {
+        width: 32px;
+        height: 32px;
+        background: rgba(139, 92, 246, 0.15);
+        border: 2px solid #8b5cf6;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 10px rgba(139, 92, 246, 0.4);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .map-tower-icon i {
+        color: #8b5cf6;
+        font-size: 1.1rem;
+        line-height: 1;
+    }
+    .map-tower-icon:hover {
+        transform: scale(1.15);
+        background: rgba(139, 92, 246, 0.3);
+        box-shadow: 0 0 15px rgba(139, 92, 246, 0.6);
+    }
+    
+    .map-circuit-icon {
+        width: 32px;
+        height: 32px;
+        background: rgba(59, 130, 246, 0.15);
+        border: 2px solid #3b82f6;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .map-circuit-icon i {
+        color: #3b82f6;
+        font-size: 1.1rem;
+        line-height: 1;
+    }
+    .map-circuit-icon:hover {
+        transform: scale(1.15);
+        background: rgba(59, 130, 246, 0.3);
+        box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
+    }
+    
     /* Professional Accent Colors */
     .accent-blue { --accent-color: #3b82f6; }
     .accent-emerald { --accent-color: #10b981; }
@@ -374,9 +421,15 @@
                 }
                 else if (filterType === 'eb_circuits') {
                     $('.te-metric-card[data-filter="eb_circuits"]').addClass('active-card');
+                    let circuitIcon = L.divIcon({
+                        html: '<div class="map-circuit-icon"><i class="bi bi-diagram-3"></i></div>',
+                        iconSize: [32, 32],
+                        iconAnchor: [16, 16],
+                        className: ''
+                    });
                     ebCircuitsData.forEach(eb => {
-                        let marker = L.circleMarker([eb.latitude, eb.longitude], {
-                            color: '#3b82f6', fillOpacity: 0.9, radius: 8, weight: 2, fillColor: 'white'
+                        let marker = L.marker([eb.latitude, eb.longitude], {
+                            icon: circuitIcon
                         }).bindPopup("<b>EB Circuit</b><br>Client: " + eb.client_name + "<br>Type: " + eb.circuit_type + "<br>Bandwidth: " + eb.bandwidth + "<br>Location: " + eb.customer_premise_location);
                         mapMarkersGroup.addLayer(marker);
                         bounds.push([eb.latitude, eb.longitude]);
@@ -387,9 +440,15 @@
                 }
                 else if (filterType === 'bts_assets') {
                     $('.te-metric-card[data-filter="bts_assets"]').addClass('active-card');
+                    let towerIcon = L.divIcon({
+                        html: '<div class="map-tower-icon"><i class="bi bi-broadcast"></i></div>',
+                        iconSize: [32, 32],
+                        iconAnchor: [16, 16],
+                        className: ''
+                    });
                     btsAssetsData.forEach(bts => {
-                        let marker = L.circleMarker([bts.latitude, bts.longitude], {
-                            color: '#8b5cf6', fillOpacity: 0.9, radius: 8, weight: 2, fillColor: 'white'
+                        let marker = L.marker([bts.latitude, bts.longitude], {
+                            icon: towerIcon
                         }).bindPopup("<b>BTS Asset</b><br>Name: " + bts.bts_name + "<br>RP ID: " + bts.rp_id + "<br>Type: " + bts.site_type + "<br>Place: " + bts.place_name);
                         mapMarkersGroup.addLayer(marker);
                         bounds.push([bts.latitude, bts.longitude]);
