@@ -1753,6 +1753,11 @@ def _resolve_te_helper(te_name, division=None):
         'PANAMPILLY NAGAR': 'Panampilly Nagar TE',
         'PANAMBILLI NAGAR': 'Panampilly Nagar TE',
         'PANAMPILLYNGR': 'Panampilly Nagar TE',
+        'AYAPPANKAV': 'Ayyappankavu TE',
+        'AYYAPPANKAVU': 'Ayyappankavu TE',
+        'CHITOOR': 'Chittoor TE',
+        'CHITTOOR': 'Chittoor TE',
+        'CHITUR': 'Chittoor TE',
         'SRM ROAD': 'Srm TE',
         'SRM': 'Srm TE',
     }
