@@ -1,0 +1,44 @@
+{% extends 'inventory/base.html' %}
+
+{% block title %}Delete No 4G Site - {{ bts.rp_id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Confirm Delete</h5>
+                </div>
+                <div class="card-body">
+                    <p>Are you sure you want to delete the Non-4G Site <strong>{{ bts.bts_name }} ({{ bts.rp_id }})</strong>?</p>
+                    
+                    <ul class="list-group mb-3">
+                        <li class="list-group-item"><strong>RP ID:</strong> {{ bts.rp_id }}</li>
+                        <li class="list-group-item"><strong>Site Name:</strong> {{ bts.bts_name }}</li>
+                        <li class="list-group-item"><strong>Exchange:</strong> {{ bts.te.name|default:"None" }}</li>
+                        <li class="list-group-item"><strong>Site Type:</strong> {{ bts.get_non_4g_type_display|default:"-" }}</li>
+                        <li class="list-group-item"><strong>Backhaul Media:</strong> {{ bts.get_backhaul_media_display|default:"-" }}</li>
+                    </ul>
+                    
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-circle"></i> 
+                        <strong>Warning:</strong> This action cannot be undone.
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> Yes, Delete
+                        </button>
+                        <a href="{% url 'no_4g_bts_list' %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

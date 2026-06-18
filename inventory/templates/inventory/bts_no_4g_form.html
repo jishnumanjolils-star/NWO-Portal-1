@@ -1,0 +1,176 @@
+{% extends 'inventory/base.html' %}
+
+{% block title %}{% if form.instance.pk %}Edit No 4G Site{% else %}Add No 4G Site{% endif %} - NWO Portal{% endblock %}
+
+{% block extra_css %}
+<style>
+    body { background-color: #f4f7f6; }
+    .card-custom { border-radius: 15px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+    .section-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px; margin-bottom: 0.5rem; display: block; }
+    .form-control-custom { border-radius: 10px; border: 1px solid #e2e8f0; padding: 0.6rem 1rem; font-size: 0.9rem; transition: all 0.2s; }
+    .form-control-custom:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); outline: none; }
+    .btn-save { border-radius: 10px; padding: 0.7rem 2.5rem; font-weight: 700; letter-spacing: 0.5px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-4">
+    <div class="col-md-10 col-lg-8">
+        <div class="card card-custom">
+            <div class="card-header bg-white p-4 border-0">
+                <div class="d-flex align-items-center">
+                    <div class="bg-primary bg-opacity-10 p-2 rounded-3 me-3">
+                        <i class="bi bi-broadcast-pin fs-4 text-primary"></i>
+                    </div>
+                    <div>
+                        <h4 class="mb-0 fw-bold text-dark">{% if form.instance.pk %}Edit No 4G Site{% else %}Add No 4G Site{% endif %}</h4>
+                        <p class="text-muted small mb-0">Non-4G Mobile Tower Entry</p>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-4 pt-0">
+                <form method="post" enctype="multipart/form-data" id="btsForm">
+                    {% csrf_token %}
+                    
+                    <!-- Basic Info -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <span class="section-label">RP ID</span>
+                            <input type="text" name="rp_id" value="{{ form.rp_id.value|default:'' }}" class="form-control form-control-custom" placeholder="e.g. RP1234" required>
+                            {% if form.rp_id.errors %}
+                                <div class="text-danger small mt-1">{{ form.rp_id.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <span class="section-label">Site Name</span>
+                            <input type="text" name="bts_name" value="{{ form.bts_name.value|default:'' }}" class="form-control form-control-custom" placeholder="e.g. Kochi Main" required>
+                            {% if form.bts_name.errors %}
+                                <div class="text-danger small mt-1">{{ form.bts_name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- TE and Type -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <span class="section-label">Telephone Exchange</span>
+                            <select name="te" class="form-select form-control-custom" required>
+                                <option value="">Select Exchange</option>
+                                {% for choice in form.fields.te.queryset %}
+                                    <option value="{{ choice.pk }}" {% if form.te.value|stringformat:"s" == choice.pk|stringformat:"s" %}selected{% endif %}>{{ choice.name }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.te.errors %}
+                                <div class="text-danger small mt-1">{{ form.te.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <span class="section-label">No 4G Site Type</span>
+                            <select name="non_4g_type" class="form-select form-control-custom">
+                                <option value="">Select Site Type</option>
+                                {% for val, label in form.fields.non_4g_type.choices %}
+                                    {% if val %}
+                                        <option value="{{ val }}" {% if form.non_4g_type.value == val %}selected{% endif %}>{{ label }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                            {% if form.non_4g_type.errors %}
+                                <div class="text-danger small mt-1">{{ form.non_4g_type.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Transmission Media and Connected Node -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <span class="section-label">Backhaul Media</span>
+                            <select name="backhaul_media" class="form-select form-control-custom">
+                                <option value="">Select Backhaul Media</option>
+                                {% for val, label in form.fields.backhaul_media.choices %}
+                                    {% if val %}
+                                        <option value="{{ val }}" {% if form.backhaul_media.value == val %}selected{% endif %}>{{ label }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                            {% if form.backhaul_media.errors %}
+                                <div class="text-danger small mt-1">{{ form.backhaul_media.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <span class="section-label">Connected Node/Equipment</span>
+                            <input type="text" name="connected_equipment" value="{{ form.connected_equipment.value|default:'' }}" class="form-control form-control-custom" placeholder="e.g. BSC, RNC, MSC, IP-BST">
+                            {% if form.connected_equipment.errors %}
+                                <div class="text-danger small mt-1">{{ form.connected_equipment.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Location -->
+                    <div class="card bg-light border-0 mb-4" style="border-radius: 15px;">
+                        <div class="card-body p-4">
+                            <span class="section-label mb-3">Location Details</span>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <input type="number" step="any" name="latitude" id="id_latitude" value="{{ form.latitude.value|default:'' }}" class="form-control form-control-custom" placeholder="Latitude">
+                                    {% if form.latitude.errors %}
+                                        <div class="text-danger small mt-1">{{ form.latitude.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="number" step="any" name="longitude" id="id_longitude" value="{{ form.longitude.value|default:'' }}" class="form-control form-control-custom" placeholder="Longitude">
+                                    {% if form.longitude.errors %}
+                                        <div class="text-danger small mt-1">{{ form.longitude.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="button" class="btn btn-dark w-100 py-2 rounded-3 small fw-bold" onclick="getLocation()">
+                                        <i class="bi bi-geo-alt-fill me-1"></i> Auto Capture
+                                    </button>
+                                </div>
+                                <div class="col-12">
+                                    <input type="text" name="place_name" value="{{ form.place_name.value|default:'' }}" class="form-control form-control-custom" placeholder="Place Name / Landmark (Optional)">
+                                    {% if form.place_name.errors %}
+                                        <div class="text-danger small mt-1">{{ form.place_name.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Remarks -->
+                    <div class="mb-4">
+                        <span class="section-label">Remarks</span>
+                        <textarea name="remarks" class="form-control form-control-custom" rows="3" placeholder="Optional remarks...">{{ form.remarks.value|default:'' }}</textarea>
+                        {% if form.remarks.errors %}
+                            <div class="text-danger small mt-1">{{ form.remarks.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-flex justify-content-end gap-3 mt-5">
+                        <a href="{% url 'no_4g_bts_list' %}" class="btn btn-light px-4 fw-bold text-muted">Cancel</a>
+                        <button type="submit" class="btn btn-primary btn-save shadow-sm">Save Site Record</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function getLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                document.getElementById("id_latitude").value = position.coords.latitude.toFixed(9);
+                document.getElementById("id_longitude").value = position.coords.longitude.toFixed(9);
+            }, function(error) {
+                alert("Error capturing location: " + error.message);
+            });
+        } else {
+            alert("Geolocation is not supported by this browser.");
+        }
+    }
+</script>
+{% endblock %}

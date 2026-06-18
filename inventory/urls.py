@@ -35,6 +35,13 @@ urlpatterns = [
     path('bts/<int:pk>/edit/', views.BTSUpdateView.as_view(), name='bts_update'),
     path('bts/<int:pk>/delete/', views.BTSDeleteView.as_view(), name='bts_delete'),
     
+    # No 4G BTS URLs
+    path('bts/no-4g/', views.No4GBTSListView.as_view(), name='no_4g_bts_list'),
+    path('bts/no-4g/create/', views.No4GBTSCreateView.as_view(), name='no_4g_bts_create'),
+    path('bts/no-4g/<int:pk>/', views.No4GBTSDetailView.as_view(), name='no_4g_bts_detail'),
+    path('bts/no-4g/<int:pk>/edit/', views.No4GBTSUpdateView.as_view(), name='no_4g_bts_update'),
+    path('bts/no-4g/<int:pk>/delete/', views.No4GBTSDeleteView.as_view(), name='no_4g_bts_delete'),
+    
     # FTTH URLs
     path('ftth/', views.FTTHListView.as_view(), name='ftth_list'),
     path('ftth/add/', views.FTTHCreateView.as_view(), name='ftth_create'),
@@ -70,6 +77,7 @@ urlpatterns = [
     path('export/cables/', views.export_cables, name='export_cables'),
     path('export/equipment/', views.export_equipment, name='export_equipment'),
     path('export/bts/', views.export_bts, name='export_bts'),
+    path('export/bts/no-4g/', views.export_no_4g_bts, name='export_no_4g_bts'),
     path('export/ftth/', views.export_ftth, name='export_ftth'),
     path('export/circuits/', views.export_circuits, name='export_circuits'),
 

@@ -516,6 +516,41 @@ class BTSForm(DivisionFilteredFormMixin, forms.ModelForm):
         return instance
 
 
+class Non4GBTSForm(DivisionFilteredFormMixin, forms.ModelForm):
+    class Meta:
+        model = MobileBTS
+        fields = [
+            'rp_id', 'bts_name', 'te', 'latitude', 'longitude', 'place_name',
+            'non_4g_type', 'backhaul_media', 'connected_equipment', 'remarks'
+        ]
+        widgets = {
+            'latitude': forms.NumberInput(attrs={'step': 'any', 'placeholder': 'Latitude'}),
+            'longitude': forms.NumberInput(attrs={'step': 'any', 'placeholder': 'Longitude'}),
+            'bts_name': forms.TextInput(attrs={'placeholder': 'Enter Site Name'}),
+            'rp_id': forms.TextInput(attrs={'placeholder': 'Enter RP ID / Site ID'}),
+            'place_name': forms.TextInput(attrs={'placeholder': 'Optional Place Name'}),
+            'connected_equipment': forms.TextInput(attrs={'placeholder': 'e.g. BSC, RNC, MSC, IP-BST'}),
+            'remarks': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Optional remarks...'}),
+        }
+        labels = {
+            'te': 'Telephone Exchange',
+            'non_4g_type': 'No 4G Site Type',
+            'backhaul_media': 'Backhaul Media',
+            'connected_equipment': 'Connected Node/Equipment',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['te'].required = True
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.site_type = 'NON_4G'
+        if commit:
+            instance.save()
+        return instance
+
+
 class ChangePasswordForm(forms.Form):
     current_password = forms.CharField(
         widget=forms.PasswordInput(attrs={'autocomplete': 'current-password'})

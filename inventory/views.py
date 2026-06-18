@@ -4,7 +4,7 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 from django.db.models import Count, Sum, Avg, F, Q
 from django.db import IntegrityError
 from .models import NWO, TelephoneExchange, Cable, Equipment, EBCircuit, MobileBTS, JunctionBox, LIU, Fiber, Splicing, FTTH, OHMaintenanceEntry, OHMaintenanceActivity, OHMaintenanceRateMaster
-from .forms import LIUForm, JBForm, CableForm, EquipmentForm, CircuitForm, BTSForm, FTTHForm, ChangePasswordForm, OHMaintenanceEntryForm, OHMaintenanceActivityFormSet
+from .forms import LIUForm, JBForm, CableForm, EquipmentForm, CircuitForm, BTSForm, Non4GBTSForm, FTTHForm, ChangePasswordForm, OHMaintenanceEntryForm, OHMaintenanceActivityFormSet
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
@@ -40,7 +40,7 @@ class DivisionRequiredMixin:
                 elif self.model == EBCircuit:
                     queryset = queryset.filter(te__nwo=division)
                 elif self.model == MobileBTS:
-                    queryset = queryset.filter(maan_node__te__nwo=division)
+                    queryset = queryset.filter(Q(maan_node__te__nwo=division) | Q(te__nwo=division)).distinct()
                 elif self.model == JunctionBox:
                     queryset = queryset.filter(te__nwo=division)
                 elif self.model == LIU:
@@ -290,7 +290,7 @@ def dashboard(request):
                 'cable_count': te.cables.count(),
                 'equipment_count': te.equipments.count(),
                 'circuit_count': EBCircuit.objects.filter(te=te).count(),
-                'bts_count': MobileBTS.objects.filter(maan_node__te=te).count(),
+                'bts_count': MobileBTS.objects.filter(Q(maan_node__te=te) | Q(te=te)).distinct().count(),
                 'ftth_count': FTTH.objects.filter(te=te).count(),
             })
         
@@ -306,7 +306,7 @@ def dashboard(request):
         total_cables = Cable.objects.filter(te__nwo=user_division).count()
         total_equipment = Equipment.objects.filter(te__nwo=user_division).count()
         # For BTS, we count linked ones. For FTTH, we use the direct division relation.
-        total_bts = MobileBTS.objects.filter(maan_node__te__nwo=user_division).count()
+        total_bts = MobileBTS.objects.filter(Q(maan_node__te__nwo=user_division) | Q(te__nwo=user_division)).distinct().count()
         total_ftth = FTTH.objects.filter(division=user_division).count()
     else:
         total_tes = TelephoneExchange.objects.count()
@@ -342,7 +342,7 @@ def te_dashboard(request, te_id):
     
     cables = Cable.objects.filter(te=te)
     equipments = Equipment.objects.filter(te=te)
-    bts_count = MobileBTS.objects.filter(maan_node__te=te).count()
+    bts_count = MobileBTS.objects.filter(Q(maan_node__te=te) | Q(te=te)).distinct().count()
     
     # Cable summary
     ug_summary = cables.filter(mode='UG').values('cable_type').annotate(count=Count('id')).order_by('cable_type')
@@ -366,7 +366,7 @@ def te_dashboard(request, te_id):
             'longitude': float(jb.longitude) if jb.longitude else None,
         })
     
-    bts_list = MobileBTS.objects.filter(maan_node__te=te)
+    bts_list = MobileBTS.objects.filter(Q(maan_node__te=te) | Q(te=te)).distinct()
     
     # Fetch route points for cables in this TE
     cable_routes = []
@@ -525,7 +525,7 @@ class BTSListView(LoginRequiredMixin, DivisionRequiredMixin, ListView):
     context_object_name = 'bts_list'
 
     def get_queryset(self):
-        queryset = super().get_queryset().select_related('maan_node', 'maan_node__te')
+        queryset = super().get_queryset().filter(site_type='4G').select_related('maan_node', 'maan_node__te')
         
         # Search filter
         search = self.request.GET.get('search')
@@ -903,6 +903,59 @@ class BTSDetailView(LoginRequiredMixin, DivisionRequiredMixin, DetailView):
     model = MobileBTS
     template_name = 'inventory/bts_detail.html'
     context_object_name = 'bts'
+
+
+class No4GBTSListView(LoginRequiredMixin, DivisionRequiredMixin, ListView):
+    model = MobileBTS
+    template_name = 'inventory/bts_no_4g_list.html'
+    context_object_name = 'bts_list'
+
+    def get_queryset(self):
+        queryset = super().get_queryset().filter(site_type='NON_4G').select_related('te', 'te__nwo')
+        
+        # Search filter
+        search = self.request.GET.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(rp_id__icontains=search) | 
+                Q(bts_name__icontains=search)
+            )
+        
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        queryset = self.get_queryset()
+        context['total_count'] = queryset.count()
+        context['fiber_count'] = queryset.filter(backhaul_media='FIBER').count()
+        context['microwave_count'] = queryset.filter(backhaul_media='MICROWAVE').count()
+        return context
+
+
+class No4GBTSDetailView(LoginRequiredMixin, DivisionRequiredMixin, DetailView):
+    model = MobileBTS
+    template_name = 'inventory/bts_no_4g_detail.html'
+    context_object_name = 'bts'
+
+
+class No4GBTSCreateView(LoginRequiredMixin, DivisionRequiredMixin, CreateView):
+    model = MobileBTS
+    form_class = Non4GBTSForm
+    template_name = 'inventory/bts_no_4g_form.html'
+    success_url = reverse_lazy('no_4g_bts_list')
+
+
+class No4GBTSUpdateView(LoginRequiredMixin, DivisionRequiredMixin, UpdateView):
+    model = MobileBTS
+    form_class = Non4GBTSForm
+    template_name = 'inventory/bts_no_4g_form.html'
+    success_url = reverse_lazy('no_4g_bts_list')
+
+
+class No4GBTSDeleteView(LoginRequiredMixin, DivisionRequiredMixin, DeleteView):
+    model = MobileBTS
+    template_name = 'inventory/bts_no_4g_confirm_delete.html'
+    success_url = reverse_lazy('no_4g_bts_list')
 
 import re
 
@@ -1395,11 +1448,11 @@ def export_equipment(request):
 
 @login_required
 def export_bts(request):
-    queryset = MobileBTS.objects.select_related('maan_node', 'maan_node__te').all()
+    queryset = MobileBTS.objects.filter(site_type='4G').select_related('maan_node', 'maan_node__te').all()
     division = None
     if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
         division = request.user.profile.division
-        queryset = queryset.filter(maan_node__te__nwo=division)
+        queryset = queryset.filter(Q(maan_node__te__nwo=division) | Q(te__nwo=division)).distinct()
 
     search = request.GET.get('search')
     if search:
@@ -1474,6 +1527,53 @@ def export_bts(request):
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     wb.save(response)
     return response
+
+
+@login_required
+def export_no_4g_bts(request):
+    queryset = MobileBTS.objects.filter(site_type='NON_4G').select_related('te', 'te__nwo').all()
+    division = None
+    if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
+        division = request.user.profile.division
+        queryset = queryset.filter(Q(maan_node__te__nwo=division) | Q(te__nwo=division)).distinct()
+
+    search = request.GET.get('search')
+    if search:
+        queryset = queryset.filter(Q(rp_id__icontains=search) | Q(bts_name__icontains=search))
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "No 4G BTS Report"
+
+    columns = [
+        'RP ID', 'Site Name', 'Telephone Exchange', 'Place Name',
+        'Latitude', 'Longitude', 'No 4G Site Type', 'Backhaul Media',
+        'Connected Node/Equipment', 'Remarks'
+    ]
+    ws.append(columns)
+
+    for bts in queryset.order_by('rp_id'):
+        te_name = bts.te.name if bts.te else ''
+        ws.append([
+            bts.rp_id,
+            bts.bts_name,
+            te_name,
+            bts.place_name or '',
+            float(bts.latitude) if bts.latitude is not None else '',
+            float(bts.longitude) if bts.longitude is not None else '',
+            bts.get_non_4g_type_display() if bts.non_4g_type else '',
+            bts.get_backhaul_media_display() if bts.backhaul_media else '',
+            bts.connected_equipment or '',
+            bts.remarks or ''
+        ])
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    division_label = division.name if division else 'all'
+    filename = f"no_4g_bts_report_{division_label.lower().replace(' ', '_')}.xlsx"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    wb.save(response)
+    return response
+
 
 @login_required
 def export_ftth(request):
@@ -1925,6 +2025,87 @@ def bulk_upload(request):
                 else:
                     messages.success(request, f"BTS uploaded successfully! Created: {created_count}, Skipped: {skipped_count}.")
 
+            elif upload_type == 'BTS_NO_4G':
+                for i, row in enumerate(rows, start=2):
+                    try:
+                        rp_id = str(get_value(row, 'RP ID', required=True)).strip()
+                        bts_name = get_value(row, 'Site Name', 'BTS Name', 'Name', required=True)
+                        te_name = get_value(row, 'TE', 'TE Name', required=True)
+                        
+                        division = None
+                        if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
+                            division = request.user.profile.division
+                        te = _resolve_te_helper(te_name, division)
+                        if not te:
+                            row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found.")
+                            skipped_count += 1
+                            continue
+
+                        place_name = get_value(row, 'Place Name')
+                        latitude = get_value(row, 'Latitude')
+                        longitude = get_value(row, 'Longitude')
+                        non_4g_type_val = get_value(row, 'No 4G Site Type', 'Site Type')
+                        backhaul_media_val = get_value(row, 'Backhaul Media')
+                        connected_equipment = get_value(row, 'Connected Node/Equipment', 'Connected Node')
+                        remarks = get_value(row, 'Remarks')
+
+                        # Normalize backhaul media choice
+                        if backhaul_media_val not in (None, ''):
+                            bm_upper = str(backhaul_media_val).strip().upper()
+                            if bm_upper in ('FIBER', 'FIBRE', 'F'):
+                                backhaul_media_val = 'FIBER'
+                            elif bm_upper in ('MICROWAVE', 'MW', 'M'):
+                                backhaul_media_val = 'MICROWAVE'
+                            elif bm_upper in ('LEASED LINE', 'LEASED_LINE', 'LL', 'L'):
+                                backhaul_media_val = 'LEASED_LINE'
+                            else:
+                                row_errors.append(f"Row {i}: Invalid Backhaul Media '{backhaul_media_val}'. Set to blank.")
+                                backhaul_media_val = None
+                        else:
+                            backhaul_media_val = None
+
+                        # Normalize non-4G type choice
+                        if non_4g_type_val not in (None, ''):
+                            nt_upper = str(non_4g_type_val).strip().upper().replace(' ', '').replace('+', '_')
+                            type_map = {
+                                '2G': '2G', '3G': '3G', '5G': '5G',
+                                '2G_3G': '2G_3G', '3G_5G': '3G_5G', '2G_3G_5G': '2G_3G_5G',
+                                '2G3G': '2G_3G', '3G5G': '3G_5G', '2G3G5G': '2G_3G_5G'
+                            }
+                            non_4g_type_val = type_map.get(nt_upper)
+                            if not non_4g_type_val:
+                                row_errors.append(f"Row {i}: Invalid No 4G Site Type '{get_value(row, 'No 4G Site Type', 'Site Type')}'. Set to blank.")
+                        else:
+                            non_4g_type_val = None
+
+                        MobileBTS.objects.create(
+                            site_type='NON_4G',
+                            rp_id=rp_id,
+                            bts_name=bts_name,
+                            te=te,
+                            place_name=place_name,
+                            latitude=Decimal(str(latitude)) if latitude not in (None, '') else None,
+                            longitude=Decimal(str(longitude)) if longitude not in (None, '') else None,
+                            non_4g_type=non_4g_type_val,
+                            backhaul_media=backhaul_media_val,
+                            connected_equipment=connected_equipment,
+                            remarks=remarks
+                        )
+                        created_count += 1
+                    except IntegrityError as e:
+                        row_errors.append(f"Row {i}: Database integrity error - {e}")
+                        skipped_count += 1
+                    except (InvalidOperation, ValueError) as e:
+                        row_errors.append(f"Row {i}: Invalid numeric value ({e})")
+                        skipped_count += 1
+                    except Exception as e:
+                        row_errors.append(f"Row {i}: {e}")
+                        skipped_count += 1
+                if row_errors:
+                    messages.warning(request, f"No 4G BTS uploaded with {len(row_errors)} row errors. Created: {created_count}, Skipped: {skipped_count}.")
+                else:
+                    messages.success(request, f"No 4G BTS uploaded successfully! Created: {created_count}, Skipped: {skipped_count}.")
+
             elif upload_type == 'FTTH':
                 user_division = None
                 if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
@@ -2034,6 +2215,15 @@ def download_template(request):
             '', '', '',
             '', '', '',
             '', '', '',
+        ]
+    elif category == 'BTS_NO_4G':
+        columns = [
+            'RP ID', 'Site Name', 'TE Name', 'Place Name', 'Latitude', 'Longitude',
+            'No 4G Site Type', 'Backhaul Media', 'Connected Node/Equipment', 'Remarks'
+        ]
+        data = [
+            'RP-0001', 'BTS Example Site', 'Panambilly Nagar', 'Sample Location', 9.931233, 76.267303,
+            '2G + 3G', 'Fiber', 'BSC', 'Sample No 4G Site'
         ]
     elif category == 'FTTH':
         columns = ['Customer Name', 'Landline Number', 'Optical Power', 'OLT Name', 'Port Number', 'Division', 'TE', 'Latitude', 'Longitude']

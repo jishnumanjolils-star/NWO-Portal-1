@@ -237,11 +237,45 @@ class EBCircuit(models.Model):
         return f"{self.client_name} - {self.circuit_type}"
 
 class MobileBTS(models.Model):
+    SITE_TYPE_CHOICES = [
+        ('4G', '4G Site'),
+        ('NON_4G', 'No 4G Site'),
+    ]
+    site_type = models.CharField(max_length=20, choices=SITE_TYPE_CHOICES, default='4G', verbose_name="Site Type")
+    
+    # Direct TE relationship (particularly useful for No 4G Sites)
+    te = models.ForeignKey(TelephoneExchange, on_delete=models.SET_NULL, null=True, blank=True, related_name='bts_sites', verbose_name="Telephone Exchange")
+    
     rp_id = models.CharField(max_length=100, unique=True, verbose_name="RP ID")
     bts_name = models.CharField(max_length=255, verbose_name="BTS Name", default="Unnamed BTS")
     latitude = models.DecimalField(max_digits=12, decimal_places=9, null=True, blank=True)
     longitude = models.DecimalField(max_digits=12, decimal_places=9, null=True, blank=True)
     place_name = models.CharField(max_length=255, blank=True, null=True)
+    
+    # Non-4G Specific Fields
+    NON_4G_TYPE_CHOICES = [
+        ('2G', '2G'),
+        ('3G', '3G'),
+        ('5G', '5G'),
+        ('2G_3G', '2G + 3G'),
+        ('3G_5G', '3G + 5G'),
+        ('2G_3G_5G', '2G + 3G + 5G'),
+    ]
+    non_4g_type = models.CharField(max_length=50, blank=True, null=True, choices=NON_4G_TYPE_CHOICES, verbose_name="No 4G Site Type")
+    backhaul_media = models.CharField(
+        max_length=100, 
+        blank=True, 
+        null=True, 
+        choices=[('FIBER', 'Fiber'), ('MICROWAVE', 'Microwave'), ('LEASED_LINE', 'Leased Line')], 
+        verbose_name="Backhaul Media"
+    )
+    connected_equipment = models.CharField(
+        max_length=255, 
+        blank=True, 
+        null=True, 
+        help_text="e.g. BSC, RNC, MSC, IP-BST", 
+        verbose_name="Connected Node/Equipment"
+    )
     
     has_cef_12t = models.BooleanField(default=False, verbose_name="Is CEF Having 12T")
     # CEF Ports data: list of dicts [{'port': 'P2', 'circuit': '', 'system_end': '', 'cable': ''}, ...]
