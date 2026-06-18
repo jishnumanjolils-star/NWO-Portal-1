@@ -253,16 +253,35 @@ def dashboard(request):
     if hasattr(request.user, 'profile') and request.user.profile.division:
         user_division = request.user.profile.division
 
-    # Auto-assign unlinked MobileBTS to user's division placeholder if they exist
+    # Auto-assign/match unlinked MobileBTS sites on dashboard load
     if user_division:
-        unlinked_bts = MobileBTS.objects.filter(te=None, maan_node=None)
+        unlinked_bts = MobileBTS.objects.filter(
+            Q(te=None, maan_node=None) | 
+            Q(te__name__startswith="UNMAPPED -", maan_node=None)
+        )
         if unlinked_bts.exists():
             placeholder_name = f"UNMAPPED - {user_division.name}"
             placeholder_te, _ = TelephoneExchange.objects.get_or_create(
                 name=placeholder_name,
                 defaults={'nwo': user_division}
             )
-            unlinked_bts.update(te=placeholder_te)
+            for bts in unlinked_bts:
+                matched_te = None
+                # 1. Try to match by place_name
+                if bts.place_name:
+                    matched_te = _resolve_te_helper(bts.place_name, user_division)
+                # 2. Try to match by bts_name
+                if not matched_te and bts.bts_name:
+                    matched_te = _resolve_te_helper(bts.bts_name, user_division)
+                
+                # 3. Save matching or fallback to placeholder (only if te is currently None)
+                if matched_te:
+                    if bts.te != matched_te:
+                        bts.te = matched_te
+                        bts.save()
+                elif bts.te is None:
+                    bts.te = placeholder_te
+                    bts.save()
 
     # 2. Fetch Divisions
     if user_division:
@@ -1721,13 +1740,19 @@ def _resolve_te_helper(te_name, division=None):
         return None
     name_str = str(te_name).strip()
     
-    # Custom mapping dictionary for spelling variations
+    # Custom mapping dictionary for spelling variations and common abbreviations
     mapping = {
         'BOAT JETTY ERNAKULAM': 'Boatjetty TE',
+        'BOAT JETTY': 'Boatjetty TE',
+        'BOATJETTY': 'Boatjetty TE',
         'CARRIER STATION ROAD': 'Csr TE',
+        'CSR': 'Csr TE',
         'KALOOR-ERNAKULAM': 'Kaloor TE',
+        'KALOOR': 'Kaloor TE',
         'PANAMPILLYNAGAR': 'Panampilly Nagar TE',
+        'PANAMPILLY NAGAR': 'Panampilly Nagar TE',
         'SRM ROAD': 'Srm TE',
+        'SRM': 'Srm TE',
     }
     
     lookup_upper = name_str.upper().replace(' ', '').replace('-', '')
@@ -1773,6 +1798,20 @@ def _resolve_te_helper(te_name, division=None):
     if qs.count() == 1:
         return qs.first()
         
+    # 5. Reverse substring search: check if any exchange name (without " TE") is a substring of the lookup string
+    lookup_clean = name_str.upper().replace(' ', '').replace('-', '')
+    if len(lookup_clean) >= 3:
+        all_exchanges = TelephoneExchange.objects.all()
+        if division:
+            all_exchanges = all_exchanges.filter(nwo=division)
+        for exchange in all_exchanges:
+            exch_clean = exchange.name.upper()
+            if exch_clean.endswith(" TE"):
+                exch_clean = exch_clean[:-3].strip()
+            exch_clean = exch_clean.replace(' ', '').replace('-', '')
+            if len(exch_clean) >= 3 and exch_clean in lookup_clean:
+                return exchange
+                
     return None
 
 @login_required
