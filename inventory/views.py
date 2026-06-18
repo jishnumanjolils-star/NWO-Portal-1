@@ -2165,7 +2165,11 @@ def bulk_upload(request):
                     messages.success(request, f"FTTH uploaded successfully! Created: {created_count}, Skipped: {skipped_count}.")
             
         except Exception as e:
-            messages.error(request, f"Error processing file: {str(e)}")
+            error_msg = str(e)
+            if "not a zip file" in error_msg.lower():
+                messages.error(request, "Error processing file: The uploaded file is not a valid Excel Workbook (.xlsx) file. If you are using an older Excel format (.xls) or CSV, please open the file and 'Save As' an 'Excel Workbook (*.xlsx)' before uploading.")
+            else:
+                messages.error(request, f"Error processing file: {error_msg}")
             
     return render(request, 'inventory/bulk_upload.html')
 
