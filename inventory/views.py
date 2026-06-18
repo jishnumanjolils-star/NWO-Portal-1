@@ -320,6 +320,14 @@ def dashboard(request):
         total_bts = MobileBTS.objects.count()
         total_ftth = FTTH.objects.count()
 
+    # System Diagnostic data
+    all_bts_debug = []
+    if request.user.is_superuser:
+        bts_qs = MobileBTS.objects.select_related('te')
+        if user_division:
+            bts_qs = bts_qs.filter(Q(maan_node__te__nwo=user_division) | Q(te__nwo=user_division)).distinct()
+        all_bts_debug = bts_qs.order_by('te__name', 'rp_id')
+
     context = {
         'nwo_data_list': nwo_data_list,
         'total_tes': total_tes,
@@ -330,6 +338,7 @@ def dashboard(request):
         'total_ftth': total_ftth,
         'is_filtered': user_division is not None,
         'user_division_name': user_division.name if user_division else "All Divisions",
+        'all_bts_debug': all_bts_debug,
     }
     return render(request, 'inventory/dashboard.html', context)
 
@@ -2157,6 +2166,20 @@ def bulk_upload(request):
                         has_cef_12t = parse_bool(get_value(row, 'Has CEF 12T', default=False))
                         is_ring = parse_bool(get_value(row, 'Is Ring', default=False))
 
+                        lat_dec = None
+                        if latitude not in (None, ''):
+                            try:
+                                lat_dec = Decimal(str(latitude))
+                            except (InvalidOperation, ValueError, TypeError) as e:
+                                row_errors.append(f"Row {i}: Invalid Latitude '{latitude}'. Set to blank.")
+                        
+                        lon_dec = None
+                        if longitude not in (None, ''):
+                            try:
+                                lon_dec = Decimal(str(longitude))
+                            except (InvalidOperation, ValueError, TypeError) as e:
+                                row_errors.append(f"Row {i}: Invalid Longitude '{longitude}'. Set to blank.")
+
                         ports_data = {}
                         for port in ['P2', 'P3', 'P4', 'P5']:
                             ports_data[port.lower()] = {
@@ -2165,32 +2188,35 @@ def bulk_upload(request):
                                 'cable': get_value(row, f'{port} Cable', default='') or '',
                             }
 
-                        MobileBTS.objects.create(
-                            site_type='4G',
-                            te=te,
+                        MobileBTS.objects.update_or_create(
                             rp_id=rp_id,
-                            bts_name=bts_name,
-                            place_name=place_name,
-                            latitude=Decimal(str(latitude)) if latitude not in (None, '') else None,
-                            longitude=Decimal(str(longitude)) if longitude not in (None, '') else None,
-                            has_cef_12t=has_cef_12t,
-                            is_ring=is_ring,
-                            cef_ports_data=ports_data,
+                            defaults={
+                                'site_type': '4G',
+                                'te': te,
+                                'bts_name': bts_name,
+                                'place_name': place_name,
+                                'latitude': lat_dec,
+                                'longitude': lon_dec,
+                                'has_cef_12t': has_cef_12t,
+                                'is_ring': is_ring,
+                                'cef_ports_data': ports_data,
+                            }
                         )
                         created_count += 1
                     except IntegrityError as e:
                         row_errors.append(f"Row {i}: Database integrity error - {e}")
                         skipped_count += 1
-                    except (InvalidOperation, ValueError) as e:
-                        row_errors.append(f"Row {i}: Invalid numeric value ({e})")
-                        skipped_count += 1
                     except Exception as e:
                         row_errors.append(f"Row {i}: {e}")
                         skipped_count += 1
+                
+                from django.utils.safestring import mark_safe
                 if row_errors:
-                    messages.warning(request, f"BTS uploaded with {len(row_errors)} row errors. Created: {created_count}, Skipped: {skipped_count}.")
+                    msg = f"BTS uploaded with {len(row_errors)} warnings/errors. Created/Updated: {created_count}, Skipped: {skipped_count}."
+                    msg += "<br><ul class='mb-0 ps-3'>" + "".join([f"<li>{err}</li>" for err in row_errors[:15]]) + ("<li>...and more</li>" if len(row_errors) > 15 else "") + "</ul>"
+                    messages.warning(request, mark_safe(msg))
                 else:
-                    messages.success(request, f"BTS uploaded successfully! Created: {created_count}, Skipped: {skipped_count}.")
+                    messages.success(request, f"BTS uploaded successfully! Created/Updated: {created_count}, Skipped: {skipped_count}.")
 
             elif upload_type == 'BTS_NO_4G':
                 for i, row in enumerate(rows, start=2):
@@ -2252,33 +2278,50 @@ def bulk_upload(request):
                         else:
                             non_4g_type_val = None
 
-                        MobileBTS.objects.create(
-                            site_type='NON_4G',
+                        lat_dec = None
+                        if latitude not in (None, ''):
+                            try:
+                                lat_dec = Decimal(str(latitude))
+                            except (InvalidOperation, ValueError, TypeError) as e:
+                                row_errors.append(f"Row {i}: Invalid Latitude '{latitude}'. Set to blank.")
+                        
+                        lon_dec = None
+                        if longitude not in (None, ''):
+                            try:
+                                lon_dec = Decimal(str(longitude))
+                            except (InvalidOperation, ValueError, TypeError) as e:
+                                row_errors.append(f"Row {i}: Invalid Longitude '{longitude}'. Set to blank.")
+
+                        MobileBTS.objects.update_or_create(
                             rp_id=rp_id,
-                            bts_name=bts_name,
-                            te=te,
-                            place_name=place_name,
-                            latitude=Decimal(str(latitude)) if latitude not in (None, '') else None,
-                            longitude=Decimal(str(longitude)) if longitude not in (None, '') else None,
-                            non_4g_type=non_4g_type_val,
-                            backhaul_media=backhaul_media_val,
-                            connected_equipment=connected_equipment,
-                            remarks=remarks
+                            defaults={
+                                'site_type': 'NON_4G',
+                                'bts_name': bts_name,
+                                'te': te,
+                                'place_name': place_name,
+                                'latitude': lat_dec,
+                                'longitude': lon_dec,
+                                'non_4g_type': non_4g_type_val,
+                                'backhaul_media': backhaul_media_val,
+                                'connected_equipment': connected_equipment,
+                                'remarks': remarks
+                            }
                         )
                         created_count += 1
                     except IntegrityError as e:
                         row_errors.append(f"Row {i}: Database integrity error - {e}")
                         skipped_count += 1
-                    except (InvalidOperation, ValueError) as e:
-                        row_errors.append(f"Row {i}: Invalid numeric value ({e})")
-                        skipped_count += 1
                     except Exception as e:
                         row_errors.append(f"Row {i}: {e}")
                         skipped_count += 1
+                
+                from django.utils.safestring import mark_safe
                 if row_errors:
-                    messages.warning(request, f"No 4G BTS uploaded with {len(row_errors)} row errors. Created: {created_count}, Skipped: {skipped_count}.")
+                    msg = f"No 4G BTS uploaded with {len(row_errors)} warnings/errors. Created/Updated: {created_count}, Skipped: {skipped_count}."
+                    msg += "<br><ul class='mb-0 ps-3'>" + "".join([f"<li>{err}</li>" for err in row_errors[:15]]) + ("<li>...and more</li>" if len(row_errors) > 15 else "") + "</ul>"
+                    messages.warning(request, mark_safe(msg))
                 else:
-                    messages.success(request, f"No 4G BTS uploaded successfully! Created: {created_count}, Skipped: {skipped_count}.")
+                    messages.success(request, f"No 4G BTS uploaded successfully! Created/Updated: {created_count}, Skipped: {skipped_count}.")
 
             elif upload_type == 'FTTH':
                 user_division = None
