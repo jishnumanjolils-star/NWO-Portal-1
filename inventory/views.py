@@ -1798,6 +1798,11 @@ def _resolve_te_helper(te_name, division=None):
         'PANAMPILLYNGR': 'PANAMPILLY NAGAR',
         'BOAT JETTY': 'BOATJETTY',
         'CARRIER STATION ROAD': 'CSR',
+        'KADVNTRA': 'PANAMPILLYNAGAR',
+        'KDVNTRA': 'PANAMPILLYNAGAR',
+        'KADVNTHRA': 'PANAMPILLYNAGAR',
+        'KADAVANTHRA': 'PANAMPILLYNAGAR',
+        'PNR': 'PANAMPILLYNAGAR',
     }
     for search, replace in corrections.items():
         if search in name_upper:
@@ -1824,6 +1829,11 @@ def _resolve_te_helper(te_name, division=None):
         'CHITUR': 'Chittoor TE',
         'SRM ROAD': 'Srm TE',
         'SRM': 'Srm TE',
+        'KADVNTRA': 'Panampilly Nagar TE',
+        'KDVNTRA': 'Panampilly Nagar TE',
+        'KADVNTHRA': 'Panampilly Nagar TE',
+        'KADAVANTHRA': 'Panampilly Nagar TE',
+        'PNR': 'Panampilly Nagar TE',
     }
     
     lookup_upper = name_str.upper().replace(' ', '').replace('-', '')
@@ -2185,9 +2195,16 @@ def bulk_upload(request):
                             division = request.user.profile.division
                         te = _resolve_te_helper(te_name, division)
                         if not te:
-                            row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found.")
-                            skipped_count += 1
-                            continue
+                            if not division:
+                                division = NWO.objects.first()
+                            
+                            placeholder_name = f"UNMAPPED - {division.name}" if division else "UNMAPPED - ALL"
+                            te, _ = TelephoneExchange.objects.get_or_create(
+                                name=placeholder_name,
+                                defaults={'nwo': division} if division else {}
+                            )
+                            if te_name not in (None, ''):
+                                row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found. Saved under '{placeholder_name}'.")
 
                         place_name = get_value(row, 'Place Name')
                         latitude = get_value(row, 'Latitude')
