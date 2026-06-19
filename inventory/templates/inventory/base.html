@@ -101,12 +101,14 @@
             z-index: 1040;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.3s ease;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
         }
 
         .sidebar-backdrop.show {
             opacity: 1;
             pointer-events: auto;
+            visibility: visible;
         }
 
         .sidebar-brand i {
@@ -285,8 +287,15 @@
         body.dark-mode .user-profile:hover { background: #1e293b; }
 
         @media (max-width: 1024px) {
-            #sidebar { transform: translateX(-100%); }
-            #sidebar.show { transform: translateX(0); }
+            #sidebar { 
+                transform: translateX(-100%); 
+                visibility: hidden;
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            #sidebar.show { 
+                transform: translateX(0); 
+                visibility: visible;
+            }
             #main-content { margin-left: 0; padding: 1.5rem; }
             
             .top-header {
