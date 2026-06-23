@@ -3050,7 +3050,6 @@ def test_dashboard_view(request):
     import traceback
     from django.test import RequestFactory
     from django.contrib.auth.models import User
-    from inventory.views import dashboard
     from django.http import HttpResponse
     
     res = []
@@ -3058,22 +3057,30 @@ def test_dashboard_view(request):
         factory = RequestFactory()
         req = factory.get('/inventory/')
         
-        user = User.objects.get(username='nwo_ekm')
-        req.user = user
-        
-        # We need to simulate the SessionMiddleware and AuthenticationMiddleware properties
-        from django.contrib.sessions.middleware import SessionMiddleware
-        middleware = SessionMiddleware(lambda r: HttpResponse())
-        middleware(req)
-        req.session.save()
-        
-        response = dashboard(req)
-        res.append(f"Dashboard status code: {response.status_code}")
-        if hasattr(response, 'render'):
-            response.render()
-            res.append("Dashboard content rendered successfully!")
+        try:
+            user = User.objects.get(username='nwo_ekm')
+            req.user = user
+            res.append("User nwo_ekm fetched successfully.")
+        except User.DoesNotExist:
+            user = None
+            res.append("User nwo_ekm does not exist!")
+            
+        if user:
+            from django.contrib.sessions.middleware import SessionMiddleware
+            middleware = SessionMiddleware(lambda r: HttpResponse())
+            middleware(req)
+            req.session.save()
+            res.append("Session initialized successfully.")
+            
+            response = dashboard(req)
+            res.append(f"Dashboard status code: {response.status_code}")
+            if hasattr(response, 'render'):
+                response.render()
+                res.append("Dashboard content rendered successfully!")
+            else:
+                res.append(f"Dashboard returned response of type {type(response)}")
         else:
-            res.append(f"Dashboard returned non-renderable response of type {type(response)}")
+            res.append("Skipping dashboard call because user is None.")
             
     except Exception as e:
         res.append("Error occurred while calling dashboard view:")
