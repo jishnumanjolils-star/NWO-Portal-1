@@ -1,0 +1,183 @@
+{% extends 'inventory/base.html' %}
+{% load static %}
+
+{% block title %}Database Management | NET-TRACKER{% endblock %}
+
+{% block extra_css %}
+<style>
+    .management-view { max-width: 1100px; margin: 0 auto; }
+    .glass-card {
+        background: white; border-radius: 24px; border: 1px solid var(--slate-200);
+        padding: 3rem; transition: all 0.3s ease;
+        box-shadow: var(--shadow-md);
+    }
+    body.dark-mode .glass-card { background: #161f31; border-color: #243049; }
+
+    .header-group { margin-bottom: 3rem; }
+    .header-group i { 
+        font-size: 3rem; color: var(--primary); margin-bottom: 1rem; display: inline-block;
+        filter: drop-shadow(0 8px 12px rgba(79, 70, 229, 0.15));
+    }
+
+    .kpi-mini-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 1.25rem;
+        margin-bottom: 3rem;
+    }
+    .kpi-mini-card {
+        background: var(--slate-50); border-radius: 16px; padding: 1.25rem;
+        border: 1px solid var(--slate-100); text-align: center;
+        transition: all 0.2s;
+    }
+    body.dark-mode .kpi-mini-card { background: #0b0f1a; border-color: #202c46; }
+    .kpi-mini-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-sm); }
+    .kpi-mini-value { font-size: 1.75rem; font-weight: 800; color: var(--slate-900); }
+    body.dark-mode .kpi-mini-value { color: white; }
+    .kpi-mini-label { font-size: 0.8rem; font-weight: 700; color: var(--slate-500); text-transform: uppercase; }
+
+    .tool-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+    }
+    @media (max-width: 768px) {
+        .tool-grid { grid-template-columns: 1fr; }
+    }
+
+    .tool-card {
+        background: white; border-radius: 20px; border: 1px solid var(--slate-200);
+        padding: 2.25rem; display: flex; flex-direction: column; justify-content: space-between;
+        box-shadow: var(--shadow-sm); transition: transform 0.2s;
+    }
+    body.dark-mode .tool-card { background: #1a243d; border-color: #243049; }
+    .tool-card:hover { transform: translateY(-4px); }
+
+    .tool-title { font-size: 1.25rem; font-weight: 800; color: var(--slate-900); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+    body.dark-mode .tool-title { color: white; }
+    
+    .input-premium {
+        padding: 0.85rem 1.25rem; border-radius: 12px; border: 2px solid var(--slate-100);
+        background: var(--slate-50); font-weight: 600; color: var(--slate-900); width: 100%;
+        transition: all 0.2s; font-size: 0.9rem;
+    }
+    body.dark-mode .input-premium { background: #0b0f1a; border-color: #202c46; color: white; }
+    .input-premium:focus { outline: none; border-color: var(--primary); background: white; }
+
+    .checkbox-container {
+        background: rgba(239, 68, 68, 0.05); border: 1px dashed rgba(239, 68, 68, 0.25);
+        border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem;
+    }
+    body.dark-mode .checkbox-container { background: rgba(239, 68, 68, 0.02); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-lg-5">
+    <div class="management-view animate-fade">
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}" class="text-decoration-none fw-bold">Home</a></li>
+                <li class="breadcrumb-item active fw-bold">DB Management</li>
+            </ol>
+        </nav>
+
+        <div class="glass-card mb-5">
+            <div class="header-group text-center">
+                <i class="bi bi-database-fill-gear"></i>
+                <h1 class="main-title mb-2">Database Backup & Recovery</h1>
+                <p class="text-muted fw-600 mb-0">System utilities to export, preserve, and restore network inventory database records and diagrams.</p>
+            </div>
+
+            <h5 class="fw-800 text-slate-900 mb-3"><i class="bi bi-bar-chart-steps me-2 text-primary"></i>Live Database Record Stats</h5>
+            <div class="kpi-mini-grid">
+                <div class="kpi-mini-card">
+                    <div class="kpi-mini-value">{{ stats.divisions }}</div>
+                    <div class="kpi-mini-label">Divisions</div>
+                </div>
+                <div class="kpi-mini-card">
+                    <div class="kpi-mini-value">{{ stats.exchanges }}</div>
+                    <div class="kpi-mini-label">Exchanges</div>
+                </div>
+                <div class="kpi-mini-card">
+                    <div class="kpi-mini-value">{{ stats.cables }}</div>
+                    <div class="kpi-mini-label">Cables</div>
+                </div>
+                <div class="kpi-mini-card">
+                    <div class="kpi-mini-value">{{ stats.equipment }}</div>
+                    <div class="kpi-mini-label">Nodes</div>
+                </div>
+                <div class="kpi-mini-card">
+                    <div class="kpi-mini-value">{{ stats.circuits }}</div>
+                    <div class="kpi-mini-label">Circuits</div>
+                </div>
+                <div class="kpi-mini-card">
+                    <div class="kpi-mini-value">{{ stats.bts }}</div>
+                    <div class="kpi-mini-label">BTS Sites</div>
+                </div>
+                <div class="kpi-mini-card">
+                    <div class="kpi-mini-value">{{ stats.jbs }}</div>
+                    <div class="kpi-mini-label">Junction Boxes</div>
+                </div>
+                <div class="kpi-mini-card">
+                    <div class="kpi-mini-value">{{ stats.lius }}</div>
+                    <div class="kpi-mini-label">LIUs</div>
+                </div>
+                <div class="kpi-mini-card">
+                    <div class="kpi-mini-value">{{ stats.media_size_mb }} MB</div>
+                    <div class="kpi-mini-label">Media Files ({{ stats.media_count }})</div>
+                </div>
+            </div>
+
+            <div class="tool-grid">
+                <!-- Backup Card -->
+                <div class="tool-card">
+                    <div>
+                        <h3 class="tool-title"><i class="bi bi-cloud-arrow-down-fill text-success"></i>Export Backup Archive</h3>
+                        <p class="text-muted small mb-4">Downloads a complete backup file (<code>.tar.gz</code>) containing all database model tables and media folder uploads (cables, equipment, circuits, BTS sites, and diagrams).</p>
+                    </div>
+                    <a href="{% url 'db_backup' %}" class="btn btn-success w-100 py-3 fw-bold rounded-12 shadow-sm">
+                        <i class="bi bi-download me-2"></i>Download Backup (.tar.gz)
+                    </a>
+                </div>
+
+                <!-- Restore Card -->
+                <div class="tool-card">
+                    <form action="{% url 'db_restore' %}" method="post" enctype="multipart/form-data" id="restoreForm">
+                        {% csrf_token %}
+                        <div>
+                            <h3 class="tool-title"><i class="bi bi-cloud-arrow-up-fill text-danger"></i>Restore System Archive</h3>
+                            <p class="text-muted small mb-3">Upload a previously generated <code>.tar.gz</code> backup file to restore database records and diagrams. <strong>All current data will be overwritten!</strong></p>
+                            
+                            <div class="mb-3">
+                                <input type="file" name="backup_file" class="input-premium" accept=".tar.gz,.tgz" required>
+                            </div>
+                            
+                            <div class="checkbox-container">
+                                <div class="form-check">
+                                    <input class="form-check-input border-danger" type="checkbox" id="confirmSafety" onchange="toggleRestoreBtn()">
+                                    <label class="form-check-label small text-danger fw-bold ms-2" style="cursor: pointer;" for="confirmSafety">
+                                        I understand this will permanently delete and overwrite all current database records and media files.
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" id="restoreBtn" class="btn btn-danger w-100 py-3 fw-bold rounded-12 shadow-sm" disabled>
+                            <i class="bi bi-arrow-clockwise me-2"></i>Upload & Restore System
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function toggleRestoreBtn() {
+        const checked = $('#confirmSafety').is(':checked');
+        $('#restoreBtn').prop('disabled', !checked);
+    }
+</script>
+{% endblock %}

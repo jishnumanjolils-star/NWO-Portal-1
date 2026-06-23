@@ -96,4 +96,9 @@ urlpatterns = [
     
     # API for OH Maintenance
     path('api/oh-maintenance/rates/', views.get_activity_rates, name='api_oh_rates'),
+
+    # Database Backup & Restore Facility
+    path('db-management/', views.db_management, name='db_management'),
+    path('db-management/backup/', views.db_backup, name='db_backup'),
+    path('db-management/restore/', views.db_restore, name='db_restore'),
 ]
