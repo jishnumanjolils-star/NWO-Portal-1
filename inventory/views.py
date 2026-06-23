@@ -2945,10 +2945,28 @@ def debug_db(request):
         connection.ensure_connection()
         res.append("Database connection: SUCCESS")
         
-        tables = connection.introspection.table_names()
-        res.append(f"Tables in database ({len(tables)}):")
-        for t in tables:
-            res.append(f" - {t}")
+        # Read Gunicorn logs
+        try:
+            from django.conf import settings as django_settings
+            log_dir = django_settings.BASE_DIR
+            err_log_path = os.path.join(log_dir, 'gunicorn_error.log')
+            if os.path.exists(err_log_path):
+                res.append("\n=================== GUNICORN ERROR LOG ===================")
+                with open(err_log_path, 'r', encoding='utf-8', errors='replace') as lf:
+                    lines = lf.readlines()
+                    res.extend([line.rstrip() for line in lines[-150:]])
+            else:
+                res.append(f"\nGunicorn error log not found at: {err_log_path}")
+                
+            acc_log_path = os.path.join(log_dir, 'gunicorn_access.log')
+            if os.path.exists(acc_log_path):
+                res.append("\n=================== GUNICORN ACCESS LOG ===================")
+                with open(acc_log_path, 'r', encoding='utf-8', errors='replace') as lf:
+                    lines = lf.readlines()
+                    res.extend([line.rstrip() for line in lines[-50:]])
+        except Exception as log_ex:
+            res.append(f"\nFailed to read Gunicorn logs: {str(log_ex)}")
+            res.append(traceback.format_exc())
             
         # Test session creation
         from django.contrib.sessions.backends.db import SessionStore

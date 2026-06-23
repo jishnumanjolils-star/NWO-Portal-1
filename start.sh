@@ -82,7 +82,7 @@ exec python -m gunicorn \
   --worker-class sync \
   --timeout 60 \
   --keep-alive 5 \
-  --access-logfile - \
-  --error-logfile - \
-  --log-level info \
+  --access-logfile gunicorn_access.log \
+  --error-logfile gunicorn_error.log \
+  --log-level debug \
   nwo_portal.wsgi:application
