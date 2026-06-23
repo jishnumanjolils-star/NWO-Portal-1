@@ -2925,3 +2925,37 @@ def db_restore(request):
             os.remove(temp_file_path)
             
     return redirect('db_management')
+
+def debug_db(request):
+    import traceback
+    from django.db import connection
+    from django.http import HttpResponse
+    import os
+    res = []
+    
+    db_url = os.environ.get('DATABASE_URL', 'Not Set')
+    masked_url = db_url
+    if '@' in db_url:
+        parts = db_url.split('@')
+        # Mask credentials
+        masked_url = "postgres://***:***@" + parts[-1]
+    res.append("Database URL: " + masked_url)
+    
+    try:
+        connection.ensure_connection()
+        res.append("Database connection: SUCCESS")
+        
+        tables = connection.introspection.table_names()
+        res.append("Tables in database:")
+        for t in tables:
+            res.append(f" - {t}")
+            
+        from django.contrib.auth.models import User
+        res.append(f"User count: {User.objects.count()}")
+        
+    except Exception as e:
+        res.append("Error occurred:")
+        res.append(traceback.format_exc())
+        
+    return HttpResponse("<pre>" + "\n".join(res) + "</pre>", content_type="text/html")
+
