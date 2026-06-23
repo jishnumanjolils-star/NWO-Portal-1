@@ -77,9 +77,38 @@
             font-size: 1.4rem;
             color: white;
             text-decoration: none !important;
-            margin-bottom: 3rem;
             padding: 0 0.75rem;
             letter-spacing: -0.02em;
+        }
+
+        /* Sidebar Toggle, Close & Backdrop */
+        #sidebarToggle {
+            display: none;
+        }
+
+        #sidebarClose {
+            display: none;
+        }
+
+        .sidebar-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 1040;
+            opacity: 0;
+            pointer-events: none;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .sidebar-backdrop.show {
+            opacity: 1;
+            pointer-events: auto;
+            visibility: visible;
         }
 
         .sidebar-brand i {
@@ -258,9 +287,26 @@
         body.dark-mode .user-profile:hover { background: #1e293b; }
 
         @media (max-width: 1024px) {
-            #sidebar { transform: translateX(-100%); }
-            #sidebar.show { transform: translateX(0); }
+            #sidebar { 
+                transform: translateX(-100%); 
+                visibility: hidden;
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            #sidebar.show { 
+                transform: translateX(0); 
+                visibility: visible;
+            }
             #main-content { margin-left: 0; padding: 1.5rem; }
+            
+            .top-header {
+                justify-content: space-between;
+            }
+            #sidebarToggle {
+                display: flex;
+            }
+            #sidebarClose {
+                display: block;
+            }
         }
 
         .animate-fade { animation: fadeIn 0.4s ease-out; }
@@ -270,12 +316,18 @@
 </head>
 <body class="{% if request.COOKIES.darkMode == 'true' %}dark-mode{% endif %}">
     
+    <!-- Sidebar Backdrop for Mobile -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
     <!-- Sidebar -->
     <aside id="sidebar">
-        <a href="{% url 'dashboard' %}" class="sidebar-brand">
-            <i class="bi bi-broadcast"></i>
-            <span>NET-TRACKER</span>
-        </a>
+        <div class="d-flex align-items-center justify-content-between mb-5">
+            <a href="{% url 'dashboard' %}" class="sidebar-brand">
+                <i class="bi bi-broadcast"></i>
+                <span>NET-TRACKER</span>
+            </a>
+            <button class="btn-close btn-close-white" id="sidebarClose" aria-label="Close"></button>
+        </div>
         
         <nav>
             <div class="nav-label">Main Menu</div>
@@ -366,6 +418,11 @@
     <!-- Main Content Area -->
     <main id="main-content">
         <header class="top-header">
+            <button class="header-btn" id="sidebarToggle">
+                <i class="bi bi-list"></i>
+                <span>Menu</span>
+            </button>
+            
             <button class="header-btn" id="darkModeToggle">
                 <i class="bi {% if request.COOKIES.darkMode == 'true' %}bi-sun-fill{% else %}bi-moon-stars-fill{% endif %}"></i>
                 <span>Theme</span>
@@ -431,6 +488,31 @@
                     document.cookie = `darkMode=${isDark}; path=/; max-age=31536000`;
                     toggle.innerHTML = isDark ? '<i class="bi bi-sun-fill"></i>' : '<i class="bi bi-moon-stars-fill"></i>';
                 });
+            }
+        })();
+
+        // Sidebar Mobile Toggle
+        (function() {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarClose = document.getElementById('sidebarClose');
+            const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+
+            function toggleSidebar() {
+                if (sidebar && sidebarBackdrop) {
+                    sidebar.classList.toggle('show');
+                    sidebarBackdrop.classList.toggle('show');
+                }
+            }
+
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', toggleSidebar);
+            }
+            if (sidebarClose) {
+                sidebarClose.addEventListener('click', toggleSidebar);
+            }
+            if (sidebarBackdrop) {
+                sidebarBackdrop.addEventListener('click', toggleSidebar);
             }
         })();
 
