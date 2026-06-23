@@ -2950,6 +2950,17 @@ def debug_db(request):
         for t in tables:
             res.append(f" - {t}")
             
+        # Test session creation
+        from django.contrib.sessions.backends.db import SessionStore
+        try:
+            s = SessionStore()
+            s['test_key'] = 'test_value'
+            s.create()
+            res.append(f"\nSession creation test: SUCCESS (session_key={s.session_key})")
+        except Exception as sexc:
+            res.append(f"\nSession creation test: FAILED: {str(sexc)}")
+            res.append(traceback.format_exc())
+            
         from django.db.migrations.recorder import MigrationRecorder
         recorder = MigrationRecorder(connection)
         applied_migs = recorder.applied_migrations()
