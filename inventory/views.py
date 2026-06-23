@@ -2961,6 +2961,43 @@ def debug_db(request):
             res.append(f"\nSession creation test: FAILED: {str(sexc)}")
             res.append(traceback.format_exc())
             
+        # Log settings.DEBUG status
+        from django.conf import settings as django_settings
+        res.append(f"\nDEBUG setting status: {django_settings.DEBUG}")
+        
+        # Test authentication
+        from django.contrib.auth import authenticate
+        try:
+            user = authenticate(username='nwo_ekm', password='Nwo#Ekm@2026!')
+            if user is not None:
+                res.append(f"Auth test for nwo_ekm: SUCCESS (superuser={user.is_superuser})")
+            else:
+                res.append("Auth test for nwo_ekm: FAILED (returned None)")
+        except Exception as auth_exc:
+            res.append(f"Auth test for nwo_ekm: FAILED with exception: {str(auth_exc)}")
+            res.append(traceback.format_exc())
+            
+        # Test login flow
+        from django.contrib.auth import login
+        from django.test import RequestFactory
+        try:
+            factory = RequestFactory()
+            dummy_request = factory.post('/')
+            from django.contrib.sessions.middleware import SessionMiddleware
+            middleware = SessionMiddleware(lambda req: HttpResponse())
+            middleware(dummy_request)
+            dummy_request.session.save()
+            
+            user = authenticate(username='nwo_ekm', password='Nwo#Ekm@2026!')
+            if user:
+                login(dummy_request, user)
+                res.append(f"Login test for nwo_ekm: SUCCESS, session user_id={dummy_request.session.get('_auth_user_id')}")
+            else:
+                res.append("Login test for nwo_ekm: skipped (auth returned None)")
+        except Exception as login_exc:
+            res.append(f"Login test for nwo_ekm: FAILED with exception: {str(login_exc)}")
+            res.append(traceback.format_exc())
+            
         from django.db.migrations.recorder import MigrationRecorder
         recorder = MigrationRecorder(connection)
         applied_migs = recorder.applied_migrations()
