@@ -2930,6 +2930,7 @@ def debug_db(request):
     import traceback
     from django.db import connection
     from django.http import HttpResponse
+    from django.core.management import call_command
     import os
     res = []
     
@@ -2937,7 +2938,6 @@ def debug_db(request):
     masked_url = db_url
     if '@' in db_url:
         parts = db_url.split('@')
-        # Mask credentials
         masked_url = "postgres://***:***@" + parts[-1]
     res.append("Database URL: " + masked_url)
     
@@ -2946,13 +2946,52 @@ def debug_db(request):
         res.append("Database connection: SUCCESS")
         
         tables = connection.introspection.table_names()
-        res.append("Tables in database:")
+        res.append(f"Tables in database ({len(tables)}):")
         for t in tables:
             res.append(f" - {t}")
             
-        from django.contrib.auth.models import User
-        res.append(f"User count: {User.objects.count()}")
+        from django.db.migrations.recorder import MigrationRecorder
+        recorder = MigrationRecorder(connection)
+        applied_migs = recorder.applied_migrations()
+        res.append(f"\nApplied migrations count: {len(applied_migs)}")
         
+        from django.db.migrations.executor import MigrationExecutor
+        executor = MigrationExecutor(connection)
+        plan = executor.migration_plan(executor.loader.graph.leaf_nodes())
+        res.append(f"Unapplied migrations plan length: {len(plan)}")
+        for migration, backwards in plan:
+            res.append(f" - Unapplied: {migration.app}.{migration.name}")
+            
+        if plan or request.GET.get('migrate') == 'true':
+            res.append("\n>>> Running migrate command...")
+            import io
+            buf = io.StringIO()
+            call_command('migrate', no_input=True, stdout=buf, stderr=buf)
+            res.append("Migration Output:")
+            res.append(buf.getvalue())
+            
+            tables_after = connection.introspection.table_names()
+            res.append(f"\nTables in database after migrate ({len(tables_after)}):")
+            for t in tables_after:
+                res.append(f" - {t}")
+                
+            executor_after = MigrationExecutor(connection)
+            executor_after.loader.build_graph()
+            plan_after = executor_after.migration_plan(executor_after.loader.graph.leaf_nodes())
+            res.append(f"Unapplied migrations plan length after: {len(plan_after)}")
+            
+            res.append("\n>>> Re-running create_division_users...")
+            buf_users = io.StringIO()
+            call_command('create_division_users', stdout=buf_users, stderr=buf_users)
+            res.append("create_division_users Output:")
+            res.append(buf_users.getvalue())
+            
+            res.append("\n>>> Re-running fix_user_passwords...")
+            buf_pwd = io.StringIO()
+            call_command('fix_user_passwords', stdout=buf_pwd, stderr=buf_pwd)
+            res.append("fix_user_passwords Output:")
+            res.append(buf_pwd.getvalue())
+            
     except Exception as e:
         res.append("Error occurred:")
         res.append(traceback.format_exc())
