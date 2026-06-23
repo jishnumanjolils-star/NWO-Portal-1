@@ -3046,3 +3046,38 @@ def debug_db(request):
         
     return HttpResponse("<pre>" + "\n".join(res) + "</pre>", content_type="text/html")
 
+def test_dashboard_view(request):
+    import traceback
+    from django.test import RequestFactory
+    from django.contrib.auth.models import User
+    from inventory.views import dashboard
+    from django.http import HttpResponse
+    
+    res = []
+    try:
+        factory = RequestFactory()
+        req = factory.get('/inventory/')
+        
+        user = User.objects.get(username='nwo_ekm')
+        req.user = user
+        
+        # We need to simulate the SessionMiddleware and AuthenticationMiddleware properties
+        from django.contrib.sessions.middleware import SessionMiddleware
+        middleware = SessionMiddleware(lambda r: HttpResponse())
+        middleware(req)
+        req.session.save()
+        
+        response = dashboard(req)
+        res.append(f"Dashboard status code: {response.status_code}")
+        if hasattr(response, 'render'):
+            response.render()
+            res.append("Dashboard content rendered successfully!")
+        else:
+            res.append(f"Dashboard returned non-renderable response of type {type(response)}")
+            
+    except Exception as e:
+        res.append("Error occurred while calling dashboard view:")
+        res.append(traceback.format_exc())
+        
+    return HttpResponse("<pre>" + "\n".join(res) + "</pre>", content_type="text/html")
+
