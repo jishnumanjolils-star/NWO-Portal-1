@@ -101,6 +101,8 @@ urlpatterns = [
     path('db-management/', views.db_management, name='db_management'),
     path('db-management/backup/', views.db_backup, name='db_backup'),
     path('db-management/restore/', views.db_restore, name='db_restore'),
+    path('debug-db/', views.debug_db, name='debug_db'),
 ]
+
 
 
