@@ -158,11 +158,17 @@ def create_fibers(sender, instance, created, **kwargs):
 
 class Equipment(models.Model):
     TYPE_CHOICES = [
+        ('CPAN', 'CPAN'),
+        ('MAAN', 'MAAN'),
+        ('MADM', 'MADM'),
+        ('SDH_CPE', 'SDH CPE'),
+        ('BSNL_OLT', 'BSNL OLT'),
+        ('BBNL_OLT', 'BBNL OLT'),
+        ('TIP_OLT', 'TIP OLT'),
+        # Backward compatibility
         ('CPAN_B', 'CPAN B Node'),
         ('MAAN_C', 'MAAN C Node'),
         ('MAAN_A3_A4', 'MAAN A3 / A4 Node'),
-        ('MADM', 'MADM'),
-        ('BSNL_OLT', 'BSNL OLT'),
         ('LCO_OLT', 'LCO OLT'),
         ('LMG', 'LMG'),
         ('NGN_SWITCH', 'NGN Switch'),
@@ -171,13 +177,16 @@ class Equipment(models.Model):
     equipment_type = models.CharField(max_length=50, choices=TYPE_CHOICES)
     name = models.CharField(max_length=100)
     te = models.ForeignKey(TelephoneExchange, on_delete=models.CASCADE, related_name='equipments')
-    uplink_connectivity = models.CharField(max_length=255) # Mandatory
-    total_ports = models.PositiveIntegerField()
+    uplink_connectivity = models.CharField(max_length=255, blank=True, null=True)
+    total_ports = models.PositiveIntegerField(default=24, blank=True, null=True)
     used_ports = models.PositiveIntegerField(default=0)
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
     configuration = models.JSONField(null=True, blank=True)
-    remarks = models.TextField()
+    remarks = models.TextField(blank=True, null=True)
+    ba = models.CharField(max_length=100, blank=True, null=True, verbose_name="BA")
+    make = models.CharField(max_length=100, blank=True, null=True, verbose_name="Make")
+    model_no = models.CharField(max_length=100, blank=True, null=True, verbose_name="Model")
 
     def __str__(self):
         return f"{self.name} ({self.get_equipment_type_display()})"
