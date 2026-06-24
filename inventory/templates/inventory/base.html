@@ -347,10 +347,65 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{% url 'equipment_list' %}" class="nav-link-custom {% if 'equipment' in request.path %}active{% endif %}">
-                        <i class="bi bi-cpu"></i>
-                        <span>Equipment</span>
+                    <a href="#equipmentSubmenu" data-bs-toggle="collapse" aria-expanded="{% if 'equipment' in request.path %}true{% else %}false{% endif %}" class="nav-link-custom d-flex justify-content-between align-items-center {% if 'equipment' in request.path %}active{% endif %}" style="cursor: pointer;">
+                        <span class="d-flex align-items-center gap-3">
+                            <i class="bi bi-cpu"></i>
+                            <span>Equipment (Nodes)</span>
+                        </span>
+                        <i class="bi bi-chevron-down submenu-arrow" style="font-size: 0.8rem;"></i>
                     </a>
+                    <div class="collapse {% if 'equipment' in request.path %}show{% endif %}" id="equipmentSubmenu">
+                        <ul class="nav flex-column ms-3 mt-1">
+                            <li class="nav-item">
+                                <a href="{% url 'equipment_list' %}" class="nav-link-custom {% if 'equipment' in request.path and not request.GET.equipment_type %}active{% endif %}" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+                                    <i class="bi bi-cpu-fill"></i>
+                                    <span>All Nodes</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'equipment_list' %}?equipment_type=CPAN" class="nav-link-custom {% if request.GET.equipment_type == 'CPAN' %}active{% endif %}" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+                                    <i class="bi bi-hdd-network"></i>
+                                    <span>CPAN</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'equipment_list' %}?equipment_type=MAAN" class="nav-link-custom {% if request.GET.equipment_type == 'MAAN' %}active{% endif %}" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+                                    <i class="bi bi-diagram-3-fill"></i>
+                                    <span>MAAN</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'equipment_list' %}?equipment_type=MADM" class="nav-link-custom {% if request.GET.equipment_type == 'MADM' %}active{% endif %}" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+                                    <i class="bi bi-hdd-stack-fill"></i>
+                                    <span>MADM</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'equipment_list' %}?equipment_type=SDH_CPE" class="nav-link-custom {% if request.GET.equipment_type == 'SDH_CPE' %}active{% endif %}" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+                                    <i class="bi bi-router-fill"></i>
+                                    <span>SDH CPE</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'equipment_list' %}?equipment_type=BSNL_OLT" class="nav-link-custom {% if request.GET.equipment_type == 'BSNL_OLT' %}active{% endif %}" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+                                    <i class="bi bi-option"></i>
+                                    <span>BSNL OLT</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'equipment_list' %}?equipment_type=BBNL_OLT" class="nav-link-custom {% if request.GET.equipment_type == 'BBNL_OLT' %}active{% endif %}" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+                                    <i class="bi bi-option"></i>
+                                    <span>BBNL OLT</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'equipment_list' %}?equipment_type=TIP_OLT" class="nav-link-custom {% if request.GET.equipment_type == 'TIP_OLT' %}active{% endif %}" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+                                    <i class="bi bi-option"></i>
+                                    <span>TIP OLT</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
                 </li>
                 <li class="nav-item">
                     <a href="{% url 'circuit_list' %}" class="nav-link-custom {% if 'circuit' in request.path %}active{% endif %}">
@@ -411,16 +466,6 @@
                         <span>Analytics</span>
                     </a>
                 </li>
-                
-                {% if request.user.is_superuser %}
-                <div class="nav-label">System Admin</div>
-                <li class="nav-item">
-                    <a href="{% url 'db_management' %}" class="nav-link-custom {% if 'db-management' in request.path %}active{% endif %}">
-                        <i class="bi bi-database-fill-gear"></i>
-                        <span>DB Management</span>
-                    </a>
-                </li>
-                {% endif %}
             </ul>
         </nav>
     </aside>
