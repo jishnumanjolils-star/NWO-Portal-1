@@ -37,6 +37,18 @@
                             <td><a href="{% url 'te_dashboard' equipment.te.id %}">{{ equipment.te.name|upper }}</a></td>
                         </tr>
                         <tr>
+                            <th>BA:</th>
+                            <td>{{ equipment.ba|default:"N/A" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Make:</th>
+                            <td>{{ equipment.make|default:"N/A" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Model:</th>
+                            <td>{{ equipment.model_no|default:"N/A" }}</td>
+                        </tr>
+                        <tr>
                             <th>Uplink Connectivity:</th>
                             <td>{{ equipment.uplink_connectivity }}</td>
                         </tr>
