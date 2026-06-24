@@ -43,6 +43,13 @@ else
     exit 1
 fi
 
+log "Running database schema checks/fixes..."
+if python manage.py fix_db_schema 2>&1; then
+    log "Database schema check completed successfully"
+else
+    warn "Database schema check encountered issues (non-critical), continuing..."
+fi
+
 log "Creating default division users..."
 if python manage.py create_division_users 2>&1; then
     log "Default division users created successfully"
@@ -82,7 +89,7 @@ exec python -m gunicorn \
   --worker-class sync \
   --timeout 60 \
   --keep-alive 5 \
-  --access-logfile gunicorn_access.log \
-  --error-logfile gunicorn_error.log \
-  --log-level debug \
+  --access-logfile - \
+  --error-logfile - \
+  --log-level info \
   nwo_portal.wsgi:application

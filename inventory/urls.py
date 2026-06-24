@@ -104,6 +104,3 @@ urlpatterns = [
     path('debug-db/', views.debug_db, name='debug_db'),
     path('test-dashboard/', views.test_dashboard_view, name='test_dashboard_view'),
 ]
-
-
-

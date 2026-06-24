@@ -2806,3 +2806,334 @@ def oh_maintenance_dashboard(request):
         'selected_division': division,
     }
     return render(request, 'inventory/oh_maintenance_dashboard.html', context)
+
+
+# ==============================================================================
+# DATABASE BACKUP & RESTORE FACILITY (SUPERUSERS ONLY)
+# ==============================================================================
+from django.conf import settings
+from django.db import transaction
+from django.core.management import call_command
+from django.http import HttpResponseForbidden
+from django.contrib.auth.models import User
+import tarfile
+import io
+import os
+import shutil
+import tempfile
+
+@login_required
+def db_management(request):
+    if not request.user.is_superuser:
+        return HttpResponseForbidden("Only superusers are allowed to access Database Management.")
+    
+    # Calculate media folder size
+    media_size = 0
+    media_count = 0
+    if os.path.exists(settings.MEDIA_ROOT):
+        for root, dirs, files in os.walk(settings.MEDIA_ROOT):
+            for file in files:
+                media_size += os.path.getsize(os.path.join(root, file))
+                media_count += 1
+                
+    # Calculate database counts
+    stats = {
+        'divisions': NWO.objects.count(),
+        'exchanges': TelephoneExchange.objects.count(),
+        'cables': Cable.objects.count(),
+        'equipment': Equipment.objects.count(),
+        'circuits': EBCircuit.objects.count(),
+        'bts': MobileBTS.objects.count(),
+        'jbs': JunctionBox.objects.count(),
+        'lius': LIU.objects.count(),
+        'ftth': FTTH.objects.count(),
+        'splicings': Splicing.objects.count(),
+        'users': User.objects.count(),
+        'media_size_mb': round(media_size / (1024 * 1024), 2),
+        'media_count': media_count,
+    }
+    
+    return render(request, 'inventory/db_management.html', {'stats': stats})
+
+@login_required
+def db_backup(request):
+    if not request.user.is_superuser:
+        return HttpResponseForbidden("Only superusers are allowed to download backups.")
+        
+    try:
+        # Create an in-memory tar archive
+        tar_buffer = io.BytesIO()
+        with tarfile.open(fileobj=tar_buffer, mode="w:gz") as tar:
+            # 1. Run dumpdata for database records
+            db_buffer = io.StringIO()
+            call_command(
+                'dumpdata', 
+                indent=2, 
+                stdout=db_buffer, 
+                exclude=['contenttypes', 'auth.Permission', 'admin.LogEntry', 'sessions.Session']
+            )
+            db_json = db_buffer.getvalue().encode('utf-8')
+            
+            # Add database dump to tar
+            json_info = tarfile.TarInfo(name="db_backup.json")
+            json_info.size = len(db_json)
+            tar.addfile(json_info, io.BytesIO(db_json))
+            
+            # 2. Add media files to tar
+            if os.path.exists(settings.MEDIA_ROOT):
+                for root, dirs, files in os.walk(settings.MEDIA_ROOT):
+                    for file in files:
+                        full_path = os.path.join(root, file)
+                        rel_path = os.path.relpath(full_path, settings.MEDIA_ROOT)
+                        tar_path = os.path.join("media", rel_path)
+                        tar.add(full_path, arcname=tar_path)
+                        
+        response = HttpResponse(tar_buffer.getvalue(), content_type='application/x-gzip')
+        timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+        response['Content-Disposition'] = f'attachment; filename=\"ofcnet_backup_{timestamp}.tar.gz\"'
+        return response
+    except Exception as e:
+        messages.error(request, f"Backup creation failed: {str(e)}")
+        return redirect('db_management')
+
+@login_required
+@require_http_methods(["POST"])
+def db_restore(request):
+    if not request.user.is_superuser:
+        return HttpResponseForbidden("Only superusers are allowed to restore database backups.")
+        
+    uploaded_file = request.FILES.get('backup_file')
+    if not uploaded_file:
+        messages.error(request, "Please select a backup file to upload.")
+        return redirect('db_management')
+        
+    if not uploaded_file.name.endswith('.tar.gz') and not uploaded_file.name.endswith('.tgz'):
+        messages.error(request, "Invalid file format. Please upload a compressed (.tar.gz) backup archive.")
+        return redirect('db_management')
+        
+    # Write uploaded data to a temporary file
+    with tempfile.NamedTemporaryFile(suffix='.tar.gz', delete=False) as temp_file:
+        for chunk in uploaded_file.chunks():
+            temp_file.write(chunk)
+        temp_file_path = temp_file.name
+        
+    try:
+        with tarfile.open(temp_file_path, mode="r:gz") as tar:
+            # Check for db_backup.json inside the archive
+            try:
+                db_member = tar.getmember("db_backup.json")
+            except KeyError:
+                messages.error(request, "Invalid backup archive: 'db_backup.json' is missing.")
+                return redirect('db_management')
+                
+            # Perform database restoration inside atomic transaction
+            with transaction.atomic():
+                # Delete existing database records in reverse dependency order
+                Splicing.objects.all().delete()
+                FTTH.objects.all().delete()
+                MobileBTS.objects.all().delete()
+                EBCircuit.objects.all().delete()
+                LIU.objects.all().delete()
+                JunctionBox.objects.all().delete()
+                Equipment.objects.all().delete()
+                Cable.objects.all().delete()
+                TelephoneExchange.objects.all().delete()
+                
+                # Exclude active admin user to avoid locking ourselves out during restore
+                UserProfile.objects.exclude(user=request.user).delete()
+                User.objects.exclude(id=request.user.id).delete()
+                NWO.objects.all().delete()
+                
+                # Extract and load database records
+                db_file = tar.extractfile(db_member)
+                with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as db_temp:
+                    db_temp.write(db_file.read())
+                    db_temp_path = db_temp.name
+                    
+                try:
+                    call_command('loaddata', db_temp_path)
+                finally:
+                    os.remove(db_temp_path)
+            
+            # Extract and restore media files
+            # Clean up the current media directory first to prevent orphaned media files
+            if os.path.exists(settings.MEDIA_ROOT):
+                shutil.rmtree(settings.MEDIA_ROOT)
+            os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
+            
+            for member in tar.getmembers():
+                if member.name.startswith("media/"):
+                    target_rel_path = os.path.relpath(member.name, "media")
+                    target_full_path = os.path.join(settings.MEDIA_ROOT, target_rel_path)
+                    
+                    if member.isdir():
+                        os.makedirs(target_full_path, exist_ok=True)
+                    else:
+                        os.makedirs(os.path.dirname(target_full_path), exist_ok=True)
+                        with tar.extractfile(member) as source_file, open(target_full_path, "wb") as dest_file:
+                            shutil.copyfileobj(source_file, dest_file)
+                            
+            messages.success(request, "Database and media archive successfully restored!")
+    except Exception as e:
+        messages.error(request, f"Restore failed: {str(e)}")
+    finally:
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+            
+    return redirect('db_management')
+
+def debug_db(request):
+    import traceback
+    from django.db import connection
+    from django.http import HttpResponse
+    from django.core.management import call_command
+    import os
+    res = []
+    
+    db_url = os.environ.get('DATABASE_URL', 'Not Set')
+    masked_url = db_url
+    if '@' in db_url:
+        parts = db_url.split('@')
+        masked_url = "postgres://***:***@" + parts[-1]
+    res.append("Database URL: " + masked_url)
+    
+    try:
+        connection.ensure_connection()
+        res.append("Database connection: SUCCESS")
+        
+        tables = connection.introspection.table_names()
+        res.append(f"Tables in database ({len(tables)}):")
+        for t in tables:
+            res.append(f" - {t}")
+            
+        # Test session creation
+        from django.contrib.sessions.backends.db import SessionStore
+        try:
+            s = SessionStore()
+            s['test_key'] = 'test_value'
+            s.create()
+            res.append(f"\nSession creation test: SUCCESS (session_key={s.session_key})")
+        except Exception as sexc:
+            res.append(f"\nSession creation test: FAILED: {str(sexc)}")
+            res.append(traceback.format_exc())
+            
+        # Log settings.DEBUG status
+        from django.conf import settings as django_settings
+        res.append(f"\nDEBUG setting status: {django_settings.DEBUG}")
+        
+        # Test authentication
+        from django.contrib.auth import authenticate
+        try:
+            user = authenticate(username='nwo_ekm', password='Nwo#Ekm@2026!')
+            if user is not None:
+                res.append(f"Auth test for nwo_ekm: SUCCESS (superuser={user.is_superuser})")
+            else:
+                res.append("Auth test for nwo_ekm: FAILED (returned None)")
+        except Exception as auth_exc:
+            res.append(f"Auth test for nwo_ekm: FAILED with exception: {str(auth_exc)}")
+            res.append(traceback.format_exc())
+            
+        # Test login flow
+        from django.contrib.auth import login
+        from django.test import RequestFactory
+        try:
+            factory = RequestFactory()
+            dummy_request = factory.post('/')
+            from django.contrib.sessions.middleware import SessionMiddleware
+            middleware = SessionMiddleware(lambda req: HttpResponse())
+            middleware(dummy_request)
+            dummy_request.session.save()
+            
+            user = authenticate(username='nwo_ekm', password='Nwo#Ekm@2026!')
+            if user:
+                login(dummy_request, user)
+                res.append(f"Login test for nwo_ekm: SUCCESS, session user_id={dummy_request.session.get('_auth_user_id')}")
+            else:
+                res.append("Login test for nwo_ekm: skipped (auth returned None)")
+        except Exception as login_exc:
+            res.append(f"Login test for nwo_ekm: FAILED with exception: {str(login_exc)}")
+            res.append(traceback.format_exc())
+            
+        from django.db.migrations.recorder import MigrationRecorder
+        recorder = MigrationRecorder(connection)
+        applied_migs = recorder.applied_migrations()
+        res.append(f"\nApplied migrations count: {len(applied_migs)}")
+        
+        from django.db.migrations.executor import MigrationExecutor
+        executor = MigrationExecutor(connection)
+        plan = executor.migration_plan(executor.loader.graph.leaf_nodes())
+        res.append(f"Unapplied migrations plan length: {len(plan)}")
+        for migration, backwards in plan:
+            res.append(f" - Unapplied: {migration.app}.{migration.name}")
+            
+        if plan or request.GET.get('migrate') == 'true':
+            res.append("\n>>> Running migrate command...")
+            import io
+            buf = io.StringIO()
+            call_command('migrate', no_input=True, stdout=buf, stderr=buf)
+            res.append("Migration Output:")
+            res.append(buf.getvalue())
+            
+            tables_after = connection.introspection.table_names()
+            res.append(f"\nTables in database after migrate ({len(tables_after)}):")
+            for t in tables_after:
+                res.append(f" - {t}")
+                
+            executor_after = MigrationExecutor(connection)
+            executor_after.loader.build_graph()
+            plan_after = executor_after.migration_plan(executor_after.loader.graph.leaf_nodes())
+            res.append(f"Unapplied migrations plan length after: {len(plan_after)}")
+            
+            res.append("\n>>> Re-running create_division_users...")
+            buf_users = io.StringIO()
+            call_command('create_division_users', stdout=buf_users, stderr=buf_users)
+            res.append("create_division_users Output:")
+            res.append(buf_users.getvalue())
+            
+            res.append("\n>>> Re-running fix_user_passwords...")
+            buf_pwd = io.StringIO()
+            call_command('fix_user_passwords', stdout=buf_pwd, stderr=buf_pwd)
+            res.append("fix_user_passwords Output:")
+            res.append(buf_pwd.getvalue())
+            
+    except Exception as e:
+        res.append("Error occurred:")
+        res.append(traceback.format_exc())
+        
+    return HttpResponse("<pre>" + "\n".join(res) + "</pre>", content_type="text/html")
+
+def test_dashboard_view(request):
+    import traceback
+    from django.test import RequestFactory
+    from django.contrib.auth.models import User
+    from inventory.views import dashboard
+    from django.http import HttpResponse
+    
+    res = []
+    try:
+        factory = RequestFactory()
+        req = factory.get('/inventory/')
+        
+        user = User.objects.get(username='nwo_ekm')
+        req.user = user
+        
+        # We need to simulate the SessionMiddleware and AuthenticationMiddleware properties
+        from django.contrib.sessions.middleware import SessionMiddleware
+        middleware = SessionMiddleware(lambda r: HttpResponse())
+        middleware(req)
+        req.session.save()
+        
+        response = dashboard(req)
+        res.append(f"Dashboard status code: {response.status_code}")
+        if hasattr(response, 'render'):
+            response.render()
+            res.append("Dashboard content rendered successfully!")
+        else:
+            res.append(f"Dashboard returned non-renderable response of type {type(response)}")
+            
+    except Exception as e:
+        res.append("Error occurred while calling dashboard view:")
+        res.append(traceback.format_exc())
+        
+    return HttpResponse("<pre>" + "\n".join(res) + "</pre>", content_type="text/html")
+
