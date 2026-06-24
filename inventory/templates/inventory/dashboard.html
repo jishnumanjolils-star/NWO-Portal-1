@@ -181,6 +181,78 @@
     </div>
 </div>
 
+<!-- Bulk Ingest & Template Center -->
+<div class="card mb-4 border-0 shadow-sm animate-fade" style="animation-delay: 0.15s; border-radius: 20px; background: white;">
+    <div class="card-header bg-tint-blue border-0 py-3 d-flex align-items-center gap-2" style="border-top-left-radius: 20px; border-top-right-radius: 20px;">
+        <i class="bi bi-file-earmark-excel-fill text-primary" style="font-size: 1.25rem;"></i>
+        <h5 class="mb-0 text-primary fw-bold">Bulk Ingest & Template Center</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <!-- BTS 4G Sites -->
+            <div class="col-md-4">
+                <div class="p-3 border d-flex flex-column gap-2" style="border-radius: 16px; background-color: var(--slate-50);">
+                    <div class="fw-bold text-dark"><i class="bi bi-broadcast me-2 text-primary"></i>4G Sites</div>
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'download_template' %}?category=BTS" class="btn btn-sm btn-outline-secondary flex-grow-1"><i class="bi bi-download"></i> Template</a>
+                        <a href="{% url 'bulk_upload' %}?category=BTS" class="btn btn-sm btn-primary flex-grow-1"><i class="bi bi-upload"></i> Upload</a>
+                    </div>
+                </div>
+            </div>
+            <!-- BTS No 4G Sites -->
+            <div class="col-md-4">
+                <div class="p-3 border d-flex flex-column gap-2" style="border-radius: 16px; background-color: var(--slate-50);">
+                    <div class="fw-bold text-dark"><i class="bi bi-broadcast-pin me-2 text-primary"></i>No 4G Sites</div>
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'download_template' %}?category=BTS_NO_4G" class="btn btn-sm btn-outline-secondary flex-grow-1"><i class="bi bi-download"></i> Template</a>
+                        <a href="{% url 'bulk_upload' %}?category=BTS_NO_4G" class="btn btn-sm btn-primary flex-grow-1"><i class="bi bi-upload"></i> Upload</a>
+                    </div>
+                </div>
+            </div>
+            <!-- Equipment (Nodes) -->
+            <div class="col-md-4">
+                <div class="p-3 border d-flex flex-column gap-2" style="border-radius: 16px; background-color: var(--slate-50);">
+                    <div class="fw-bold text-dark"><i class="bi bi-cpu me-2 text-primary"></i>Equipment (Nodes)</div>
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'download_template' %}?category=EQUIPMENT" class="btn btn-sm btn-outline-secondary flex-grow-1"><i class="bi bi-download"></i> Template</a>
+                        <a href="{% url 'bulk_upload' %}?category=EQUIPMENT" class="btn btn-sm btn-primary flex-grow-1"><i class="bi bi-upload"></i> Upload</a>
+                    </div>
+                </div>
+            </div>
+            <!-- Cables -->
+            <div class="col-md-4">
+                <div class="p-3 border d-flex flex-column gap-2" style="border-radius: 16px; background-color: var(--slate-50);">
+                    <div class="fw-bold text-dark"><i class="bi bi-cable me-2 text-primary"></i>Cables</div>
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'download_template' %}?category=CABLE" class="btn btn-sm btn-outline-secondary flex-grow-1"><i class="bi bi-download"></i> Template</a>
+                        <a href="{% url 'bulk_upload' %}?category=CABLE" class="btn btn-sm btn-primary flex-grow-1"><i class="bi bi-upload"></i> Upload</a>
+                    </div>
+                </div>
+            </div>
+            <!-- Circuits -->
+            <div class="col-md-4">
+                <div class="p-3 border d-flex flex-column gap-2" style="border-radius: 16px; background-color: var(--slate-50);">
+                    <div class="fw-bold text-dark"><i class="bi bi-diagram-3 me-2 text-primary"></i>Circuits</div>
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'download_template' %}?category=CIRCUIT" class="btn btn-sm btn-outline-secondary flex-grow-1"><i class="bi bi-download"></i> Template</a>
+                        <a href="{% url 'bulk_upload' %}?category=CIRCUIT" class="btn btn-sm btn-primary flex-grow-1"><i class="bi bi-upload"></i> Upload</a>
+                    </div>
+                </div>
+            </div>
+            <!-- FTTH Units -->
+            <div class="col-md-4">
+                <div class="p-3 border d-flex flex-column gap-2" style="border-radius: 16px; background-color: var(--slate-50);">
+                    <div class="fw-bold text-dark"><i class="bi bi-house-heart me-2 text-primary"></i>FTTH Units</div>
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'download_template' %}?category=FTTH" class="btn btn-sm btn-outline-secondary flex-grow-1"><i class="bi bi-download"></i> Template</a>
+                        <a href="{% url 'bulk_upload' %}?category=FTTH" class="btn btn-sm btn-primary flex-grow-1"><i class="bi bi-upload"></i> Upload</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Refined Search & Filter -->
 <div class="filter-bar animate-fade" style="animation-delay: 0.2s;">
     <div class="search-wrapper">
