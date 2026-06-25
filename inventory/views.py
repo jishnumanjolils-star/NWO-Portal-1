@@ -611,6 +611,22 @@ class BTSListView(LoginRequiredMixin, DivisionRequiredMixin, ListView):
         context['ring_count'] = queryset.filter(is_ring=True).count()
         context['cef_count'] = queryset.filter(has_cef_12t=True).count()
         context['avg_power'] = queryset.aggregate(Avg('receive_power_db'))['receive_power_db__avg']
+        
+        # Serialize 4G sites coordinates to JSON for Leaflet mapping
+        map_sites = []
+        for bts in queryset:
+            if bts.latitude is not None and bts.longitude is not None:
+                map_sites.append({
+                    'id': bts.id,
+                    'rp_id': bts.rp_id,
+                    'bts_name': bts.bts_name or 'Unnamed BTS',
+                    'latitude': float(bts.latitude),
+                    'longitude': float(bts.longitude),
+                    'place_name': bts.place_name or '',
+                    'is_ring': bts.is_ring,
+                    'has_cef_12t': bts.has_cef_12t,
+                })
+        context['map_sites_json'] = json.dumps(map_sites)
         return context
 
 @login_required
@@ -1597,6 +1613,66 @@ def export_bts(request):
     filename = f"bts_report_{division_label.lower().replace(' ', '_')}.xlsx"
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     wb.save(response)
+    return response
+
+@login_required
+def export_bts_kml(request):
+    import xml.etree.ElementTree as ET
+    queryset = MobileBTS.objects.filter(site_type='4G').select_related('maan_node', 'maan_node__te').all()
+    division = None
+    if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
+        division = request.user.profile.division
+        queryset = queryset.filter(Q(maan_node__te__nwo=division) | Q(te__nwo=division)).distinct()
+
+    search = request.GET.get('search')
+    if search:
+        queryset = queryset.filter(Q(rp_id__icontains=search) | Q(bts_name__icontains=search))
+
+    is_ring = request.GET.get('is_ring')
+    if is_ring:
+        queryset = queryset.filter(is_ring=is_ring == 'true')
+        
+    # We only include sites with valid coordinates in the KML
+    queryset = queryset.filter(latitude__isnull=False, longitude__isnull=False)
+
+    # Construct KML XML
+    kml = ET.Element('kml', xmlns="http://www.opengis.net/kml/2.2")
+    document = ET.SubElement(kml, 'Document')
+    
+    title = ET.SubElement(document, 'name')
+    title.text = "4G Mobile BTS Sites"
+    
+    desc = ET.SubElement(document, 'description')
+    desc.text = "Exported 4G sites from NET-TRACKER"
+
+    for bts in queryset.order_by('rp_id'):
+        placemark = ET.SubElement(document, 'Placemark')
+        
+        name = ET.SubElement(placemark, 'name')
+        name.text = f"{bts.bts_name} ({bts.rp_id})"
+        
+        description = ET.SubElement(placemark, 'description')
+        desc_content = f"RP ID: {bts.rp_id}\n"
+        if bts.place_name:
+            desc_content += f"Place: {bts.place_name}\n"
+        desc_content += f"Ring Connectivity: {'Yes' if bts.is_ring else 'No'}\n"
+        desc_content += f"CEF 12T Circuits: {'Yes' if bts.has_cef_12t else 'No'}\n"
+        if bts.remarks:
+            desc_content += f"Remarks: {bts.remarks}\n"
+        description.text = desc_content
+        
+        point = ET.SubElement(placemark, 'Point')
+        coordinates = ET.SubElement(point, 'coordinates')
+        # KML coordinates order: longitude, latitude, altitude (optional)
+        coordinates.text = f"{float(bts.longitude)},{float(bts.latitude)},0"
+
+    # Serialize XML to string with utf-8 encoding and XML declaration
+    xml_str = ET.tostring(kml, encoding='utf-8', xml_declaration=True)
+    
+    response = HttpResponse(xml_str, content_type='application/vnd.google-earth.kml+xml')
+    division_label = division.name if division else 'all'
+    filename = f"bts_4g_sites_{division_label.lower().replace(' ', '_')}.kml"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
 
 
