@@ -63,7 +63,7 @@ if USE_GIS:
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    *([] if DEBUG else ['whitenoise.middleware.WhiteNoiseMiddleware']), # For static files in production
+    'whitenoise.middleware.WhiteNoiseMiddleware', # For static files in production
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
