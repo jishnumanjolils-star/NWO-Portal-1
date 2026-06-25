@@ -311,6 +311,36 @@
 
         .animate-fade { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Bulk Ingest Modal Custom Styles */
+        .bulk-ingest-card-item {
+            border-radius: 16px;
+            background-color: var(--slate-50);
+            border: 1px solid var(--slate-200);
+            transition: all 0.2s ease;
+        }
+        .bulk-ingest-card-title {
+            font-weight: 800;
+            color: var(--slate-800);
+        }
+        body.dark-mode .bulk-ingest-card-item {
+            background-color: #0b0f1a !important;
+            border-color: #243049 !important;
+        }
+        body.dark-mode .bulk-ingest-card-title {
+            color: white !important;
+        }
+        body.dark-mode .modal-content {
+            background-color: #161f31;
+            color: var(--slate-100);
+            border: 1px solid #243049;
+        }
+        body.dark-mode .modal-header {
+            border-bottom: 1px solid #243049;
+        }
+        body.dark-mode .btn-close {
+            filter: invert(1) grayscale(1) brightness(2);
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -336,6 +366,12 @@
                     <a href="{% url 'dashboard' %}" class="nav-link-custom {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
                         <i class="bi bi-grid-1x2-fill"></i>
                         <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link-custom" data-bs-toggle="modal" data-bs-target="#bulkIngestModal">
+                        <i class="bi bi-file-earmark-excel-fill"></i>
+                        <span>Bulk Ingest & Template Center</span>
                     </a>
                 </li>
                 
@@ -593,6 +629,84 @@
         window.addEventListener('offline', updateOnlineStatus);
         document.addEventListener('DOMContentLoaded', updateOnlineStatus);
     </script>
+    <!-- Bulk Ingest & Template Center Modal -->
+    <div class="modal fade" id="bulkIngestModal" tabindex="-1" aria-labelledby="bulkIngestModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; background: white;">
+                <div class="modal-header bg-tint-blue border-0 py-3">
+                    <h5 class="modal-title text-primary fw-bold" id="bulkIngestModalLabel">
+                        <i class="bi bi-file-earmark-excel-fill me-2" style="font-size: 1.25rem;"></i>Bulk Ingest & Template Center
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <!-- BTS 4G Sites -->
+                        <div class="col-md-6 col-lg-4">
+                            <div class="p-3 bulk-ingest-card-item d-flex flex-column gap-2">
+                                <div class="bulk-ingest-card-title"><i class="bi bi-broadcast me-2 text-primary"></i>4G Sites</div>
+                                <div class="d-flex gap-2">
+                                    <a href="{% url 'download_template' %}?category=BTS" class="btn btn-sm btn-outline-secondary flex-grow-1"><i class="bi bi-download"></i> Template</a>
+                                    <a href="{% url 'bulk_upload' %}?category=BTS" class="btn btn-sm btn-primary flex-grow-1"><i class="bi bi-upload"></i> Upload</a>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- BTS No 4G Sites -->
+                        <div class="col-md-6 col-lg-4">
+                            <div class="p-3 bulk-ingest-card-item d-flex flex-column gap-2">
+                                <div class="bulk-ingest-card-title"><i class="bi bi-broadcast-pin me-2 text-primary"></i>No 4G Sites</div>
+                                <div class="d-flex gap-2">
+                                    <a href="{% url 'download_template' %}?category=BTS_NO_4G" class="btn btn-sm btn-outline-secondary flex-grow-1"><i class="bi bi-download"></i> Template</a>
+                                    <a href="{% url 'bulk_upload' %}?category=BTS_NO_4G" class="btn btn-sm btn-primary flex-grow-1"><i class="bi bi-upload"></i> Upload</a>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Equipment (Nodes) -->
+                        <div class="col-md-6 col-lg-4">
+                            <div class="p-3 bulk-ingest-card-item d-flex flex-column gap-2">
+                                <div class="bulk-ingest-card-title"><i class="bi bi-cpu me-2 text-primary"></i>Equipment (Nodes)</div>
+                                <div class="d-flex gap-2">
+                                    <a href="{% url 'download_template' %}?category=EQUIPMENT" class="btn btn-sm btn-outline-secondary flex-grow-1"><i class="bi bi-download"></i> Template</a>
+                                    <a href="{% url 'bulk_upload' %}?category=EQUIPMENT" class="btn btn-sm btn-primary flex-grow-1"><i class="bi bi-upload"></i> Upload</a>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Cables -->
+                        <div class="col-md-6 col-lg-4">
+                            <div class="p-3 bulk-ingest-card-item d-flex flex-column gap-2">
+                                <div class="bulk-ingest-card-title"><i class="bi bi-cable me-2 text-primary"></i>Cables</div>
+                                <div class="d-flex gap-2">
+                                    <a href="{% url 'download_template' %}?category=CABLE" class="btn btn-sm btn-outline-secondary flex-grow-1"><i class="bi bi-download"></i> Template</a>
+                                    <a href="{% url 'bulk_upload' %}?category=CABLE" class="btn btn-sm btn-primary flex-grow-1"><i class="bi bi-upload"></i> Upload</a>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Circuits -->
+                        <div class="col-md-6 col-lg-4">
+                            <div class="p-3 bulk-ingest-card-item d-flex flex-column gap-2">
+                                <div class="bulk-ingest-card-title"><i class="bi bi-diagram-3 me-2 text-primary"></i>Circuits</div>
+                                <div class="d-flex gap-2">
+                                    <a href="{% url 'download_template' %}?category=CIRCUIT" class="btn btn-sm btn-outline-secondary flex-grow-1"><i class="bi bi-download"></i> Template</a>
+                                    <a href="{% url 'bulk_upload' %}?category=CIRCUIT" class="btn btn-sm btn-primary flex-grow-1"><i class="bi bi-upload"></i> Upload</a>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- FTTH Units -->
+                        <div class="col-md-6 col-lg-4">
+                            <div class="p-3 bulk-ingest-card-item d-flex flex-column gap-2">
+                                <div class="bulk-ingest-card-title"><i class="bi bi-house-heart me-2 text-primary"></i>FTTH Units</div>
+                                <div class="d-flex gap-2">
+                                    <a href="{% url 'download_template' %}?category=FTTH" class="btn btn-sm btn-outline-secondary flex-grow-1"><i class="bi bi-download"></i> Template</a>
+                                    <a href="{% url 'bulk_upload' %}?category=FTTH" class="btn btn-sm btn-primary flex-grow-1"><i class="bi bi-upload"></i> Upload</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>
