@@ -1776,13 +1776,30 @@ def export_circuits(request):
     wb.save(response)
     return response
 
+_te_cache = None
+
+def clear_te_cache():
+    global _te_cache
+    _te_cache = None
+
+def get_cached_exchanges():
+    global _te_cache
+    if _te_cache is None:
+        _te_cache = list(TelephoneExchange.objects.select_related('nwo').all())
+    return _te_cache
+
 def _resolve_te_helper(te_name, division=None):
     if not te_name:
         return None
     name_str = str(te_name).strip()
     if not name_str:
         return None
-    
+        
+    exchanges = get_cached_exchanges()
+    if division:
+        div_id = division.id if hasattr(division, 'id') else None
+        exchanges = [ex for ex in exchanges if ex.nwo_id == div_id]
+        
     import re
     # Substring spelling corrections to handle spelling variations within larger strings
     name_upper = name_str.upper()
@@ -1839,57 +1856,42 @@ def _resolve_te_helper(te_name, division=None):
         name_str = mapping_normalized[lookup_upper]
     
     # 1. Exact match
-    qs = TelephoneExchange.objects.filter(name=name_str)
-    if division:
-        qs = qs.filter(nwo=division)
-    te = qs.first()
-    if te:
-        return te
-        
+    for ex in exchanges:
+        if ex.name == name_str:
+            return ex
+            
     # 2. Case-insensitive exact match
-    qs = TelephoneExchange.objects.filter(name__iexact=name_str)
-    if division:
-        qs = qs.filter(nwo=division)
-    te = qs.first()
-    if te:
-        return te
-        
+    name_str_lower = name_str.lower()
+    for ex in exchanges:
+        if ex.name.lower() == name_str_lower:
+            return ex
+            
     # 3. Appending/removing suffix " TE"
     alt_name = name_str
     if alt_name.upper().endswith(" TE"):
         alt_name = alt_name[:-3].strip()
     else:
         alt_name = f"{alt_name} TE"
-        
-    qs = TelephoneExchange.objects.filter(name__iexact=alt_name)
-    if division:
-        qs = qs.filter(nwo=division)
-    te = qs.first()
-    if te:
-        return te
-        
+    alt_name_lower = alt_name.lower()
+    for ex in exchanges:
+        if ex.name.lower() == alt_name_lower:
+            return ex
+            
     # 4. Fallback: case-insensitive contains match (only if it matches exactly 1 exchange)
-    if name_str:
-        all_exchanges = TelephoneExchange.objects.all()
-        if division:
-            all_exchanges = all_exchanges.filter(nwo=division)
-        matched_exchanges = [ex for ex in all_exchanges if name_str.lower() in ex.name.lower()]
-        if len(matched_exchanges) == 1:
-            return matched_exchanges[0]
+    matched_exchanges = [ex for ex in exchanges if name_str_lower in ex.name.lower()]
+    if len(matched_exchanges) == 1:
+        return matched_exchanges[0]
         
     # 5. Reverse substring search: check if any exchange name (without " TE") is a substring of the lookup string
     lookup_clean = name_str.upper().replace(' ', '').replace('-', '')
     if len(lookup_clean) >= 3:
-        all_exchanges = TelephoneExchange.objects.all()
-        if division:
-            all_exchanges = all_exchanges.filter(nwo=division)
-        for exchange in all_exchanges:
-            exch_clean = exchange.name.upper()
+        for ex in exchanges:
+            exch_clean = ex.name.upper()
             if exch_clean.endswith(" TE"):
                 exch_clean = exch_clean[:-3].strip()
             exch_clean = exch_clean.replace(' ', '').replace('-', '')
             if len(exch_clean) >= 3 and exch_clean in lookup_clean:
-                return exchange
+                return ex
                 
     return None
 
@@ -1925,6 +1927,7 @@ def _auto_assign_bts_helper(division):
                 bts.save()
 
 def bulk_upload_inner(request):
+    clear_te_cache()
     if request.method == 'POST' and request.FILES.get('excel_file'):
         excel_file = request.FILES['excel_file']
         upload_type = request.POST.get('upload_type')
