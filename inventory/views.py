@@ -1920,8 +1920,7 @@ def _auto_assign_bts_helper(division):
                 bts.te = placeholder_te
                 bts.save()
 
-@login_required
-def bulk_upload(request):
+def bulk_upload_inner(request):
     if request.method == 'POST' and request.FILES.get('excel_file'):
         excel_file = request.FILES['excel_file']
         upload_type = request.POST.get('upload_type')
@@ -2445,6 +2444,14 @@ def bulk_upload(request):
                 messages.error(request, f"Error processing file: {error_msg}")
             
     return render(request, 'inventory/bulk_upload.html')
+
+@login_required
+def bulk_upload(request):
+    try:
+        return bulk_upload_inner(request)
+    except Exception as e:
+        import traceback
+        return HttpResponse(f"<pre>Error: {str(e)}\n\nTraceback:\n{traceback.format_exc()}</pre>", status=500)
 
 @login_required
 def download_template(request):
