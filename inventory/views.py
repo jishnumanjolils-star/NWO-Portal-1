@@ -1780,6 +1780,8 @@ def _resolve_te_helper(te_name, division=None):
     if not te_name:
         return None
     name_str = str(te_name).strip()
+    if not name_str:
+        return None
     
     import re
     # Substring spelling corrections to handle spelling variations within larger strings
@@ -1867,11 +1869,13 @@ def _resolve_te_helper(te_name, division=None):
         return te
         
     # 4. Fallback: case-insensitive contains match (only if it matches exactly 1 exchange)
-    qs = TelephoneExchange.objects.filter(name__icontains=name_str)
-    if division:
-        qs = qs.filter(nwo=division)
-    if qs.count() == 1:
-        return qs.first()
+    if name_str:
+        all_exchanges = TelephoneExchange.objects.all()
+        if division:
+            all_exchanges = all_exchanges.filter(nwo=division)
+        matched_exchanges = [ex for ex in all_exchanges if name_str.lower() in ex.name.lower()]
+        if len(matched_exchanges) == 1:
+            return matched_exchanges[0]
         
     # 5. Reverse substring search: check if any exchange name (without " TE") is a substring of the lookup string
     lookup_clean = name_str.upper().replace(' ', '').replace('-', '')
