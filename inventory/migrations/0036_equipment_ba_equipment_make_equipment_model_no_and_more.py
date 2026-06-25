@@ -2,6 +2,32 @@
 
 from django.db import migrations, models
 
+def add_equipment_fields_if_missing(apps, schema_editor):
+    db_vendor = schema_editor.connection.vendor
+    with schema_editor.connection.cursor() as cursor:
+        if db_vendor == 'postgresql':
+            cursor.execute("SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'inventory_equipment' AND column_name = 'ba';")
+            has_ba = cursor.fetchone()[0] > 0
+            
+            cursor.execute("SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'inventory_equipment' AND column_name = 'make';")
+            has_make = cursor.fetchone()[0] > 0
+            
+            cursor.execute("SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'inventory_equipment' AND column_name = 'model_no';")
+            has_model = cursor.fetchone()[0] > 0
+        else:
+            cursor.execute("PRAGMA table_info(inventory_equipment);")
+            cols = [row[1] for row in cursor.fetchall()]
+            has_ba = 'ba' in cols
+            has_make = 'make' in cols
+            has_model = 'model_no' in cols
+
+        if not has_ba:
+            schema_editor.execute("ALTER TABLE inventory_equipment ADD COLUMN ba varchar(100) NULL;")
+        if not has_make:
+            schema_editor.execute("ALTER TABLE inventory_equipment ADD COLUMN make varchar(100) NULL;")
+        if not has_model:
+            schema_editor.execute("ALTER TABLE inventory_equipment ADD COLUMN model_no varchar(100) NULL;")
+
 
 class Migration(migrations.Migration):
 
@@ -10,20 +36,27 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='equipment',
-            name='ba',
-            field=models.CharField(blank=True, max_length=100, null=True, verbose_name='BA'),
-        ),
-        migrations.AddField(
-            model_name='equipment',
-            name='make',
-            field=models.CharField(blank=True, max_length=100, null=True, verbose_name='Make'),
-        ),
-        migrations.AddField(
-            model_name='equipment',
-            name='model_no',
-            field=models.CharField(blank=True, max_length=100, null=True, verbose_name='Model'),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(add_equipment_fields_if_missing, migrations.RunPython.noop),
+            ],
+            state_operations=[
+                migrations.AddField(
+                    model_name='equipment',
+                    name='ba',
+                    field=models.CharField(blank=True, max_length=100, null=True, verbose_name='BA'),
+                ),
+                migrations.AddField(
+                    model_name='equipment',
+                    name='make',
+                    field=models.CharField(blank=True, max_length=100, null=True, verbose_name='Make'),
+                ),
+                migrations.AddField(
+                    model_name='equipment',
+                    name='model_no',
+                    field=models.CharField(blank=True, max_length=100, null=True, verbose_name='Model'),
+                ),
+            ]
         ),
         migrations.AlterField(
             model_name='equipment',
