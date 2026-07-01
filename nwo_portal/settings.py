@@ -185,8 +185,9 @@ csrf_origins = os.environ.get('CSRF_TRUSTED_ORIGINS')
 if csrf_origins:
     CSRF_TRUSTED_ORIGINS.extend(csrf_origins.split(','))
 else:
-    # Auto-trust standard Render domain wildcard
+    # Auto-trust standard Render domain wildcard (both https and http)
     CSRF_TRUSTED_ORIGINS.append('https://*.onrender.com')
+    CSRF_TRUSTED_ORIGINS.append('http://*.onrender.com')
     # Auto-trust domains from ALLOWED_HOSTS
     for host in ALLOWED_HOSTS:
         host = host.strip()
