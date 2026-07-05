@@ -188,6 +188,9 @@ else:
     # Auto-trust standard Render domain wildcard (both https and http)
     CSRF_TRUSTED_ORIGINS.append('https://*.onrender.com')
     CSRF_TRUSTED_ORIGINS.append('http://*.onrender.com')
+    # Auto-trust standard Hugging Face Spaces domains
+    CSRF_TRUSTED_ORIGINS.append('https://*.hf.space')
+    CSRF_TRUSTED_ORIGINS.append('http://*.hf.space')
     # Auto-trust domains from ALLOWED_HOSTS
     for host in ALLOWED_HOSTS:
         host = host.strip()
