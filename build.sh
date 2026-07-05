@@ -11,12 +11,12 @@ echo "Build started at: $(date)"
 # Step 1: Upgrade pip
 echo ""
 echo "Step 1/3: Upgrading pip..."
-python -m pip install --upgrade pip setuptools wheel
+python -m pip install --upgrade pip setuptools wheel --trusted-host pypi.org --trusted-host files.pythonhosted.org --trusted-host pypi.python.org
 
 # Step 2: Install dependencies
 echo ""
 echo "Step 2/3: Installing Python dependencies from requirements.txt..."
-if ! python -m pip install -r requirements.txt; then
+if ! python -m pip install -r requirements.txt --trusted-host pypi.org --trusted-host files.pythonhosted.org --trusted-host pypi.python.org; then
     echo "ERROR: Failed to install requirements"
     exit 1
 fi
