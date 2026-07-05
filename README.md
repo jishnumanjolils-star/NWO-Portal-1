@@ -1,3 +1,13 @@
+---
+title: NWO Portal
+emoji: 🌐
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # OFCNetTracker Django Web Application
 
 A clean, production-ready Django application designed for tracking OFC networks. This project is pre-configured and optimized for hosting on [Render](https://render.com) using standard blueprints.
