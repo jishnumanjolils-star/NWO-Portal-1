@@ -467,15 +467,13 @@
                     </a>
                 </li>
                 
-                {% if request.user.is_superuser %}
-                <div class="nav-label">System Admin</div>
+                <div class="nav-label">System Tools</div>
                 <li class="nav-item">
                     <a href="{% url 'db_management' %}" class="nav-link-custom {% if 'db-management' in request.path %}active{% endif %}">
                         <i class="bi bi-database-fill-gear"></i>
                         <span>Backup & Restore</span>
                     </a>
                 </li>
-                {% endif %}
             </ul>
         </nav>
     </aside>
