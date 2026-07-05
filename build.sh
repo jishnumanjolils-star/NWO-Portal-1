@@ -33,3 +33,5 @@ echo "Static files collected"
 echo ""
 echo "====== NWO PORTAL BUILD COMPLETED ======"
 echo "Build completed at: $(date)"
+
+# Force manual redeployment to ensure all template and views changes are fully live
