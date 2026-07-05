@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user (UID 1000 required by Hugging Face)
-RUN useradd -m -u 1000 user
+RUN useradd -m -u 1000 user && mkdir -p /home/user/app && chown -R user:user /home/user
 WORKDIR /home/user/app
 
 # Install dependencies
