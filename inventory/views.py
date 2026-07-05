@@ -611,22 +611,6 @@ class BTSListView(LoginRequiredMixin, DivisionRequiredMixin, ListView):
         context['ring_count'] = queryset.filter(is_ring=True).count()
         context['cef_count'] = queryset.filter(has_cef_12t=True).count()
         context['avg_power'] = queryset.aggregate(Avg('receive_power_db'))['receive_power_db__avg']
-        
-        # Serialize 4G sites coordinates to JSON for Leaflet mapping
-        map_sites = []
-        for bts in queryset:
-            if bts.latitude is not None and bts.longitude is not None:
-                map_sites.append({
-                    'id': bts.id,
-                    'rp_id': bts.rp_id,
-                    'bts_name': bts.bts_name or 'Unnamed BTS',
-                    'latitude': float(bts.latitude),
-                    'longitude': float(bts.longitude),
-                    'place_name': bts.place_name or '',
-                    'is_ring': bts.is_ring,
-                    'has_cef_12t': bts.has_cef_12t,
-                })
-        context['map_sites_json'] = json.dumps(map_sites)
         return context
 
 @login_required
@@ -1615,66 +1599,6 @@ def export_bts(request):
     wb.save(response)
     return response
 
-@login_required
-def export_bts_kml(request):
-    import xml.etree.ElementTree as ET
-    queryset = MobileBTS.objects.filter(site_type='4G').select_related('maan_node', 'maan_node__te').all()
-    division = None
-    if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
-        division = request.user.profile.division
-        queryset = queryset.filter(Q(maan_node__te__nwo=division) | Q(te__nwo=division)).distinct()
-
-    search = request.GET.get('search')
-    if search:
-        queryset = queryset.filter(Q(rp_id__icontains=search) | Q(bts_name__icontains=search))
-
-    is_ring = request.GET.get('is_ring')
-    if is_ring:
-        queryset = queryset.filter(is_ring=is_ring == 'true')
-        
-    # We only include sites with valid coordinates in the KML
-    queryset = queryset.filter(latitude__isnull=False, longitude__isnull=False)
-
-    # Construct KML XML
-    kml = ET.Element('kml', xmlns="http://www.opengis.net/kml/2.2")
-    document = ET.SubElement(kml, 'Document')
-    
-    title = ET.SubElement(document, 'name')
-    title.text = "4G Mobile BTS Sites"
-    
-    desc = ET.SubElement(document, 'description')
-    desc.text = "Exported 4G sites from NET-TRACKER"
-
-    for bts in queryset.order_by('rp_id'):
-        placemark = ET.SubElement(document, 'Placemark')
-        
-        name = ET.SubElement(placemark, 'name')
-        name.text = f"{bts.bts_name} ({bts.rp_id})"
-        
-        description = ET.SubElement(placemark, 'description')
-        desc_content = f"RP ID: {bts.rp_id}\n"
-        if bts.place_name:
-            desc_content += f"Place: {bts.place_name}\n"
-        desc_content += f"Ring Connectivity: {'Yes' if bts.is_ring else 'No'}\n"
-        desc_content += f"CEF 12T Circuits: {'Yes' if bts.has_cef_12t else 'No'}\n"
-        if bts.remarks:
-            desc_content += f"Remarks: {bts.remarks}\n"
-        description.text = desc_content
-        
-        point = ET.SubElement(placemark, 'Point')
-        coordinates = ET.SubElement(point, 'coordinates')
-        # KML coordinates order: longitude, latitude, altitude (optional)
-        coordinates.text = f"{float(bts.longitude)},{float(bts.latitude)},0"
-
-    # Serialize XML to string with utf-8 encoding and XML declaration
-    xml_str = ET.tostring(kml, encoding='utf-8', xml_declaration=True)
-    
-    response = HttpResponse(xml_str, content_type='application/vnd.google-earth.kml+xml')
-    division_label = division.name if division else 'all'
-    filename = f"bts_4g_sites_{division_label.lower().replace(' ', '_')}.kml"
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    return response
-
 
 @login_required
 def export_no_4g_bts(request):
@@ -1852,30 +1776,11 @@ def export_circuits(request):
     wb.save(response)
     return response
 
-_te_cache = None
-
-def clear_te_cache():
-    global _te_cache
-    _te_cache = None
-
-def get_cached_exchanges():
-    global _te_cache
-    if _te_cache is None:
-        _te_cache = list(TelephoneExchange.objects.select_related('nwo').all())
-    return _te_cache
-
 def _resolve_te_helper(te_name, division=None):
     if not te_name:
         return None
     name_str = str(te_name).strip()
-    if not name_str:
-        return None
-        
-    exchanges = get_cached_exchanges()
-    if division:
-        div_id = division.id if hasattr(division, 'id') else None
-        exchanges = [ex for ex in exchanges if ex.nwo_id == div_id]
-        
+    
     import re
     # Substring spelling corrections to handle spelling variations within larger strings
     name_upper = name_str.upper()
@@ -1932,42 +1837,55 @@ def _resolve_te_helper(te_name, division=None):
         name_str = mapping_normalized[lookup_upper]
     
     # 1. Exact match
-    for ex in exchanges:
-        if ex.name == name_str:
-            return ex
-            
+    qs = TelephoneExchange.objects.filter(name=name_str)
+    if division:
+        qs = qs.filter(nwo=division)
+    te = qs.first()
+    if te:
+        return te
+        
     # 2. Case-insensitive exact match
-    name_str_lower = name_str.lower()
-    for ex in exchanges:
-        if ex.name.lower() == name_str_lower:
-            return ex
-            
+    qs = TelephoneExchange.objects.filter(name__iexact=name_str)
+    if division:
+        qs = qs.filter(nwo=division)
+    te = qs.first()
+    if te:
+        return te
+        
     # 3. Appending/removing suffix " TE"
     alt_name = name_str
     if alt_name.upper().endswith(" TE"):
         alt_name = alt_name[:-3].strip()
     else:
         alt_name = f"{alt_name} TE"
-    alt_name_lower = alt_name.lower()
-    for ex in exchanges:
-        if ex.name.lower() == alt_name_lower:
-            return ex
-            
+        
+    qs = TelephoneExchange.objects.filter(name__iexact=alt_name)
+    if division:
+        qs = qs.filter(nwo=division)
+    te = qs.first()
+    if te:
+        return te
+        
     # 4. Fallback: case-insensitive contains match (only if it matches exactly 1 exchange)
-    matched_exchanges = [ex for ex in exchanges if name_str_lower in ex.name.lower()]
-    if len(matched_exchanges) == 1:
-        return matched_exchanges[0]
+    qs = TelephoneExchange.objects.filter(name__icontains=name_str)
+    if division:
+        qs = qs.filter(nwo=division)
+    if qs.count() == 1:
+        return qs.first()
         
     # 5. Reverse substring search: check if any exchange name (without " TE") is a substring of the lookup string
     lookup_clean = name_str.upper().replace(' ', '').replace('-', '')
     if len(lookup_clean) >= 3:
-        for ex in exchanges:
-            exch_clean = ex.name.upper()
+        all_exchanges = TelephoneExchange.objects.all()
+        if division:
+            all_exchanges = all_exchanges.filter(nwo=division)
+        for exchange in all_exchanges:
+            exch_clean = exchange.name.upper()
             if exch_clean.endswith(" TE"):
                 exch_clean = exch_clean[:-3].strip()
             exch_clean = exch_clean.replace(' ', '').replace('-', '')
             if len(exch_clean) >= 3 and exch_clean in lookup_clean:
-                return ex
+                return exchange
                 
     return None
 
@@ -2002,8 +1920,8 @@ def _auto_assign_bts_helper(division):
                 bts.te = placeholder_te
                 bts.save()
 
-def bulk_upload_inner(request):
-    clear_te_cache()
+@login_required
+def bulk_upload(request):
     if request.method == 'POST' and request.FILES.get('excel_file'):
         excel_file = request.FILES['excel_file']
         upload_type = request.POST.get('upload_type')
@@ -2529,14 +2447,6 @@ def bulk_upload_inner(request):
     return render(request, 'inventory/bulk_upload.html')
 
 @login_required
-def bulk_upload(request):
-    try:
-        return bulk_upload_inner(request)
-    except Exception as e:
-        import traceback
-        return HttpResponse(f"<pre>Error: {str(e)}\n\nTraceback:\n{traceback.format_exc()}</pre>", status=500)
-
-@login_required
 def download_template(request):
     category = request.GET.get('category', 'CIRCUIT')
     
@@ -2914,9 +2824,6 @@ import tempfile
 
 @login_required
 def db_management(request):
-    if not request.user.is_superuser:
-        return HttpResponseForbidden("Only superusers are allowed to access Database Management.")
-    
     # Calculate media folder size
     media_size = 0
     media_count = 0
@@ -2947,9 +2854,6 @@ def db_management(request):
 
 @login_required
 def db_backup(request):
-    if not request.user.is_superuser:
-        return HttpResponseForbidden("Only superusers are allowed to download backups.")
-        
     try:
         # Create an in-memory tar archive
         tar_buffer = io.BytesIO()
@@ -2989,9 +2893,6 @@ def db_backup(request):
 @login_required
 @require_http_methods(["POST"])
 def db_restore(request):
-    if not request.user.is_superuser:
-        return HttpResponseForbidden("Only superusers are allowed to restore database backups.")
-        
     uploaded_file = request.FILES.get('backup_file')
     if not uploaded_file:
         messages.error(request, "Please select a backup file to upload.")
