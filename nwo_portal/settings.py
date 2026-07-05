@@ -191,6 +191,8 @@ else:
     # Auto-trust standard Hugging Face Spaces domains
     CSRF_TRUSTED_ORIGINS.append('https://*.hf.space')
     CSRF_TRUSTED_ORIGINS.append('http://*.hf.space')
+    CSRF_TRUSTED_ORIGINS.append('https://nwportal-app.hf.space')
+    CSRF_TRUSTED_ORIGINS.append('http://nwportal-app.hf.space')
     # Auto-trust domains from ALLOWED_HOSTS
     for host in ALLOWED_HOSTS:
         host = host.strip()
@@ -199,4 +201,10 @@ else:
             CSRF_TRUSTED_ORIGINS.append(f'http://{host}')
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Configure SameSite=None and Secure for cookies to allow embedding inside Hugging Face iframes
+CSRF_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
 
