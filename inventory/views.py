@@ -1900,7 +1900,7 @@ def _auto_assign_bts_helper(division):
         placeholder_name = f"UNMAPPED - {division.name}"
         placeholder_te, _ = TelephoneExchange.objects.get_or_create(
             name=placeholder_name,
-            defaults={'nwo': division}
+            nwo=division
         )
         for bts in unlinked_bts:
             matched_te = None
@@ -1998,10 +1998,10 @@ def bulk_upload(request):
                                 division = NWO.objects.first()
                             
                             placeholder_name = f"UNMAPPED - {division.name}" if division else "UNMAPPED - ALL"
-                            te, _ = TelephoneExchange.objects.get_or_create(
-                                name=placeholder_name,
-                                defaults={'nwo': division} if division else {}
-                            )
+                            te_kwargs = {'name': placeholder_name}
+                            if division:
+                                te_kwargs['nwo'] = division
+                            te, _ = TelephoneExchange.objects.get_or_create(**te_kwargs)
                             if te_name not in (None, ''):
                                 row_errors.append(f"Row {i} (SL No {get_value(row, 'SL No', 'Sl No') or i-1}): Telephone Exchange '{te_name}' not found. Saved under '{placeholder_name}'.")
                             else:
@@ -2209,10 +2209,10 @@ def bulk_upload(request):
                                 division = NWO.objects.first()
                             
                             placeholder_name = f"UNMAPPED - {division.name}" if division else "UNMAPPED - ALL"
-                            te, _ = TelephoneExchange.objects.get_or_create(
-                                name=placeholder_name,
-                                defaults={'nwo': division} if division else {}
-                            )
+                            te_kwargs = {'name': placeholder_name}
+                            if division:
+                                te_kwargs['nwo'] = division
+                            te, _ = TelephoneExchange.objects.get_or_create(**te_kwargs)
                             if te_name not in (None, ''):
                                 row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found. Saved under '{placeholder_name}'.")
 
@@ -2290,10 +2290,10 @@ def bulk_upload(request):
                                 division = NWO.objects.first()
                             
                             placeholder_name = f"UNMAPPED - {division.name}" if division else "UNMAPPED - ALL"
-                            te, _ = TelephoneExchange.objects.get_or_create(
-                                name=placeholder_name,
-                                defaults={'nwo': division} if division else {}
-                            )
+                            te_kwargs = {'name': placeholder_name}
+                            if division:
+                                te_kwargs['nwo'] = division
+                            te, _ = TelephoneExchange.objects.get_or_create(**te_kwargs)
                             if te_name not in (None, ''):
                                 row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found. Saved under '{placeholder_name}'.")
 
