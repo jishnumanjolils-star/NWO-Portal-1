@@ -77,8 +77,8 @@ urlpatterns = [
     path('export/cables/', views.export_cables, name='export_cables'),
     path('export/equipment/', views.export_equipment, name='export_equipment'),
     path('export/bts/', views.export_bts, name='export_bts'),
-    path('export/bts/kml/', views.export_bts_kml, name='export_bts_kml'),
     path('export/bts/no-4g/', views.export_no_4g_bts, name='export_no_4g_bts'),
+    path('export/bts/kml/', views.export_bts_kml, name='export_bts_kml'),
     path('export/ftth/', views.export_ftth, name='export_ftth'),
     path('export/circuits/', views.export_circuits, name='export_circuits'),
 
