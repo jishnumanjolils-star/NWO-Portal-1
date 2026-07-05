@@ -283,19 +283,38 @@ def dashboard(request):
 
     # 4. Build data structure
     nwo_data_list = []
+    from django.db.models import Count
     for nwo in sorted_nwos:
-        # Use explicit queryset to avoid any related_name/attribute resolution issues
-        exchanges = TelephoneExchange.objects.filter(nwo=nwo).order_by('name')
+        # Pre-fetch counts using annotation to avoid N+1 query loops
+        exchanges = TelephoneExchange.objects.filter(nwo=nwo).annotate(
+            c_count=Count('cables', distinct=True),
+            e_count=Count('equipments', distinct=True),
+            cir_count=Count('ebcircuit', distinct=True),
+            f_count=Count('ftth', distinct=True),
+        ).order_by('name')
+        
+        # Pre-calculate BTS counts for this division
+        bts_counts = {}
+        direct_bts = MobileBTS.objects.filter(te__nwo=nwo).values('te_id').annotate(count=Count('id', distinct=True))
+        for item in direct_bts:
+            if item['te_id']:
+                bts_counts[item['te_id']] = bts_counts.get(item['te_id'], 0) + item['count']
+        
+        maan_bts = MobileBTS.objects.filter(maan_node__te__nwo=nwo).values('maan_node__te_id').annotate(count=Count('id', distinct=True))
+        for item in maan_bts:
+            if item['maan_node__te_id']:
+                bts_counts[item['maan_node__te_id']] = bts_counts.get(item['maan_node__te_id'], 0) + item['count']
+
         te_list = []
         for te in exchanges:
             te_list.append({
                 'id': te.id,
                 'name': te.name,
-                'cable_count': te.cables.count(),
-                'equipment_count': te.equipments.count(),
-                'circuit_count': EBCircuit.objects.filter(te=te).count(),
-                'bts_count': MobileBTS.objects.filter(Q(maan_node__te=te) | Q(te=te)).distinct().count(),
-                'ftth_count': FTTH.objects.filter(te=te).count(),
+                'cable_count': te.c_count,
+                'equipment_count': te.e_count,
+                'circuit_count': te.cir_count,
+                'bts_count': bts_counts.get(te.id, 0),
+                'ftth_count': te.f_count,
             })
         
         nwo_data_list.append({
