@@ -1970,8 +1970,8 @@ def _auto_assign_bts_helper(division):
     if not division:
         return
     unlinked_bts = MobileBTS.objects.filter(
-        Q(te=None, maan_node=None) | 
-        Q(te__name__startswith="UNMAPPED -", maan_node=None)
+        te=None,
+        maan_node=None
     )
     if unlinked_bts.exists():
         placeholder_name = f"UNMAPPED - {division.name}"
