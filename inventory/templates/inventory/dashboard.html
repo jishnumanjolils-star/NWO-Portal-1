@@ -186,11 +186,9 @@
     <div class="card-header bg-tint-blue border-0 py-3 d-flex align-items-center gap-2" style="border-top-left-radius: 20px; border-top-right-radius: 20px;">
         <i class="bi bi-file-earmark-excel-fill text-primary" style="font-size: 1.25rem;"></i>
         <h5 class="mb-0 text-primary fw-bold">Bulk Ingest & Template Center</h5>
-        {% if request.user.is_superuser %}
         <a href="{% url 'db_management' %}" class="btn btn-sm btn-outline-primary ms-auto" style="border-radius: 10px;">
             <i class="bi bi-database-fill-gear"></i> Backup & Restore
         </a>
-        {% endif %}
     </div>
     <div class="card-body">
         <div class="row g-3">
@@ -255,7 +253,6 @@
                 </div>
             </div>
             <!-- Backup & Restore -->
-            {% if request.user.is_superuser %}
             <div class="col-md-4">
                 <div class="p-3 border d-flex flex-column gap-2" style="border-radius: 16px; background-color: var(--slate-50); border: 1px dashed var(--bs-danger) !important;">
                     <div class="fw-bold text-danger"><i class="bi bi-database-fill-gear me-2"></i>Backup & Restore</div>
@@ -265,7 +262,6 @@
                     </div>
                 </div>
             </div>
-            {% endif %}
         </div>
     </div>
 </div>
