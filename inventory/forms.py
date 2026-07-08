@@ -232,7 +232,9 @@ class CableForm(DivisionFilteredFormMixin, forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        print("GUNICORN_DEBUG:", type(self), args, kwargs)
         super().__init__(*args, **kwargs)
+        print("GUNICORN_DEBUG_POST_SUPER: initial=", type(self.initial), "instance=", type(self.instance))
         self.fields['te'].queryset = TelephoneExchange.objects.all()
         self.fields['connected_te'].queryset = TelephoneExchange.objects.all()
         
