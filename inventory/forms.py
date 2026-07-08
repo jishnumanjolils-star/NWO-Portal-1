@@ -5,23 +5,41 @@ class DivisionFilteredFormMixin:
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        
+        # 1. Set optimized default querysets using select_related to avoid N+1 database queries
+        if 'te' in self.fields:
+            self.fields['te'].queryset = TelephoneExchange.objects.select_related('nwo').all()
+        if 'connected_te' in self.fields:
+            self.fields['connected_te'].queryset = TelephoneExchange.objects.select_related('nwo').all()
+        if 'input_cables' in self.fields:
+            self.fields['input_cables'].queryset = Cable.objects.select_related('te__nwo').all()
+        if 'output_cables' in self.fields:
+            self.fields['output_cables'].queryset = Cable.objects.select_related('te__nwo').all()
+        if 'cable' in self.fields:
+            self.fields['cable'].queryset = Cable.objects.select_related('te__nwo').all()
+        if 'maan_node' in self.fields:
+            self.fields['maan_node'].queryset = Equipment.objects.select_related('te__nwo').filter(equipment_type__startswith='MAAN')
+        if 'equipment' in self.fields:
+            self.fields['equipment'].queryset = Equipment.objects.select_related('te__nwo').all()
+
+        # 2. Apply division filters for non-superusers
         if self.user and not self.user.is_superuser:
             if hasattr(self.user, 'profile') and self.user.profile.division:
                 division = self.user.profile.division
                 if 'te' in self.fields:
-                    self.fields['te'].queryset = TelephoneExchange.objects.filter(nwo=division)
+                    self.fields['te'].queryset = self.fields['te'].queryset.filter(nwo=division)
                 if 'connected_te' in self.fields:
-                    self.fields['connected_te'].queryset = TelephoneExchange.objects.filter(nwo=division)
+                    self.fields['connected_te'].queryset = self.fields['connected_te'].queryset.filter(nwo=division)
                 if 'input_cables' in self.fields:
-                    self.fields['input_cables'].queryset = Cable.objects.filter(te__nwo=division)
+                    self.fields['input_cables'].queryset = self.fields['input_cables'].queryset.filter(te__nwo=division)
                 if 'output_cables' in self.fields:
-                    self.fields['output_cables'].queryset = Cable.objects.filter(te__nwo=division)
+                    self.fields['output_cables'].queryset = self.fields['output_cables'].queryset.filter(te__nwo=division)
                 if 'cable' in self.fields:
-                    self.fields['cable'].queryset = Cable.objects.filter(te__nwo=division)
+                    self.fields['cable'].queryset = self.fields['cable'].queryset.filter(te__nwo=division)
                 if 'maan_node' in self.fields:
-                    self.fields['maan_node'].queryset = Equipment.objects.filter(te__nwo=division, equipment_type__startswith='MAAN')
+                    self.fields['maan_node'].queryset = self.fields['maan_node'].queryset.filter(te__nwo=division)
                 if 'equipment' in self.fields:
-                    self.fields['equipment'].queryset = Equipment.objects.filter(te__nwo=division)
+                    self.fields['equipment'].queryset = self.fields['equipment'].queryset.filter(te__nwo=division)
 
 class LIUForm(DivisionFilteredFormMixin, forms.ModelForm):
     class Meta:
@@ -176,9 +194,6 @@ class JBForm(DivisionFilteredFormMixin, forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['te'].queryset = TelephoneExchange.objects.all()
-        self.fields['input_cables'].queryset = Cable.objects.all()
-        self.fields['output_cables'].queryset = Cable.objects.all()
         
         # Auto-fill and disable TE field if provided
         if 'te' in self.initial or (self.instance and self.instance.te_id):
@@ -232,11 +247,7 @@ class CableForm(DivisionFilteredFormMixin, forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
-        print("GUNICORN_DEBUG:", type(self), args, kwargs)
         super().__init__(*args, **kwargs)
-        print("GUNICORN_DEBUG_POST_SUPER: initial=", type(self.initial), "instance=", type(self.instance))
-        self.fields['te'].queryset = TelephoneExchange.objects.all()
-        self.fields['connected_te'].queryset = TelephoneExchange.objects.all()
         
         if 'te' in self.initial or (self.instance and self.instance.te_id):
             self.fields['te'].disabled = True
@@ -295,7 +306,6 @@ class EquipmentForm(DivisionFilteredFormMixin, forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['te'].queryset = TelephoneExchange.objects.all()
         
         if 'te' in self.initial or (self.instance and self.instance.te_id):
             self.fields['te'].disabled = True
@@ -377,7 +387,6 @@ class CircuitForm(DivisionFilteredFormMixin, forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['te'].queryset = TelephoneExchange.objects.all()
         self.fields['cable'].queryset = Cable.objects.all()
         self.fields['equipment'].queryset = Equipment.objects.all()
         
