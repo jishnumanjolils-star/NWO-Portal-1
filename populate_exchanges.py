@@ -220,24 +220,20 @@ def populate_exchanges():
     total_created = 0
     
     for division_name, exchanges in DIVISIONS_EXCHANGES.items():
-        try:
-            nwo = NWO.objects.get(name=division_name)
-            print(f"\n{division_name}: ({len(exchanges)} TEs)")
-            
-            for exchange_name in exchanges:
-                te, created = TelephoneExchange.objects.get_or_create(
-                    nwo=nwo,
-                    name=exchange_name,
-                    defaults={'remarks': f'TE under {division_name}'}
-                )
-                
-                if created:
-                    total_created += 1
-            
-            print(f"  [OK] {len(exchanges)} TEs created/verified")
+        nwo, _ = NWO.objects.get_or_create(name=division_name)
+        print(f"\n{division_name}: ({len(exchanges)} TEs)")
         
-        except NWO.DoesNotExist:
-            print(f"\n[ERROR] Division not found: {division_name}")
+        for exchange_name in exchanges:
+            te, created = TelephoneExchange.objects.get_or_create(
+                nwo=nwo,
+                name=exchange_name,
+                defaults={'remarks': f'TE under {division_name}'}
+            )
+            
+            if created:
+                total_created += 1
+        
+        print(f"  [OK] {len(exchanges)} TEs created/verified")
     
     print("\n" + "="*70)
     print(f"Total TEs in database: {TelephoneExchange.objects.count()}")

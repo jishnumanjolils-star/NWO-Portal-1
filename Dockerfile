@@ -29,5 +29,6 @@ COPY . /app/
 # Collect static files
 # RUN python manage.py collectstatic --noinput
 
-# Run gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "nwo_portal.wsgi:application"]
+# Make start script executable and start application
+RUN chmod +x start.sh
+CMD ["bash", "start.sh"]

@@ -1864,26 +1864,18 @@ def get_cached_exchanges():
         _te_cache = list(TelephoneExchange.objects.select_related('nwo').all())
     return _te_cache
 
-def _resolve_te_helper(te_name, division=None):
-    if not te_name:
+def _match_exchange(name_str, exchange_list):
+    if not name_str or not exchange_list:
         return None
-    name_str = str(te_name).strip()
-    if not name_str:
-        return None
-        
-    exchanges = get_cached_exchanges()
-    if division:
-        div_id = division.id if hasattr(division, 'id') else None
-        exchanges = [ex for ex in exchanges if ex.nwo_id == div_id]
         
     import re
-    # Substring spelling corrections to handle spelling variations within larger strings
     name_upper = name_str.upper()
     corrections = {
         'AYAPPANKAV': 'AYYAPPANKAVU',
         'CHITOOR': 'CHITTOOR',
         'CHITUR': 'CHITTOOR',
         'PANAMBILLI': 'PANAMPILLY',
+        'PANAMBILLY': 'PANAMPILLY',
         'PANAMPILLYNGR': 'PANAMPILLY NAGAR',
         'BOAT JETTY': 'BOATJETTY',
         'CARRIER STATION ROAD': 'CSR',
@@ -1898,7 +1890,6 @@ def _resolve_te_helper(te_name, division=None):
             name_str = re.sub(re.escape(search), replace, name_str, flags=re.IGNORECASE)
             name_upper = name_str.upper()
             
-    # Custom mapping dictionary for spelling variations and common abbreviations
     mapping = {
         'BOAT JETTY ERNAKULAM': 'Boatjetty TE',
         'BOAT JETTY': 'Boatjetty TE',
@@ -1910,6 +1901,9 @@ def _resolve_te_helper(te_name, division=None):
         'PANAMPILLYNAGAR': 'Panampilly Nagar TE',
         'PANAMPILLY NAGAR': 'Panampilly Nagar TE',
         'PANAMBILLI NAGAR': 'Panampilly Nagar TE',
+        'PANAMBILLY NAGAR': 'Panampilly Nagar TE',
+        'PANAMBILLY': 'Panampilly Nagar TE',
+        'PANAMPILLY': 'Panampilly Nagar TE',
         'PANAMPILLYNGR': 'Panampilly Nagar TE',
         'AYAPPANKAV': 'Ayyappankavu TE',
         'AYYAPPANKAVU': 'Ayyappankavu TE',
@@ -1932,13 +1926,13 @@ def _resolve_te_helper(te_name, division=None):
         name_str = mapping_normalized[lookup_upper]
     
     # 1. Exact match
-    for ex in exchanges:
+    for ex in exchange_list:
         if ex.name == name_str:
             return ex
             
     # 2. Case-insensitive exact match
     name_str_lower = name_str.lower()
-    for ex in exchanges:
+    for ex in exchange_list:
         if ex.name.lower() == name_str_lower:
             return ex
             
@@ -1949,27 +1943,57 @@ def _resolve_te_helper(te_name, division=None):
     else:
         alt_name = f"{alt_name} TE"
     alt_name_lower = alt_name.lower()
-    for ex in exchanges:
+    for ex in exchange_list:
         if ex.name.lower() == alt_name_lower:
             return ex
             
     # 4. Fallback: case-insensitive contains match (only if it matches exactly 1 exchange)
-    matched_exchanges = [ex for ex in exchanges if name_str_lower in ex.name.lower()]
+    matched_exchanges = [ex for ex in exchange_list if name_str_lower in ex.name.lower()]
     if len(matched_exchanges) == 1:
         return matched_exchanges[0]
         
     # 5. Reverse substring search: check if any exchange name (without " TE") is a substring of the lookup string
     lookup_clean = name_str.upper().replace(' ', '').replace('-', '')
     if len(lookup_clean) >= 3:
-        for ex in exchanges:
+        for ex in exchange_list:
             exch_clean = ex.name.upper()
             if exch_clean.endswith(" TE"):
                 exch_clean = exch_clean[:-3].strip()
             exch_clean = exch_clean.replace(' ', '').replace('-', '')
             if len(exch_clean) >= 3 and exch_clean in lookup_clean:
                 return ex
-                
+
     return None
+
+def _resolve_te_helper(te_name, division=None):
+    if not te_name:
+        return None
+    name_str = str(te_name).strip()
+    if not name_str:
+        return None
+        
+    all_exchanges = get_cached_exchanges()
+    if len(all_exchanges) < 10:
+        try:
+            from populate_exchanges import populate_exchanges
+            populate_exchanges()
+            clear_te_cache()
+            all_exchanges = get_cached_exchanges()
+        except Exception:
+            pass
+
+    searchable_exchanges = [ex for ex in all_exchanges if not ex.name.startswith("UNMAPPED -")]
+    if not searchable_exchanges:
+        searchable_exchanges = all_exchanges
+
+    if division:
+        div_id = division.id if hasattr(division, 'id') else None
+        div_exchanges = [ex for ex in searchable_exchanges if ex.nwo_id == div_id]
+        res = _match_exchange(name_str, div_exchanges)
+        if res:
+            return res
+
+    return _match_exchange(name_str, searchable_exchanges)
 
 def _get_placeholder_te(division=None):
     if not division:
