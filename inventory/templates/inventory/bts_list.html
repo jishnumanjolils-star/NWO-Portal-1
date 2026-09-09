@@ -152,7 +152,7 @@
 
     /* Leaflet Map Styling */
     #map {
-        height: 400px;
+        height: 480px;
         width: 100%;
         border-radius: 20px;
     }
@@ -181,6 +181,42 @@
         transform: scale(1.15);
         background: rgba(139, 92, 246, 0.3);
         box-shadow: 0 0 15px rgba(139, 92, 246, 0.6);
+    }
+    
+    /* Distance Calculator Styling */
+    .dist-calc-panel {
+        background: #F8FAFC;
+        border-bottom: 1px solid #E2E8F0;
+        padding: 1.25rem 1.5rem;
+    }
+    body.dark-mode .dist-calc-panel {
+        background: #0f172a;
+        border-color: #1e293b;
+    }
+    .dist-input {
+        border-radius: 14px;
+        border: 1px solid #CBD5E1;
+        padding: 0.65rem 1rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+        background: white;
+    }
+    body.dark-mode .dist-input {
+        background: #1e293b;
+        border-color: #334155;
+        color: white;
+    }
+    .dist-result-box {
+        background: white;
+        border-radius: 16px;
+        padding: 1.25rem 1.5rem;
+        border: 1px solid #E2E8F0;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    body.dark-mode .dist-result-box {
+        background: #1e293b;
+        border-color: #334155;
+        color: white;
     }
 </style>
 {% endblock %}
@@ -240,10 +276,70 @@
 
     <!-- Map Section -->
     <div class="map-container-wrapper card border-0 shadow-sm overflow-hidden mb-4" id="mapSection" style="border-radius: 24px; display: none;">
-        <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-geo-alt-fill text-danger me-2"></i>4G Sites Map View</h5>
-            <span class="badge bg-primary rounded-pill px-3 py-2" id="mapped-sites-count">0 Sites Mapped</span>
+        <div class="card-header bg-white py-3 border-bottom">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-geo-alt-fill text-danger me-2"></i>4G Sites GIS Map View</h5>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary fw-bold rounded-pill px-3" id="toggleDistCalc">
+                        <i class="bi bi-ruler me-1"></i> Distance Calculator
+                    </button>
+                    <span class="badge bg-primary rounded-pill px-3 py-2" id="mapped-sites-count">0 Sites Mapped</span>
+                </div>
+            </div>
         </div>
+
+        <!-- Distance Calculator Tool Panel -->
+        <div class="dist-calc-panel" id="distCalcPanel" style="display: none;">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold text-muted mb-1">
+                        <i class="bi bi-geo-fill text-success me-1"></i>From BTS (Site A)
+                    </label>
+                    <input type="text" id="siteA_input" class="form-control dist-input" list="btsDatalist" placeholder="Search BTS Name or RP ID...">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold text-muted mb-1">
+                        <i class="bi bi-geo-fill text-danger me-1"></i>To BTS (Site B)
+                    </label>
+                    <input type="text" id="siteB_input" class="form-control dist-input" list="btsDatalist" placeholder="Search BTS Name or RP ID...">
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button type="button" class="btn btn-primary fw-bold px-4 rounded-pill flex-grow-1" id="btnCalculateDistance">
+                        <i class="bi bi-calculator me-1"></i> Calculate Distance
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary fw-bold rounded-pill px-3" id="btnClearDistance" title="Reset Selection">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <datalist id="btsDatalist"></datalist>
+
+            <!-- Results Panel -->
+            <div class="dist-result-box mt-3" id="distResultBanner" style="display: none;">
+                <div class="d-flex flex-wrap justify-content-around align-items-center gap-3">
+                    <div class="text-center px-3">
+                        <span class="text-uppercase text-muted extra-small fw-bold d-block mb-1">
+                            <i class="bi bi-dash-lg me-1 text-danger"></i>Radial Distance (Aerial)
+                        </span>
+                        <span class="fs-4 fw-extrabold text-danger" id="radialDistValue">0.00 km</span>
+                    </div>
+                    <div class="vr opacity-25 d-none d-md-block" style="height: 40px;"></div>
+                    <div class="text-center px-3">
+                        <span class="text-uppercase text-muted extra-small fw-bold d-block mb-1">
+                            <i class="bi bi-signpost-split-fill me-1 text-primary"></i>Road Distance (Driving Route)
+                        </span>
+                        <span class="fs-4 fw-extrabold text-primary" id="roadDistValue">0.00 km</span>
+                    </div>
+                    <div class="vr opacity-25 d-none d-md-block" style="height: 40px;"></div>
+                    <div class="text-center px-3">
+                        <span class="text-uppercase text-muted extra-small fw-bold d-block mb-1">Selected Route</span>
+                        <span class="small fw-bold text-dark d-block" id="selectedRouteSummary">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="card-body p-0">
             <div id="map"></div>
         </div>
@@ -365,10 +461,8 @@
         }
 
         if (mapSites && mapSites.length > 0) {
-            // Show map container
             $('#mapSection').show();
             
-            // Initialize Map centering at Kochi by default, but we will adjust zoom/center with fitBounds
             var map = L.map('map', { zoomControl: false }).setView([9.9816, 76.2999], 10);
             L.control.zoom({ position: 'bottomright' }).addTo(map);
             
@@ -384,7 +478,19 @@
                 className: ''
             });
 
+            // Populate datalist & lookup dictionary for autocomplete
+            var $datalist = $('#btsDatalist');
+            $datalist.empty();
+            var btsLookup = {};
+
             mapSites.forEach(function(bts) {
+                var label = bts.bts_name + ' (' + bts.rp_id + ')';
+                btsLookup[label] = bts;
+                btsLookup[bts.rp_id] = bts;
+                btsLookup[bts.bts_name] = bts;
+
+                $datalist.append('<option value="' + label + '">');
+
                 var popupContent = '<div>' +
                     '<h6 class="fw-bold mb-1">' + bts.bts_name + '</h6>' +
                     '<p class="mb-1 small"><b>RP ID:</b> ' + bts.rp_id + '</p>';
@@ -402,17 +508,156 @@
                     icon: towerIcon
                 }).bindPopup(popupContent);
                 
+                marker.on('click', function() {
+                    handleMarkerClick(bts);
+                });
+
                 marker.addTo(map);
                 bounds.push([bts.latitude, bts.longitude]);
             });
 
-            // Update mapped sites count
             $('#mapped-sites-count').text(mapSites.length + ' Sites Mapped');
 
-            // Fit map to bounds of plotted markers
             if (bounds.length > 0) {
                 map.fitBounds(bounds, { padding: [50, 50] });
             }
+
+            // Distance Calculator Layers
+            var distLayersGroup = L.featureGroup().addTo(map);
+
+            // Toggle Distance Calculator Panel
+            $('#toggleDistCalc').on('click', function() {
+                $('#distCalcPanel').slideToggle(300);
+            });
+
+            function findBTS(inputVal) {
+                if (!inputVal) return null;
+                var val = inputVal.trim();
+                if (btsLookup[val]) return btsLookup[val];
+                var lower = val.toLowerCase();
+                for (var i = 0; i < mapSites.length; i++) {
+                    var b = mapSites[i];
+                    if (b.rp_id.toLowerCase() === lower || 
+                        b.bts_name.toLowerCase() === lower || 
+                        (b.bts_name + ' (' + b.rp_id + ')').toLowerCase() === lower) {
+                        return b;
+                    }
+                }
+                return null;
+            }
+
+            function calcHaversine(lat1, lon1, lat2, lon2) {
+                const R = 6371; // Earth radius in km
+                const dLat = (lat2 - lat1) * Math.PI / 180;
+                const dLon = (lon2 - lon1) * Math.PI / 180;
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                          Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                return R * c;
+            }
+
+            function performCalculation() {
+                var siteA = findBTS($('#siteA_input').val());
+                var siteB = findBTS($('#siteB_input').val());
+
+                if (!siteA || !siteB) {
+                    alert("Please select valid BTS sites for both Site A and Site B from the list.");
+                    return;
+                }
+
+                if (siteA.id === siteB.id) {
+                    alert("Please select two different BTS sites to calculate distance.");
+                    return;
+                }
+
+                distLayersGroup.clearLayers();
+                $('#distResultBanner').slideDown(300);
+
+                var radKm = calcHaversine(siteA.latitude, siteA.longitude, siteB.latitude, siteB.longitude);
+                $('#radialDistValue').text(radKm.toFixed(2) + ' km');
+                $('#selectedRouteSummary').text(siteA.bts_name + ' ➔ ' + siteB.bts_name);
+
+                // Draw Radial Dashed Line
+                var radialLine = L.polyline([
+                    [siteA.latitude, siteA.longitude],
+                    [siteB.latitude, siteB.longitude]
+                ], {
+                    color: '#ef4444',
+                    weight: 3,
+                    dashArray: '8, 8',
+                    opacity: 0.9
+                }).addTo(distLayersGroup);
+
+                $('#roadDistValue').html('<span class="spinner-border spinner-border-sm text-primary me-1"></span>Routing...');
+
+                // Fetch OSRM Road Distance & Geometry
+                var osrmUrl = `https://router.project-osrm.org/route/v1/driving/${siteA.longitude},${siteA.latitude};${siteB.longitude},${siteB.latitude}?overview=full&geometries=geojson`;
+
+                $.ajax({
+                    url: osrmUrl,
+                    type: 'GET',
+                    timeout: 7000,
+                    success: function(data) {
+                        if (data && data.routes && data.routes.length > 0) {
+                            var route = data.routes[0];
+                            var roadKm = (route.distance / 1000).toFixed(2);
+                            $('#roadDistValue').text(roadKm + ' km');
+
+                            var coords = route.geometry.coordinates.map(function(pt) {
+                                return [pt[1], pt[0]];
+                            });
+
+                            L.polyline(coords, {
+                                color: '#2563eb',
+                                weight: 5,
+                                opacity: 0.85
+                            }).addTo(distLayersGroup);
+
+                            map.fitBounds(distLayersGroup.getBounds(), { padding: [60, 60] });
+                        } else {
+                            var estKm = (radKm * 1.25).toFixed(2);
+                            $('#roadDistValue').html(estKm + ' km <small class="text-muted fw-normal">(Est.)</small>');
+                            map.fitBounds(radialLine.getBounds(), { padding: [60, 60] });
+                        }
+                    },
+                    error: function() {
+                        var estKm = (radKm * 1.25).toFixed(2);
+                        $('#roadDistValue').html(estKm + ' km <small class="text-muted fw-normal">(Est.)</small>');
+                        map.fitBounds(radialLine.getBounds(), { padding: [60, 60] });
+                    }
+                });
+            }
+
+            function handleMarkerClick(bts) {
+                var val = bts.bts_name + ' (' + bts.rp_id + ')';
+                var siteA = $('#siteA_input').val();
+                var siteB = $('#siteB_input').val();
+
+                if (!siteA) {
+                    $('#siteA_input').val(val);
+                    $('#distCalcPanel').slideDown(300);
+                } else if (!siteB && siteA !== val) {
+                    $('#siteB_input').val(val);
+                    performCalculation();
+                } else {
+                    $('#siteA_input').val(val);
+                    $('#siteB_input').val('');
+                    distLayersGroup.clearLayers();
+                    $('#distResultBanner').slideUp(200);
+                }
+            }
+
+            $('#btnCalculateDistance').on('click', function() {
+                performCalculation();
+            });
+
+            $('#btnClearDistance').on('click', function() {
+                $('#siteA_input').val('');
+                $('#siteB_input').val('');
+                distLayersGroup.clearLayers();
+                $('#distResultBanner').slideUp(200);
+            });
         }
     });
 </script>
