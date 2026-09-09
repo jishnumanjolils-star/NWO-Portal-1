@@ -633,21 +633,20 @@ class BTSListView(LoginRequiredMixin, DivisionRequiredMixin, ListView):
         queryset = self.get_queryset()
         context['total_count'] = queryset.count()
         
-        # Serialize all 4G sites coordinates to JSON for Leaflet mapping so map shows full topology
+        # Serialize all 4G sites to JSON for Leaflet mapping and tool lookups
         map_sites = []
         for bts in base_qs:
-            if bts.latitude is not None and bts.longitude is not None:
-                map_sites.append({
-                    'id': bts.id,
-                    'rp_id': bts.rp_id,
-                    'bts_name': bts.bts_name or 'Unnamed BTS',
-                    'latitude': float(bts.latitude),
-                    'longitude': float(bts.longitude),
-                    'place_name': bts.place_name or '',
-                    'is_ring': bts.is_ring,
-                    'has_cef_12t': bts.has_cef_12t,
-                    'erps_image_url': bts.erps_image.url if bts.erps_image else '',
-                })
+            map_sites.append({
+                'id': bts.id,
+                'rp_id': bts.rp_id,
+                'bts_name': bts.bts_name or 'Unnamed BTS',
+                'latitude': float(bts.latitude) if bts.latitude is not None else None,
+                'longitude': float(bts.longitude) if bts.longitude is not None else None,
+                'place_name': bts.place_name or '',
+                'is_ring': bts.is_ring,
+                'has_cef_12t': bts.has_cef_12t,
+                'erps_image_url': bts.erps_image.url if bts.erps_image else '',
+            })
         context['map_sites_json'] = json.dumps(map_sites)
         return context
 

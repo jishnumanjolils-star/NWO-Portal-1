@@ -321,9 +321,12 @@
         </div>
         <div class="d-flex gap-2 flex-wrap">
             <button type="button" class="btn btn-info text-white px-4 fw-bold rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#ringModal">
-                <i class="bi bi-diagram-3-fill me-2"></i>Mark BTS in Ring
+                <i class="bi bi-diagram-3-fill me-2"></i>Add Ring Topology
             </button>
-            <a class="btn btn-outline-primary px-4 fw-bold rounded-pill"
+            <button type="button" class="btn btn-outline-primary px-4 fw-bold rounded-pill" id="btnHeaderDistCalc">
+                <i class="bi bi-ruler me-2"></i>Measure Distance
+            </button>
+            <a class="btn btn-outline-secondary px-4 fw-bold rounded-pill"
                href="{% url 'export_bts_kml' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">
                 <i class="bi bi-geo-alt me-2"></i>Download KML
             </a>
@@ -370,7 +373,7 @@
     </div>
 
     <!-- Map Section -->
-    <div class="map-container-wrapper card border-0 shadow-sm overflow-hidden mb-4" id="mapSection" style="border-radius: 24px; display: none;">
+    <div class="map-container-wrapper card border-0 shadow-sm overflow-hidden mb-4" id="mapSection" style="border-radius: 24px; display: block;">
         <div class="card-header bg-white py-3 border-bottom">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
                 <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-geo-alt-fill text-danger me-2"></i>4G Sites GIS Map View</h5>
@@ -930,6 +933,15 @@
 
 
 
+        // Header Measure Distance Button
+        $('#btnHeaderDistCalc').on('click', function() {
+            $('#distCalcPanel').slideDown(300);
+            $('html, body').animate({
+                scrollTop: $('#distCalcPanel').offset().top - 120
+            }, 500);
+            $('#siteA_input').focus();
+        });
+
         // Batch Action Checkboxes
         $('#selectAllBts').on('change', function() {
             $('.bts-select-checkbox').prop('checked', $(this).is(':checked'));
@@ -955,6 +967,7 @@
         $datalist.empty();
         btsLookup = {};
         markersDict = {};
+        var mappedCount = 0;
 
         mapSites.forEach(function(bts) {
             var label = bts.bts_name + ' (' + bts.rp_id + ')';
@@ -964,13 +977,16 @@
 
             $datalist.append('<option value="' + label + '">');
 
-            var marker = createTowerMarker(bts);
-            marker.addTo(leafletMap);
-            markersDict[bts.id] = marker;
-            bounds.push([bts.latitude, bts.longitude]);
+            if (bts.latitude && bts.longitude) {
+                var marker = createTowerMarker(bts);
+                marker.addTo(leafletMap);
+                markersDict[bts.id] = marker;
+                bounds.push([bts.latitude, bts.longitude]);
+                mappedCount++;
+            }
         });
 
-        $('#mapped-sites-count').text(mapSites.length + ' Sites Mapped');
+        $('#mapped-sites-count').text(mappedCount + ' Sites Mapped');
 
         if (bounds.length > 0) {
             leafletMap.fitBounds(bounds, { padding: [50, 50] });
@@ -1279,6 +1295,11 @@
 
         if (siteA.id === siteB.id) {
             alert("Please select two different BTS sites to calculate distance.");
+            return;
+        }
+
+        if (!siteA.latitude || !siteA.longitude || !siteB.latitude || !siteB.longitude) {
+            alert("One or both selected BTS sites do not have GPS coordinates (Latitude & Longitude) recorded yet. Please edit the site details to enter GPS coordinates.");
             return;
         }
 
