@@ -388,22 +388,62 @@
 
         <!-- Ring Management Tool Panel -->
         <div class="ring-mgmt-panel" id="ringMgmtPanel" style="display: none;">
-            <div class="row g-3 align-items-end">
-                <div class="col-md-6">
-                    <label class="form-label small fw-bold text-muted mb-1">
-                        <i class="bi bi-search me-1 text-cyan"></i>Enter BTS Name or RP ID to Mark/Unmark Ring Status:
-                    </label>
-                    <input type="text" id="ring_bts_input" class="form-control dist-input" list="btsDatalist" placeholder="Type BTS Name or RP ID (e.g. EKM_001)...">
+            <ul class="nav nav-pills mb-3" id="ringMgmtTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active py-1 px-3 small fw-bold" id="single-ring-tab" data-bs-toggle="pill" data-bs-target="#single-ring-pane" type="button" role="tab">
+                        <i class="bi bi-search me-1"></i> Single Site Quick Mark
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link py-1 px-3 small fw-bold" id="bulk-ring-tab" data-bs-toggle="pill" data-bs-target="#bulk-ring-pane" type="button" role="tab">
+                        <i class="bi bi-diagram-3-fill me-1"></i> Form Ring Topology Altogether (Bulk Input)
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="ringMgmtTabContent">
+                <!-- Single Site Tab -->
+                <div class="tab-pane fade show active" id="single-ring-pane" role="tabpanel">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted mb-1">
+                                <i class="bi bi-search me-1 text-cyan"></i>Enter BTS Name or RP ID:
+                            </label>
+                            <input type="text" id="ring_bts_input" class="form-control dist-input" list="btsDatalist" placeholder="Type BTS Name or RP ID (e.g. EKM_001)...">
+                        </div>
+                        <div class="col-md-6 d-flex gap-2">
+                            <button type="button" class="btn btn-success fw-bold px-4 rounded-pill flex-grow-1" id="btnMarkRing">
+                                <i class="bi bi-check-circle-fill me-1"></i> Mark as In Ring
+                            </button>
+                            <button type="button" class="btn btn-outline-danger fw-bold px-4 rounded-pill flex-grow-1" id="btnRemoveRing">
+                                <i class="bi bi-x-circle-fill me-1"></i> Remove from Ring
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-6 d-flex gap-2">
-                    <button type="button" class="btn btn-success fw-bold px-4 rounded-pill flex-grow-1" id="btnMarkRing">
-                        <i class="bi bi-check-circle-fill me-1"></i> Mark as In Ring
-                    </button>
-                    <button type="button" class="btn btn-outline-danger fw-bold px-4 rounded-pill flex-grow-1" id="btnRemoveRing">
-                        <i class="bi bi-x-circle-fill me-1"></i> Remove from Ring
-                    </button>
+
+                <!-- Bulk Ring Tab -->
+                <div class="tab-pane fade" id="bulk-ring-pane" role="tabpanel">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label small fw-bold text-muted mb-1">
+                                <i class="bi bi-diagram-3 me-1 text-primary"></i>Paste or Type Multiple RP IDs / BTS Names to Form Complete Ring Topology:
+                            </label>
+                            <textarea id="bulk_ring_textarea" class="form-control dist-input font-monospace" rows="3" 
+                                placeholder="Enter RP IDs or BTS Names separated by commas or newlines...&#10;Example: EKM_001, EKM_002, EKM_003, EKM_004"></textarea>
+                        </div>
+                        <div class="col-12 d-flex gap-2 justify-content-end">
+                            <button type="button" class="btn btn-success fw-bold px-4 rounded-pill" id="btnFormBulkRing">
+                                <i class="bi bi-diagram-3-fill me-1"></i> Form Ring Topology Altogether
+                            </button>
+                            <button type="button" class="btn btn-outline-danger fw-bold px-4 rounded-pill" id="btnRemoveBulkRing">
+                                <i class="bi bi-trash me-1"></i> Remove All from Ring
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
+
             <div class="alert alert-info py-2 px-3 mt-3 mb-0 small rounded-14" id="ringMgmtToast" style="display: none;"></div>
         </div>
 
@@ -712,6 +752,15 @@
             handleRingAction(false);
         });
 
+        // Handle Bulk Ring Topology Submission
+        $('#btnFormBulkRing').on('click', function() {
+            handleBulkRingAction(true);
+        });
+        $('#btnRemoveBulkRing').on('click', function() {
+            handleBulkRingAction(false);
+        });
+
+
         // Batch Action Checkboxes
         $('#selectAllBts').on('change', function() {
             $('.bts-select-checkbox').prop('checked', $(this).is(':checked'));
@@ -882,6 +931,48 @@
             }
         });
     }
+
+    function handleBulkRingAction(targetIsRing) {
+        var rawText = $('#bulk_ring_textarea').val();
+        if (!rawText || !rawText.trim()) {
+            showToast("Please enter or paste RP IDs / BTS Names into the bulk input box.", "danger");
+            return;
+        }
+
+        $.ajax({
+            url: '{% url "toggle_bts_ring_api" %}',
+            type: 'POST',
+            contentType: 'application/json',
+            headers: { 'X-CSRFToken': csrftoken },
+            data: JSON.stringify({ raw_bulk_text: rawText, is_ring: targetIsRing }),
+            success: function(res) {
+                if (res.success) {
+                    var toastType = res.unmatched_inputs && res.unmatched_inputs.length > 0 ? "warning" : "success";
+                    showToast(res.message, toastType);
+                    
+                    if (res.matched_sites && res.matched_sites.length > 0) {
+                        res.matched_sites.forEach(function(s) {
+                            updateLocalBtsRingState(s.id, res.is_ring);
+                        });
+                        
+                        var ringCoords = res.matched_sites.filter(s => s.latitude && s.longitude).map(s => [s.latitude, s.longitude]);
+                        if (ringCoords.length > 0 && leafletMap) {
+                            leafletMap.fitBounds(ringCoords, { padding: [60, 60] });
+                        }
+                    }
+                    updateCounters(res.total_ring_count, res.total_non_ring_count);
+                    $('#bulk_ring_textarea').val('');
+                } else {
+                    showToast(res.error || "Failed to update bulk ring topology.", "danger");
+                }
+            },
+            error: function(xhr) {
+                var err = xhr.responseJSON ? xhr.responseJSON.error : "Server error.";
+                showToast(err, "danger");
+            }
+        });
+    }
+
 
     function quickToggleRing(btsId, targetIsRing) {
         $.ajax({

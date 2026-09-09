@@ -644,12 +644,71 @@ def toggle_bts_ring_api(request):
         bts_id = data.get('bts_id')
         query = data.get('query')
         action = data.get('action') # 'add', 'remove', or 'toggle'
-        is_ring_target = data.get('is_ring')
+        is_ring_target = data.get('is_ring', True)
         bts_ids = data.get('bts_ids', [])
+        raw_bulk_text = data.get('raw_bulk_text', '')
 
         qs = MobileBTS.objects.filter(site_type='4G')
         if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
             qs = qs.filter(Q(maan_node__te__nwo=request.user.profile.division) | Q(te__nwo=request.user.profile.division)).distinct()
+
+        # Handle Raw Bulk Text Input (comma, newline, semicolon separated)
+        if raw_bulk_text or data.get('bulk_inputs'):
+            import re
+            text = raw_bulk_text or ",".join(data.get('bulk_inputs', []))
+            tokens = [t.strip() for t in re.split(r'[,;\n\r]+', text) if t.strip()]
+            
+            matched_sites = []
+            unmatched_inputs = []
+            updated_ids = []
+            
+            all_sites = list(qs)
+            site_map = {}
+            for s in all_sites:
+                site_map[s.rp_id.lower()] = s
+                site_map[s.bts_name.lower()] = s
+
+            for token in tokens:
+                lower = token.lower()
+                matched = site_map.get(lower)
+                if not matched:
+                    # Partial search fallback
+                    matched = next((s for s in all_sites if lower in s.rp_id.lower() or lower in s.bts_name.lower()), None)
+                
+                if matched:
+                    if matched.id not in updated_ids:
+                        matched.is_ring = bool(is_ring_target)
+                        matched.save(update_fields=['is_ring'])
+                        updated_ids.append(matched.id)
+                    
+                    matched_sites.append({
+                        'id': matched.id,
+                        'rp_id': matched.rp_id,
+                        'bts_name': matched.bts_name,
+                        'latitude': float(matched.latitude) if matched.latitude else None,
+                        'longitude': float(matched.longitude) if matched.longitude else None,
+                        'is_ring': matched.is_ring,
+                    })
+                else:
+                    unmatched_inputs.append(token)
+
+            total_ring = qs.filter(is_ring=True).count()
+            total_non_ring = qs.filter(is_ring=False).count()
+            
+            msg = f"Ring Topology updated! {len(updated_ids)} BTS sites assigned."
+            if unmatched_inputs:
+                msg += f" (Unmatched inputs: {', '.join(unmatched_inputs)})"
+
+            return JsonResponse({
+                'success': True,
+                'updated_ids': updated_ids,
+                'matched_sites': matched_sites,
+                'unmatched_inputs': unmatched_inputs,
+                'is_ring': bool(is_ring_target),
+                'total_ring_count': total_ring,
+                'total_non_ring_count': total_non_ring,
+                'message': msg
+            })
 
         if bts_ids:
             target_sites = qs.filter(id__in=bts_ids)
@@ -704,6 +763,7 @@ def toggle_bts_ring_api(request):
         })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
 
 
 @login_required
