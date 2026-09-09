@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponse, HttpResponseBadRequest
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.db.models import Count, Sum, Avg, F, Q
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from .models import NWO, TelephoneExchange, Cable, Equipment, EBCircuit, MobileBTS, JunctionBox, LIU, Fiber, Splicing, FTTH, OHMaintenanceEntry, OHMaintenanceActivity, OHMaintenanceRateMaster
 from .forms import LIUForm, JBForm, CableForm, EquipmentForm, CircuitForm, BTSForm, Non4GBTSForm, FTTHForm, ChangePasswordForm, OHMaintenanceEntryForm, OHMaintenanceActivityFormSet
 from django.urls import reverse_lazy
@@ -1971,6 +1971,20 @@ def _resolve_te_helper(te_name, division=None):
                 
     return None
 
+def _get_placeholder_te(division=None):
+    if not division:
+        division = NWO.objects.first()
+        if not division:
+            division, _ = NWO.objects.get_or_create(name='NWO CENTRAL')
+    placeholder_name = f"UNMAPPED - {division.name}"
+    te, _ = TelephoneExchange.objects.get_or_create(
+        nwo=division,
+        name=placeholder_name
+    )
+    if _te_cache is not None and te not in _te_cache:
+        _te_cache.append(te)
+    return te
+
 def _auto_assign_bts_helper(division):
     if not division:
         return
@@ -1979,21 +1993,14 @@ def _auto_assign_bts_helper(division):
         Q(te__name__startswith="UNMAPPED -", maan_node=None)
     )
     if unlinked_bts.exists():
-        placeholder_name = f"UNMAPPED - {division.name}"
-        placeholder_te, _ = TelephoneExchange.objects.get_or_create(
-            name=placeholder_name,
-            defaults={'nwo': division}
-        )
+        placeholder_te = _get_placeholder_te(division)
         for bts in unlinked_bts:
             matched_te = None
-            # 1. Try to match by place_name
             if bts.place_name:
                 matched_te = _resolve_te_helper(bts.place_name, division)
-            # 2. Try to match by bts_name
             if not matched_te and bts.bts_name:
                 matched_te = _resolve_te_helper(bts.bts_name, division)
             
-            # 3. Save matching or fallback to placeholder (only if te is currently None)
             if matched_te:
                 if bts.te != matched_te:
                     bts.te = matched_te
@@ -2003,6 +2010,7 @@ def _auto_assign_bts_helper(division):
                 bts.save()
 
 def bulk_upload_inner(request):
+    global _te_cache
     clear_te_cache()
     if request.method == 'POST' and request.FILES.get('excel_file'):
         excel_file = request.FILES['excel_file']
@@ -2012,19 +2020,31 @@ def bulk_upload_inner(request):
             wb = openpyxl.load_workbook(excel_file)
             ws = wb.active
             
-            # Get headers
-            headers = [cell.value for cell in ws[1]]
-            header_map = {name: i for i, name in enumerate(headers)}
-            
+            def normalize_header(h):
+                if h is None:
+                    return ''
+                s = str(h).strip().replace('–', '-').replace('—', '-')
+                return ' '.join(s.split()).upper()
+
+            headers = [cell.value for cell in ws[1]] if ws.max_row >= 1 else []
+            header_map = {}
+            for i, name in enumerate(headers):
+                norm = normalize_header(name)
+                if norm and norm not in header_map:
+                    header_map[norm] = i
+
             rows = list(ws.iter_rows(min_row=2, values_only=True))
 
             def get_value(row, *keys, required=False, default=None):
                 for key in keys:
-                    idx = header_map.get(key)
-                    if idx is not None:
-                        return row[idx]
+                    norm_key = normalize_header(key)
+                    idx = header_map.get(norm_key)
+                    if idx is not None and idx < len(row):
+                        val = row[idx]
+                        if val is not None:
+                            return val
                 if required:
-                    raise KeyError(f"Missing required column: {keys[0]}")
+                    raise KeyError(f"Missing required column: '{keys[0]}'. Please check your Excel header row.")
                 return default
 
             def parse_bool(val):
@@ -2063,33 +2083,29 @@ def bulk_upload_inner(request):
             skipped_count = 0
             row_errors = []
             
+            user_division = None
+            if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
+                user_division = request.user.profile.division
+
             if upload_type == 'CIRCUIT':
+                circuits_to_create = []
+
                 for i, row in enumerate(rows, start=2):
                     try:
-                        te_name = get_value(row, 'TE Name', 'TE')
-                        division = None
-                        if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
-                            division = request.user.profile.division
-                        
+                        te_name = get_value(row, 'TE Name', 'TE', 'TE NAME', 'Telephone Exchange')
+                        division = user_division
                         te = None
                         if te_name not in (None, ''):
                             te = _resolve_te_helper(te_name, division)
                             
                         if not te:
-                            if not division:
-                                division = NWO.objects.first()
-                            
-                            placeholder_name = f"UNMAPPED - {division.name}" if division else "UNMAPPED - ALL"
-                            te, _ = TelephoneExchange.objects.get_or_create(
-                                name=placeholder_name,
-                                defaults={'nwo': division} if division else {}
-                            )
+                            te = _get_placeholder_te(division)
                             if te_name not in (None, ''):
-                                row_errors.append(f"Row {i} (SL No {get_value(row, 'SL No', 'Sl No') or i-1}): Telephone Exchange '{te_name}' not found. Saved under '{placeholder_name}'.")
+                                row_errors.append(f"Row {i} (SL No {get_value(row, 'SL No', 'Sl No') or i-1}): Telephone Exchange '{te_name}' not found. Saved under '{te.name}'.")
                             else:
-                                row_errors.append(f"Row {i} (SL No {get_value(row, 'SL No', 'Sl No') or i-1}): Blank Telephone Exchange. Saved under '{placeholder_name}'.")
+                                row_errors.append(f"Row {i} (SL No {get_value(row, 'SL No', 'Sl No') or i-1}): Blank Telephone Exchange. Saved under '{te.name}'.")
 
-                        circuit_type_val = get_value(row, 'TYPE', 'Type')
+                        circuit_type_val = get_value(row, 'TYPE', 'Type', 'Circuit Type')
                         if circuit_type_val not in (None, ''):
                             circuit_type_val = str(circuit_type_val).strip().upper()
                             type_mapping = {
@@ -2107,7 +2123,6 @@ def bulk_upload_inner(request):
                         else:
                             circuit_type_val = None
 
-                        # Map Node at A-End to DB Choices
                         end_node_raw = get_value(row, 'Node at A-End', 'End Node')
                         customer_end_node = None
                         if end_node_raw not in (None, ''):
@@ -2129,10 +2144,9 @@ def bulk_upload_inner(request):
                                 'MADM': 'MADM',
                                 'MAAN A3 / A4': 'MAAN_A3_A4',
                                 'MAAN A3/A4': 'MAAN_A3_A4',
-                            }
+                             }
                             customer_end_node = node_map.get(end_node_raw)
 
-                        # Normalize Fiber Mode
                         fiber_mode_raw = get_value(row, 'Fiber Mode')
                         fiber_mode = None
                         if fiber_mode_raw not in (None, ''):
@@ -2149,7 +2163,7 @@ def bulk_upload_inner(request):
                         latitude = float(lat) if lat not in (None, '') else None
                         longitude = float(lon) if lon not in (None, '') else None
 
-                        EBCircuit.objects.create(
+                        obj = EBCircuit(
                             te=te,
                             circuit_type=circuit_type_val,
                             client_name=get_value(row, 'NAME', 'Name', 'Client Name'),
@@ -2171,62 +2185,122 @@ def bulk_upload_inner(request):
                             longitude=longitude,
                             remarks=get_value(row, 'Remarks', default='Bulk Uploaded') or 'Bulk Uploaded'
                         )
-                        created_count += 1
-                    except IntegrityError as e:
-                        row_errors.append(f"Row {i} (SL No {get_value(row, 'SL No', 'Sl No') or i-1}): Database integrity error - {e}")
-                        skipped_count += 1
+                        circuits_to_create.append((i, obj))
                     except Exception as e:
                         row_errors.append(f"Row {i} (SL No {get_value(row, 'SL No', 'Sl No') or i-1}): {e}")
                         skipped_count += 1
+
+                if circuits_to_create:
+                    try:
+                        with transaction.atomic():
+                            EBCircuit.objects.bulk_create([obj for row_num, obj in circuits_to_create])
+                        created_count = len(circuits_to_create)
+                    except Exception as e:
+                        for row_num, obj in circuits_to_create:
+                            try:
+                                with transaction.atomic():
+                                    obj.save()
+                                created_count += 1
+                            except IntegrityError as err:
+                                row_errors.append(f"Row {row_num} (SL No {get_value(rows[row_num-2], 'SL No', 'Sl No') or row_num-1}): Database integrity error - {err}")
+                                skipped_count += 1
+                            except Exception as err:
+                                row_errors.append(f"Row {row_num} (SL No {get_value(rows[row_num-2], 'SL No', 'Sl No') or row_num-1}): {err}")
+                                skipped_count += 1
+
                 if row_errors:
-                    messages.warning(request, f"EB Circuits uploaded with {len(row_errors)} row errors. Created: {created_count}, Skipped: {skipped_count}.")
+                    messages.warning(request, f"EB Circuits uploaded with {len(row_errors)} warnings/errors. Created: {created_count}, Skipped: {skipped_count}.")
                 else:
                     messages.success(request, f"EB Circuits uploaded successfully! Created: {created_count}, Skipped: {skipped_count}.")
             
             elif upload_type == 'CABLE':
+                existing_cable_names = set(Cable.objects.values_list('name', flat=True))
+                cables_to_create = []
+
                 for i, row in enumerate(rows, start=2):
                     try:
-                        te_name = get_value(row, 'TE', 'TE Name', required=True)
-                        division = None
-                        if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
-                            division = request.user.profile.division
-                        te = _resolve_te_helper(te_name, division)
+                        te_name = get_value(row, 'TE', 'TE Name', 'Telephone Exchange', required=True)
+                        division = user_division
+                        te = None
+                        if te_name not in (None, ''):
+                            te = _resolve_te_helper(te_name, division)
                         if not te:
-                            row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found.")
+                            te = _get_placeholder_te(division)
+                            if te_name not in (None, ''):
+                                row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found. Saved under '{te.name}'.")
+                            else:
+                                row_errors.append(f"Row {i}: Blank Telephone Exchange. Saved under '{te.name}'.")
+
+                        cable_name = get_value(row, 'Cable Name', required=True)
+                        if cable_name in existing_cable_names:
+                            row_errors.append(f"Row {i}: Database integrity error - Cable '{cable_name}' already exists.")
                             skipped_count += 1
                             continue
 
-                        Cable.objects.create(
-                            name=get_value(row, 'Cable Name', required=True),
+                        existing_cable_names.add(cable_name)
+
+                        obj = Cable(
+                            name=cable_name,
                             cable_type=get_value(row, 'Type', required=True),
                             fiber_count=get_value(row, 'Fiber Count', required=True),
                             mode=get_value(row, 'Mode', required=True),
                             te=te,
                             remarks=get_value(row, 'Remarks', default='Bulk Uploaded') or 'Bulk Uploaded'
                         )
-                        created_count += 1
-                    except IntegrityError as e:
-                        row_errors.append(f"Row {i}: Database integrity error - {e}")
-                        skipped_count += 1
+                        cables_to_create.append((i, obj))
                     except Exception as e:
                         row_errors.append(f"Row {i}: {e}")
+                        skipped_count += 1
+
+                if cables_to_create:
+                    try:
+                        with transaction.atomic():
+                            created_cables = Cable.objects.bulk_create([obj for row_num, obj in cables_to_create])
+                        created_count = len(created_cables)
+                        fibers_to_create = []
+                        for cable in created_cables:
+                            count = cable.fiber_count
+                            try:
+                                count = int(count)
+                            except (ValueError, TypeError):
+                                count = int(str(cable.cable_type).upper().replace('F', ''))
+                            fibers_to_create.extend([Fiber(cable=cable, fiber_number=idx+1) for idx in range(count)])
+                        if fibers_to_create:
+                            Fiber.objects.bulk_create(fibers_to_create)
+                    except Exception as e:
+                        for row_num, obj in cables_to_create:
+                            try:
+                                with transaction.atomic():
+                                    obj.save()
+                                created_count += 1
+                            except IntegrityError as err:
+                                row_errors.append(f"Row {row_num}: Database integrity error - {err}")
+                                skipped_count += 1
+                            except Exception as err:
+                                row_errors.append(f"Row {row_num}: {err}")
+                                skipped_count += 1
+
                 if row_errors:
-                    messages.warning(request, f"Cables uploaded with {len(row_errors)} row errors. Created: {created_count}, Skipped: {skipped_count}.")
+                    messages.warning(request, f"Cables uploaded with {len(row_errors)} warnings/errors. Created: {created_count}, Skipped: {skipped_count}.")
                 else:
                     messages.success(request, f"Cables uploaded successfully! Created: {created_count}, Skipped: {skipped_count}.")
 
             elif upload_type == 'EQUIPMENT':
+                equipments_to_create = []
+
                 for i, row in enumerate(rows, start=2):
                     try:
-                        te_name = get_value(row, 'TE NAME', 'TE Name', 'TE', required=True)
-                        division = None
-                        if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
-                            division = request.user.profile.division
-                        te = _resolve_te_helper(te_name, division)
+                        te_name = get_value(row, 'TE NAME', 'TE Name', 'TE', 'Telephone Exchange', required=True)
+                        division = user_division
+                        te = None
+                        if te_name not in (None, ''):
+                            te = _resolve_te_helper(te_name, division)
                         if not te:
-                            row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found.")
-                            skipped_count += 1
-                            continue
+                            te = _get_placeholder_te(division)
+                            if te_name not in (None, ''):
+                                row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found. Saved under '{te.name}'.")
+                            else:
+                                row_errors.append(f"Row {i}: Blank Telephone Exchange. Saved under '{te.name}'.")
 
                         eq_type_raw = get_value(row, 'TYPE', 'Type', required=True)
                         eq_type = normalize_eq_type(eq_type_raw)
@@ -2248,7 +2322,7 @@ def bulk_upload_inner(request):
                             except (ValueError, TypeError):
                                 row_errors.append(f"Row {i}: Invalid Longitude '{longitude}'. Set to blank.")
 
-                        Equipment.objects.create(
+                        obj = Equipment(
                             te=te,
                             equipment_type=eq_type,
                             name=get_value(row, 'NAME', 'Name', 'Equipment Name', required=True),
@@ -2259,44 +2333,58 @@ def bulk_upload_inner(request):
                             longitude=lon_val,
                             remarks='Bulk Uploaded'
                         )
-                        created_count += 1
-                    except IntegrityError as e:
-                        row_errors.append(f"Row {i}: Database integrity error - {e}")
-                        skipped_count += 1
+                        equipments_to_create.append((i, obj))
                     except Exception as e:
                         row_errors.append(f"Row {i}: {e}")
                         skipped_count += 1
+
+                if equipments_to_create:
+                    try:
+                        with transaction.atomic():
+                            Equipment.objects.bulk_create([obj for row_num, obj in equipments_to_create])
+                        created_count = len(equipments_to_create)
+                    except Exception as e:
+                        for row_num, obj in equipments_to_create:
+                            try:
+                                with transaction.atomic():
+                                    obj.save()
+                                created_count += 1
+                            except IntegrityError as err:
+                                row_errors.append(f"Row {row_num}: Database integrity error - {err}")
+                                skipped_count += 1
+                            except Exception as err:
+                                row_errors.append(f"Row {row_num}: {err}")
+                                skipped_count += 1
+
                 if row_errors:
-                    messages.warning(request, f"Equipment uploaded with {len(row_errors)} row errors. Created: {created_count}, Skipped: {skipped_count}.")
+                    messages.warning(request, f"Equipment uploaded with {len(row_errors)} warnings/errors. Created: {created_count}, Skipped: {skipped_count}.")
                 else:
                     messages.success(request, f"Equipment uploaded successfully! Created: {created_count}, Skipped: {skipped_count}.")
 
             elif upload_type == 'BTS':
+                existing_bts = {b.rp_id: b for b in MobileBTS.objects.all()}
+                bts_to_create = []
+                bts_to_update = []
+                processed_rp_ids_in_file_create = set()
+                processed_rp_ids_in_file_update = set()
+
                 for i, row in enumerate(rows, start=2):
                     try:
                         rp_id = str(get_value(row, 'RP ID', required=True)).strip()
                         bts_name = get_value(row, 'BTS Name', required=True)
                         
-                        te_name = get_value(row, 'TE Name', 'TE')
-                        division = None
-                        if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
-                            division = request.user.profile.division
-                        
+                        te_name = get_value(row, 'TE Name', 'TE', 'Telephone Exchange')
+                        division = user_division
                         te = None
                         if te_name not in (None, ''):
                             te = _resolve_te_helper(te_name, division)
                             
                         if not te:
-                            if not division:
-                                division = NWO.objects.first()
-                            
-                            placeholder_name = f"UNMAPPED - {division.name}" if division else "UNMAPPED - ALL"
-                            te, _ = TelephoneExchange.objects.get_or_create(
-                                name=placeholder_name,
-                                defaults={'nwo': division} if division else {}
-                            )
+                            te = _get_placeholder_te(division)
                             if te_name not in (None, ''):
-                                row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found. Saved under '{placeholder_name}'.")
+                                row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found. Saved under '{te.name}'.")
+                            else:
+                                row_errors.append(f"Row {i}: Blank Telephone Exchange. Saved under '{te.name}'.")
 
                         place_name = get_value(row, 'Place Name')
                         latitude = get_value(row, 'Latitude')
@@ -2326,27 +2414,76 @@ def bulk_upload_inner(request):
                                 'cable': get_value(row, f'{port} Cable', default='') or '',
                             }
 
-                        MobileBTS.objects.update_or_create(
-                            rp_id=rp_id,
-                            defaults={
-                                'site_type': '4G',
-                                'te': te,
-                                'bts_name': bts_name,
-                                'place_name': place_name,
-                                'latitude': lat_dec,
-                                'longitude': lon_dec,
-                                'has_cef_12t': has_cef_12t,
-                                'is_ring': is_ring,
-                                'cef_ports_data': ports_data,
-                            }
-                        )
-                        created_count += 1
-                    except IntegrityError as e:
-                        row_errors.append(f"Row {i}: Database integrity error - {e}")
-                        skipped_count += 1
+                        if rp_id in existing_bts:
+                            bts = existing_bts[rp_id]
+                            bts.site_type = '4G'
+                            bts.te = te
+                            bts.bts_name = bts_name
+                            bts.place_name = place_name
+                            bts.latitude = lat_dec
+                            bts.longitude = lon_dec
+                            bts.has_cef_12t = has_cef_12t
+                            bts.is_ring = is_ring
+                            bts.cef_ports_data = ports_data
+                            
+                            if rp_id in processed_rp_ids_in_file_create:
+                                pass
+                            else:
+                                if rp_id not in processed_rp_ids_in_file_update:
+                                    bts_to_update.append((i, bts))
+                                    processed_rp_ids_in_file_update.add(rp_id)
+                        else:
+                            bts = MobileBTS(
+                                rp_id=rp_id,
+                                site_type='4G',
+                                te=te,
+                                bts_name=bts_name,
+                                place_name=place_name,
+                                latitude=lat_dec,
+                                longitude=lon_dec,
+                                has_cef_12t=has_cef_12t,
+                                is_ring=is_ring,
+                                cef_ports_data=ports_data
+                            )
+                            existing_bts[rp_id] = bts
+                            bts_to_create.append((i, bts))
+                            processed_rp_ids_in_file_create.add(rp_id)
                     except Exception as e:
                         row_errors.append(f"Row {i}: {e}")
                         skipped_count += 1
+
+                if bts_to_create:
+                    try:
+                        with transaction.atomic():
+                            MobileBTS.objects.bulk_create([obj for row_num, obj in bts_to_create])
+                        created_count += len(bts_to_create)
+                    except Exception as e:
+                        for row_num, obj in bts_to_create:
+                            try:
+                                with transaction.atomic():
+                                    obj.save()
+                                created_count += 1
+                            except Exception as err:
+                                row_errors.append(f"Row {row_num}: {err}")
+                                skipped_count += 1
+
+                if bts_to_update:
+                    try:
+                        with transaction.atomic():
+                            MobileBTS.objects.bulk_update(
+                                [obj for row_num, obj in bts_to_update],
+                                ['site_type', 'te', 'bts_name', 'place_name', 'latitude', 'longitude', 'has_cef_12t', 'is_ring', 'cef_ports_data']
+                            )
+                        created_count += len(bts_to_update)
+                    except Exception as e:
+                        for row_num, obj in bts_to_update:
+                            try:
+                                with transaction.atomic():
+                                    obj.save()
+                                created_count += 1
+                            except Exception as err:
+                                row_errors.append(f"Row {row_num}: {err}")
+                                skipped_count += 1
                 
                 from django.utils.safestring import mark_safe
                 if row_errors:
@@ -2357,27 +2494,28 @@ def bulk_upload_inner(request):
                     messages.success(request, f"BTS uploaded successfully! Created/Updated: {created_count}, Skipped: {skipped_count}.")
 
             elif upload_type == 'BTS_NO_4G':
+                existing_bts = {b.rp_id: b for b in MobileBTS.objects.all()}
+                bts_to_create = []
+                bts_to_update = []
+                processed_rp_ids_in_file_create = set()
+                processed_rp_ids_in_file_update = set()
+
                 for i, row in enumerate(rows, start=2):
                     try:
                         rp_id = str(get_value(row, 'RP ID', required=True)).strip()
                         bts_name = get_value(row, 'Site Name', 'BTS Name', 'Name', required=True)
-                        te_name = get_value(row, 'TE', 'TE Name', required=True)
+                        te_name = get_value(row, 'TE', 'TE Name', 'Telephone Exchange')
                         
-                        division = None
-                        if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
-                            division = request.user.profile.division
-                        te = _resolve_te_helper(te_name, division)
+                        division = user_division
+                        te = None
+                        if te_name not in (None, ''):
+                            te = _resolve_te_helper(te_name, division)
                         if not te:
-                            if not division:
-                                division = NWO.objects.first()
-                            
-                            placeholder_name = f"UNMAPPED - {division.name}" if division else "UNMAPPED - ALL"
-                            te, _ = TelephoneExchange.objects.get_or_create(
-                                name=placeholder_name,
-                                defaults={'nwo': division} if division else {}
-                            )
+                            te = _get_placeholder_te(division)
                             if te_name not in (None, ''):
-                                row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found. Saved under '{placeholder_name}'.")
+                                row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found. Saved under '{te.name}'.")
+                            else:
+                                row_errors.append(f"Row {i}: Blank Telephone Exchange. Saved under '{te.name}'.")
 
                         place_name = get_value(row, 'Place Name')
                         latitude = get_value(row, 'Latitude')
@@ -2387,7 +2525,6 @@ def bulk_upload_inner(request):
                         connected_equipment = get_value(row, 'Connected Node/Equipment', 'Connected Node')
                         remarks = get_value(row, 'Remarks')
 
-                        # Normalize backhaul media choice
                         if backhaul_media_val not in (None, ''):
                             bm_upper = str(backhaul_media_val).strip().upper()
                             if bm_upper in ('FIBER', 'FIBRE', 'F'):
@@ -2402,7 +2539,6 @@ def bulk_upload_inner(request):
                         else:
                             backhaul_media_val = None
 
-                        # Normalize non-4G type choice
                         if non_4g_type_val not in (None, ''):
                             nt_upper = str(non_4g_type_val).strip().upper().replace(' ', '').replace('+', '_')
                             type_map = {
@@ -2430,29 +2566,79 @@ def bulk_upload_inner(request):
                             except (InvalidOperation, ValueError, TypeError) as e:
                                 row_errors.append(f"Row {i}: Invalid Longitude '{longitude}'. Set to blank.")
 
-                        MobileBTS.objects.update_or_create(
-                            rp_id=rp_id,
-                            defaults={
-                                'site_type': 'NON_4G',
-                                'bts_name': bts_name,
-                                'te': te,
-                                'place_name': place_name,
-                                'latitude': lat_dec,
-                                'longitude': lon_dec,
-                                'non_4g_type': non_4g_type_val,
-                                'backhaul_media': backhaul_media_val,
-                                'connected_equipment': connected_equipment,
-                                'remarks': remarks
-                            }
-                        )
-                        created_count += 1
-                    except IntegrityError as e:
-                        row_errors.append(f"Row {i}: Database integrity error - {e}")
-                        skipped_count += 1
+                        if rp_id in existing_bts:
+                            bts = existing_bts[rp_id]
+                            bts.site_type = 'NON_4G'
+                            bts.bts_name = bts_name
+                            bts.te = te
+                            bts.place_name = place_name
+                            bts.latitude = lat_dec
+                            bts.longitude = lon_dec
+                            bts.non_4g_type = non_4g_type_val
+                            bts.backhaul_media = backhaul_media_val
+                            bts.connected_equipment = connected_equipment
+                            bts.remarks = remarks
+                            
+                            if rp_id in processed_rp_ids_in_file_create:
+                                pass
+                            else:
+                                if rp_id not in processed_rp_ids_in_file_update:
+                                    bts_to_update.append((i, bts))
+                                    processed_rp_ids_in_file_update.add(rp_id)
+                        else:
+                            bts = MobileBTS(
+                                rp_id=rp_id,
+                                site_type='NON_4G',
+                                bts_name=bts_name,
+                                te=te,
+                                place_name=place_name,
+                                latitude=lat_dec,
+                                longitude=lon_dec,
+                                non_4g_type=non_4g_type_val,
+                                backhaul_media=backhaul_media_val,
+                                connected_equipment=connected_equipment,
+                                remarks=remarks
+                            )
+                            existing_bts[rp_id] = bts
+                            bts_to_create.append((i, bts))
+                            processed_rp_ids_in_file_create.add(rp_id)
                     except Exception as e:
                         row_errors.append(f"Row {i}: {e}")
                         skipped_count += 1
-                
+
+                if bts_to_create:
+                    try:
+                        with transaction.atomic():
+                            MobileBTS.objects.bulk_create([obj for row_num, obj in bts_to_create])
+                        created_count += len(bts_to_create)
+                    except Exception as e:
+                        for row_num, obj in bts_to_create:
+                            try:
+                                with transaction.atomic():
+                                    obj.save()
+                                created_count += 1
+                            except Exception as err:
+                                row_errors.append(f"Row {row_num}: {err}")
+                                skipped_count += 1
+
+                if bts_to_update:
+                    try:
+                        with transaction.atomic():
+                            MobileBTS.objects.bulk_update(
+                                [obj for row_num, obj in bts_to_update],
+                                ['site_type', 'bts_name', 'te', 'place_name', 'latitude', 'longitude', 'non_4g_type', 'backhaul_media', 'connected_equipment', 'remarks']
+                            )
+                        created_count += len(bts_to_update)
+                    except Exception as e:
+                        for row_num, obj in bts_to_update:
+                            try:
+                                with transaction.atomic():
+                                    obj.save()
+                                created_count += 1
+                            except Exception as err:
+                                row_errors.append(f"Row {row_num}: {err}")
+                                skipped_count += 1
+
                 from django.utils.safestring import mark_safe
                 if row_errors:
                     msg = f"No 4G BTS uploaded with {len(row_errors)} warnings/errors. Created/Updated: {created_count}, Skipped: {skipped_count}."
@@ -2462,9 +2648,9 @@ def bulk_upload_inner(request):
                     messages.success(request, f"No 4G BTS uploaded successfully! Created/Updated: {created_count}, Skipped: {skipped_count}.")
 
             elif upload_type == 'FTTH':
-                user_division = None
-                if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
-                    user_division = request.user.profile.division
+                existing_landlines = set(FTTH.objects.values_list('landline_number', flat=True))
+                division_cache = {}
+                ftth_to_create = []
 
                 for i, row in enumerate(rows, start=2):
                     try:
@@ -2474,7 +2660,7 @@ def bulk_upload_inner(request):
                         olt_name = get_value(row, 'OLT Name', required=True)
                         port_number = int(get_value(row, 'Port Number', required=True))
                         division_name = get_value(row, 'Division')
-                        te_name = get_value(row, 'TE', 'TE Name')
+                        te_name = get_value(row, 'TE', 'TE Name', 'Telephone Exchange')
                         latitude = get_value(row, 'Latitude')
                         longitude = get_value(row, 'Longitude')
 
@@ -2483,19 +2669,29 @@ def bulk_upload_inner(request):
 
                         division = user_division
                         if division is None and division_name not in (None, ''):
-                            division = NWO.objects.filter(name=str(division_name).strip()).first()
+                            div_name_str = str(division_name).strip()
+                            if div_name_str not in division_cache:
+                                division_cache[div_name_str] = NWO.objects.filter(name=div_name_str).first()
+                            division = division_cache[div_name_str]
 
                         te = None
                         if te_name not in (None, ''):
                             te = _resolve_te_helper(te_name, division)
-                            if not te:
-                                row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found.")
-                                skipped_count += 1
-                                continue
-                            if division is None and te is not None:
-                                division = te.nwo
+                        if not te:
+                            te = _get_placeholder_te(division)
+                            if te_name not in (None, ''):
+                                row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found. Saved under '{te.name}'.")
+                            else:
+                                row_errors.append(f"Row {i}: Blank Telephone Exchange. Saved under '{te.name}'.")
 
-                        FTTH.objects.create(
+                        if landline_number in existing_landlines:
+                            row_errors.append(f"Row {i}: Database integrity error - duplicate landline number '{landline_number}'.")
+                            skipped_count += 1
+                            continue
+
+                        existing_landlines.add(landline_number)
+
+                        obj = FTTH(
                             customer_name=customer_name,
                             landline_number=landline_number,
                             optical_power=optical_power_value,
@@ -2506,16 +2702,34 @@ def bulk_upload_inner(request):
                             latitude=Decimal(str(latitude)) if latitude not in (None, '') else None,
                             longitude=Decimal(str(longitude)) if longitude not in (None, '') else None,
                         )
-                        created_count += 1
-                    except IntegrityError as e:
-                        row_errors.append(f"Row {i}: Database integrity error - {e}")
-                        skipped_count += 1
+                        ftth_to_create.append((i, obj))
                     except (InvalidOperation, ValueError) as e:
                         row_errors.append(f"Row {i}: Invalid numeric value ({e})")
+                        skipped_count += 1
                     except Exception as e:
                         row_errors.append(f"Row {i}: {e}")
+                        skipped_count += 1
+
+                if ftth_to_create:
+                    try:
+                        with transaction.atomic():
+                            FTTH.objects.bulk_create([obj for row_num, obj in ftth_to_create])
+                        created_count = len(ftth_to_create)
+                    except Exception as e:
+                        for row_num, obj in ftth_to_create:
+                            try:
+                                with transaction.atomic():
+                                    obj.save()
+                                created_count += 1
+                            except IntegrityError as err:
+                                row_errors.append(f"Row {row_num}: Database integrity error - {err}")
+                                skipped_count += 1
+                            except Exception as err:
+                                row_errors.append(f"Row {row_num}: {err}")
+                                skipped_count += 1
+
                 if row_errors:
-                    messages.warning(request, f"FTTH uploaded with {len(row_errors)} row errors. Created: {created_count}, Skipped: {skipped_count}.")
+                    messages.warning(request, f"FTTH uploaded with {len(row_errors)} warnings/errors. Created: {created_count}, Skipped: {skipped_count}.")
                 else:
                     messages.success(request, f"FTTH uploaded successfully! Created: {created_count}, Skipped: {skipped_count}.")
             
@@ -2533,8 +2747,8 @@ def bulk_upload(request):
     try:
         return bulk_upload_inner(request)
     except Exception as e:
-        import traceback
-        return HttpResponse(f"<pre>Error: {str(e)}\n\nTraceback:\n{traceback.format_exc()}</pre>", status=500)
+        messages.error(request, f"Error processing bulk upload: {str(e)}")
+        return render(request, 'inventory/bulk_upload.html')
 
 @login_required
 def download_template(request):
