@@ -320,6 +320,9 @@
             <h1 class="inventory-title"><i class="bi bi-broadcast me-2 text-primary"></i>Mobile BTS Inventory</h1>
         </div>
         <div class="d-flex gap-2 flex-wrap">
+            <button type="button" class="btn btn-info text-white px-4 fw-bold rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#ringModal">
+                <i class="bi bi-diagram-3-fill me-2"></i>Mark BTS in Ring
+            </button>
             <a class="btn btn-outline-primary px-4 fw-bold rounded-pill"
                href="{% url 'export_bts_kml' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">
                 <i class="bi bi-geo-alt me-2"></i>Download KML
@@ -534,6 +537,9 @@
                 <option value="false" {% if request.GET.is_ring == 'false' %}selected{% endif %}>Not In Ring Only</option>
             </select>
             <button type="submit" class="btn btn-dark px-4 fw-bold rounded-pill">Search</button>
+            <button type="button" class="btn btn-info text-white px-4 fw-bold rounded-pill text-nowrap" data-bs-toggle="modal" data-bs-target="#ringModal">
+                <i class="bi bi-diagram-3-fill me-1"></i>Mark BTS in Ring
+            </button>
         </form>
     </div>
 
@@ -670,6 +676,73 @@
     </div>
 </div>
 
+<!-- Dedicated Mark BTS in Ring Modal -->
+<div class="modal fade" id="ringModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-24">
+            <div class="modal-header border-bottom bg-light py-3">
+                <h5 class="modal-title fw-bold text-dark"><i class="bi bi-diagram-3-fill text-info me-2"></i>Mark BTS in Ring Topology</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <ul class="nav nav-pills mb-3" id="modalRingTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active py-2 px-3 small fw-bold" id="modal-single-tab" data-bs-toggle="pill" data-bs-target="#modal-single-pane" type="button" role="tab">
+                            <i class="bi bi-search me-1"></i> Single Site Quick Mark
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link py-2 px-3 small fw-bold" id="modal-bulk-tab" data-bs-toggle="pill" data-bs-target="#modal-bulk-pane" type="button" role="tab">
+                            <i class="bi bi-diagram-3-fill me-1"></i> Form Ring Topology Altogether (Bulk Input)
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="modalRingTabContent">
+                    <!-- Single Site Tab -->
+                    <div class="tab-pane fade show active" id="modal-single-pane" role="tabpanel">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted">
+                                Search BTS Name or RP ID:
+                            </label>
+                            <input type="text" id="modal_ring_bts_input" class="form-control dist-input" list="btsDatalist" placeholder="Type BTS Name or RP ID (e.g. EKM_001)...">
+                        </div>
+                        <div class="d-flex gap-2 justify-content-end">
+                            <button type="button" class="btn btn-success fw-bold px-4 rounded-pill" id="btnModalMarkRing">
+                                <i class="bi bi-check-circle-fill me-1"></i> Mark as In Ring
+                            </button>
+                            <button type="button" class="btn btn-outline-danger fw-bold px-4 rounded-pill" id="btnModalRemoveRing">
+                                <i class="bi bi-x-circle-fill me-1"></i> Remove from Ring
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Bulk Ring Tab -->
+                    <div class="tab-pane fade" id="modal-bulk-pane" role="tabpanel">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted">
+                                Paste or Type Multiple RP IDs / BTS Names to Form Complete Ring Topology:
+                            </label>
+                            <textarea id="modal_bulk_ring_textarea" class="form-control dist-input font-monospace" rows="4" 
+                                placeholder="Enter RP IDs or BTS Names separated by commas or newlines...&#10;Example: EKM_001, EKM_002, EKM_003, EKM_004"></textarea>
+                        </div>
+                        <div class="d-flex gap-2 justify-content-end">
+                            <button type="button" class="btn btn-success fw-bold px-4 rounded-pill" id="btnModalFormBulkRing">
+                                <i class="bi bi-diagram-3-fill me-1"></i> Form Ring Topology Altogether
+                            </button>
+                            <button type="button" class="btn btn-outline-danger fw-bold px-4 rounded-pill" id="btnModalRemoveBulkRing">
+                                <i class="bi bi-trash me-1"></i> Remove All from Ring
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info py-2 px-3 mt-3 mb-0 small rounded-14" id="modalRingToast" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -759,6 +832,102 @@
         $('#btnRemoveBulkRing').on('click', function() {
             handleBulkRingAction(false);
         });
+
+        // Modal Handlers
+        $('#btnModalMarkRing').on('click', function() {
+            handleRingActionModal(true);
+        });
+        $('#btnModalRemoveRing').on('click', function() {
+            handleRingActionModal(false);
+        });
+        $('#btnModalFormBulkRing').on('click', function() {
+            handleBulkRingActionModal(true);
+        });
+        $('#btnModalRemoveBulkRing').on('click', function() {
+            handleBulkRingActionModal(false);
+        });
+    });
+
+    function showModalToast(msg, type) {
+        var $t = $('#modalRingToast');
+        $t.removeClass('alert-info alert-success alert-danger alert-warning')
+          .addClass('alert-' + type)
+          .text(msg)
+          .slideDown(200);
+        setTimeout(function() { $t.slideUp(200); }, 4000);
+    }
+
+    function handleRingActionModal(targetIsRing) {
+        var val = $('#modal_ring_bts_input').val();
+        if (!val) {
+            showModalToast("Please enter a valid BTS Name or RP ID.", "danger");
+            return;
+        }
+
+        $.ajax({
+            url: '{% url "toggle_bts_ring_api" %}',
+            type: 'POST',
+            contentType: 'application/json',
+            headers: { 'X-CSRFToken': csrftoken },
+            data: JSON.stringify({ query: val, is_ring: targetIsRing }),
+            success: function(res) {
+                if (res.success) {
+                    showModalToast(res.message, "success");
+                    updateLocalBtsRingState(res.bts_id, res.is_ring);
+                    updateCounters(res.total_ring_count, res.total_non_ring_count);
+                    $('#modal_ring_bts_input').val('');
+                } else {
+                    showModalToast(res.error || "Failed to update ring status.", "danger");
+                }
+            },
+            error: function(xhr) {
+                var err = xhr.responseJSON ? xhr.responseJSON.error : "Server error.";
+                showModalToast(err, "danger");
+            }
+        });
+    }
+
+    function handleBulkRingActionModal(targetIsRing) {
+        var rawText = $('#modal_bulk_ring_textarea').val();
+        if (!rawText || !rawText.trim()) {
+            showModalToast("Please enter or paste RP IDs / BTS Names into the bulk input box.", "danger");
+            return;
+        }
+
+        $.ajax({
+            url: '{% url "toggle_bts_ring_api" %}',
+            type: 'POST',
+            contentType: 'application/json',
+            headers: { 'X-CSRFToken': csrftoken },
+            data: JSON.stringify({ raw_bulk_text: rawText, is_ring: targetIsRing }),
+            success: function(res) {
+                if (res.success) {
+                    var toastType = res.unmatched_inputs && res.unmatched_inputs.length > 0 ? "warning" : "success";
+                    showModalToast(res.message, toastType);
+                    
+                    if (res.matched_sites && res.matched_sites.length > 0) {
+                        res.matched_sites.forEach(function(s) {
+                            updateLocalBtsRingState(s.id, res.is_ring);
+                        });
+                        
+                        var ringCoords = res.matched_sites.filter(s => s.latitude && s.longitude).map(s => [s.latitude, s.longitude]);
+                        if (ringCoords.length > 0 && leafletMap) {
+                            leafletMap.fitBounds(ringCoords, { padding: [60, 60] });
+                        }
+                    }
+                    updateCounters(res.total_ring_count, res.total_non_ring_count);
+                    $('#modal_bulk_ring_textarea').val('');
+                } else {
+                    showModalToast(res.error || "Failed to update bulk ring topology.", "danger");
+                }
+            },
+            error: function(xhr) {
+                var err = xhr.responseJSON ? xhr.responseJSON.error : "Server error.";
+                showModalToast(err, "danger");
+            }
+        });
+    }
+
 
 
         // Batch Action Checkboxes
