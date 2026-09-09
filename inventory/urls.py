@@ -34,6 +34,8 @@ urlpatterns = [
     path('bts/<int:pk>/', views.BTSDetailView.as_view(), name='bts_detail'),
     path('bts/<int:pk>/edit/', views.BTSUpdateView.as_view(), name='bts_update'),
     path('bts/<int:pk>/delete/', views.BTSDeleteView.as_view(), name='bts_delete'),
+    path('api/bts/toggle-ring/', views.toggle_bts_ring_api, name='toggle_bts_ring_api'),
+
     
     # No 4G BTS URLs
     path('bts/no-4g/', views.No4GBTSListView.as_view(), name='no_4g_bts_list'),

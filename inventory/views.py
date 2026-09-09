@@ -606,15 +606,21 @@ class BTSListView(LoginRequiredMixin, DivisionRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        
+        # Base queryset of all 4G sites for division
+        base_qs = super().get_queryset().filter(site_type='4G')
+        context['all_bts_count'] = base_qs.count()
+        context['ring_count'] = base_qs.filter(is_ring=True).count()
+        context['non_ring_count'] = base_qs.filter(is_ring=False).count()
+        context['cef_count'] = base_qs.filter(has_cef_12t=True).count()
+        
+        # Current active list count
         queryset = self.get_queryset()
         context['total_count'] = queryset.count()
-        context['ring_count'] = queryset.filter(is_ring=True).count()
-        context['cef_count'] = queryset.filter(has_cef_12t=True).count()
-        context['avg_power'] = queryset.aggregate(Avg('receive_power_db'))['receive_power_db__avg']
         
-        # Serialize 4G sites coordinates to JSON for Leaflet mapping
+        # Serialize all 4G sites coordinates to JSON for Leaflet mapping so map shows full topology
         map_sites = []
-        for bts in queryset:
+        for bts in base_qs:
             if bts.latitude is not None and bts.longitude is not None:
                 map_sites.append({
                     'id': bts.id,
@@ -625,9 +631,80 @@ class BTSListView(LoginRequiredMixin, DivisionRequiredMixin, ListView):
                     'place_name': bts.place_name or '',
                     'is_ring': bts.is_ring,
                     'has_cef_12t': bts.has_cef_12t,
+                    'erps_image_url': bts.erps_image.url if bts.erps_image else '',
                 })
         context['map_sites_json'] = json.dumps(map_sites)
         return context
+
+@login_required
+@require_http_methods(["POST"])
+def toggle_bts_ring_api(request):
+    try:
+        data = json.loads(request.body)
+        bts_id = data.get('bts_id')
+        query = data.get('query')
+        action = data.get('action') # 'add', 'remove', or 'toggle'
+        is_ring_target = data.get('is_ring')
+        bts_ids = data.get('bts_ids', [])
+
+        qs = MobileBTS.objects.filter(site_type='4G')
+        if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
+            qs = qs.filter(Q(maan_node__te__nwo=request.user.profile.division) | Q(te__nwo=request.user.profile.division)).distinct()
+
+        if bts_ids:
+            target_sites = qs.filter(id__in=bts_ids)
+            target_sites.update(is_ring=bool(is_ring_target))
+            updated_ids = list(target_sites.values_list('id', flat=True))
+            total_ring = qs.filter(is_ring=True).count()
+            total_non_ring = qs.filter(is_ring=False).count()
+            return JsonResponse({
+                'success': True,
+                'updated_ids': updated_ids,
+                'is_ring': bool(is_ring_target),
+                'total_ring_count': total_ring,
+                'total_non_ring_count': total_non_ring,
+                'message': f"Updated {len(updated_ids)} sites successfully."
+            })
+
+        site = None
+        if bts_id:
+            site = qs.filter(id=bts_id).first()
+        elif query:
+            q_str = str(query).strip()
+            site = qs.filter(Q(rp_id__iexact=q_str) | Q(bts_name__iexact=q_str)).first()
+            if not site:
+                site = qs.filter(Q(rp_id__icontains=q_str) | Q(bts_name__icontains=q_str)).first()
+
+        if not site:
+            return JsonResponse({'success': False, 'error': 'BTS site not found or access denied.'}, status=404)
+
+        if is_ring_target is not None:
+            site.is_ring = bool(is_ring_target)
+        elif action == 'add':
+            site.is_ring = True
+        elif action == 'remove':
+            site.is_ring = False
+        else:
+            site.is_ring = not site.is_ring
+
+        site.save(update_fields=['is_ring'])
+
+        total_ring = qs.filter(is_ring=True).count()
+        total_non_ring = qs.filter(is_ring=False).count()
+
+        return JsonResponse({
+            'success': True,
+            'bts_id': site.id,
+            'rp_id': site.rp_id,
+            'bts_name': site.bts_name,
+            'is_ring': site.is_ring,
+            'total_ring_count': total_ring,
+            'total_non_ring_count': total_non_ring,
+            'message': f"Site {site.bts_name} ({site.rp_id}) is now {'In Ring' if site.is_ring else 'Not In Ring'}."
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
 
 @login_required
 def te_liu_setup(request, te_id):

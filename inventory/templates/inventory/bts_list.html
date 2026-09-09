@@ -9,7 +9,7 @@
         background-color: #F8FAFC;
     }
     .inventory-header {
-        margin-bottom: 2.5rem;
+        margin-bottom: 2rem;
     }
     .inventory-title {
         color: #0F172A;
@@ -22,21 +22,31 @@
     /* Stats Section */
     .stats-container {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 3rem;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.25rem;
+        margin-bottom: 2rem;
     }
     .stat-card {
         background: white;
         border-radius: 20px;
-        padding: 1.5rem;
+        padding: 1.25rem 1.5rem;
         display: flex;
         align-items: center;
         border: 1px solid #E2E8F0;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        transition: transform 0.2s;
+        transition: all 0.2s ease;
+        text-decoration: none !important;
+        color: inherit;
     }
-    .stat-card:hover { transform: translateY(-3px); }
+    .stat-card:hover { 
+        transform: translateY(-3px); 
+        border-color: #3B82F6;
+        box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.1);
+    }
+    .stat-card.active-filter {
+        border-color: #3B82F6;
+        background: #F0F9FF;
+    }
     .stat-icon {
         width: 48px;
         height: 48px;
@@ -46,13 +56,60 @@
         justify-content: center;
         font-size: 1.25rem;
         margin-right: 1.25rem;
+        flex-shrink: 0;
     }
-    .stat-label { color: #64748B; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.1rem; }
+    .stat-label { color: #64748B; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.1rem; }
     .stat-value { color: #0F172A; font-size: 1.5rem; font-weight: 800; line-height: 1; }
     
     .bg-blue-soft { background: #EFF6FF; color: #2563EB; }
-    .bg-green-soft { background: #F0FDF4; color: #16A34A; }
     .bg-purple-soft { background: #FAF5FF; color: #9333EA; }
+    .bg-amber-soft { background: #FFFBEB; color: #D97706; }
+    .bg-green-soft { background: #F0FDF4; color: #16A34A; }
+
+    /* Ring Filter Navigation Pills */
+    .ring-nav-pills {
+        display: flex;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+        overflow-x: auto;
+        padding-bottom: 0.25rem;
+    }
+    .ring-pill {
+        padding: 0.6rem 1.25rem;
+        border-radius: 9999px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        color: #64748B;
+        background: white;
+        border: 1px solid #E2E8F0;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+    .ring-pill:hover {
+        background: #F8FAFC;
+        color: #2563EB;
+        border-color: #CBD5E1;
+    }
+    .ring-pill.active {
+        background: #2563EB;
+        color: white;
+        border-color: #2563EB;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    }
+    .ring-pill .pill-badge {
+        background: rgba(0,0,0,0.08);
+        padding: 0.15rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+    }
+    .ring-pill.active .pill-badge {
+        background: rgba(255,255,255,0.25);
+        color: white;
+    }
 
     /* Search Bar */
     .search-container {
@@ -60,7 +117,7 @@
         padding: 1.25rem;
         border-radius: 20px;
         border: 1px solid #E2E8F0;
-        margin-bottom: 2rem;
+        margin-bottom: 1.5rem;
     }
     .search-box {
         position: relative;
@@ -89,6 +146,20 @@
         box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
     }
 
+    /* Batch Actions Toolbar */
+    .batch-toolbar {
+        background: #EFF6FF;
+        border: 1px solid #BFDBFE;
+        border-radius: 16px;
+        padding: 0.85rem 1.25rem;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        animation: fadeIn 0.2s ease;
+    }
+
     /* Table Styling */
     .inventory-card {
         background: white;
@@ -99,7 +170,7 @@
     }
     .table thead th {
         background: #F8FAFC;
-        padding: 1rem 1.5rem;
+        padding: 1rem 1.25rem;
         font-size: 0.75rem;
         font-weight: 700;
         text-transform: uppercase;
@@ -107,7 +178,7 @@
         border-bottom: 1px solid #E2E8F0;
     }
     .table tbody td {
-        padding: 1.25rem 1.5rem;
+        padding: 1.1rem 1.25rem;
         vertical-align: middle;
         font-size: 0.9rem;
         color: #1E293B;
@@ -117,10 +188,18 @@
     .bts-name { font-weight: 600; }
     
     .badge-modern {
-        padding: 0.4rem 0.8rem;
+        padding: 0.4rem 0.8.5rem;
         border-radius: 8px;
         font-weight: 700;
         font-size: 0.75rem;
+        cursor: pointer;
+        transition: transform 0.15s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    .badge-modern:hover {
+        transform: scale(1.05);
     }
 
     .btn-icon {
@@ -152,13 +231,14 @@
 
     /* Leaflet Map Styling */
     #map {
-        height: 480px;
+        height: 500px;
         width: 100%;
         border-radius: 20px;
     }
     .map-container-wrapper {
         margin-bottom: 2rem;
     }
+    
     /* Dynamic GIS Marker Styles */
     .map-tower-icon {
         width: 32px;
@@ -172,24 +252,33 @@
         box-shadow: 0 0 10px rgba(139, 92, 246, 0.4);
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
+    .map-tower-icon.ring-active {
+        background: rgba(6, 182, 212, 0.25);
+        border: 2px solid #06b6d4;
+        box-shadow: 0 0 14px rgba(6, 182, 212, 0.7);
+        animation: pulseRing 2s infinite;
+    }
     .map-tower-icon i {
         color: #8b5cf6;
         font-size: 1.1rem;
         line-height: 1;
     }
-    .map-tower-icon:hover {
-        transform: scale(1.15);
-        background: rgba(139, 92, 246, 0.3);
-        box-shadow: 0 0 15px rgba(139, 92, 246, 0.6);
+    .map-tower-icon.ring-active i {
+        color: #0891b2;
+    }
+    @keyframes pulseRing {
+        0% { box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.6); }
+        70% { box-shadow: 0 0 0 12px rgba(6, 182, 212, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(6, 182, 212, 0); }
     }
     
-    /* Distance Calculator Styling */
-    .dist-calc-panel {
+    /* Tool Panels Styling */
+    .dist-calc-panel, .ring-mgmt-panel {
         background: #F8FAFC;
         border-bottom: 1px solid #E2E8F0;
         padding: 1.25rem 1.5rem;
     }
-    body.dark-mode .dist-calc-panel {
+    body.dark-mode .dist-calc-panel, body.dark-mode .ring-mgmt-panel {
         background: #0f172a;
         border-color: #1e293b;
     }
@@ -213,18 +302,14 @@
         border: 1px solid #E2E8F0;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     }
-    body.dark-mode .dist-result-box {
-        background: #1e293b;
-        border-color: #334155;
-        color: white;
-    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4 px-lg-5">
     
-    <div class="inventory-header d-flex justify-content-between align-items-center">
+    <!-- Header -->
+    <div class="inventory-header d-flex justify-content-between align-items-center flex-wrap gap-3">
         <div>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-2">
@@ -249,22 +334,29 @@
         </div>
     </div>
 
-    <!-- Stats Cards -->
+    <!-- Stats Cards / Quick Filters -->
     <div class="stats-container">
-        <div class="stat-card">
+        <a href="{% url 'bts_list' %}" class="stat-card {% if not request.GET.is_ring %}active-filter{% endif %}">
             <div class="stat-icon bg-blue-soft"><i class="bi bi-tower"></i></div>
             <div class="stat-content">
-                <div class="stat-label">Total BTS</div>
-                <div class="stat-value">{{ total_count|default:"0" }}</div>
+                <div class="stat-label">Total Mobile BTS</div>
+                <div class="stat-value" id="stat_total_count">{{ all_bts_count|default:total_count|default:"0" }}</div>
             </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon bg-purple-soft"><i class="bi bi-diagram-3"></i></div>
+        </a>
+        <a href="{% url 'bts_list' %}?is_ring=true" class="stat-card {% if request.GET.is_ring == 'true' %}active-filter{% endif %}">
+            <div class="stat-icon bg-purple-soft"><i class="bi bi-diagram-3-fill"></i></div>
             <div class="stat-content">
-                <div class="stat-label">On Ring</div>
-                <div class="stat-value">{{ ring_count|default:"0" }}</div>
+                <div class="stat-label">BTS In Ring</div>
+                <div class="stat-value text-cyan" id="stat_ring_count">{{ ring_count|default:"0" }}</div>
             </div>
-        </div>
+        </a>
+        <a href="{% url 'bts_list' %}?is_ring=false" class="stat-card {% if request.GET.is_ring == 'false' %}active-filter{% endif %}">
+            <div class="stat-icon bg-amber-soft"><i class="bi bi-dash-circle-dotted"></i></div>
+            <div class="stat-content">
+                <div class="stat-label">BTS Not In Ring</div>
+                <div class="stat-value text-warning" id="stat_non_ring_count">{{ non_ring_count|default:"0" }}</div>
+            </div>
+        </a>
         <div class="stat-card">
             <div class="stat-icon bg-green-soft"><i class="bi bi-cpu"></i></div>
             <div class="stat-content">
@@ -279,13 +371,40 @@
         <div class="card-header bg-white py-3 border-bottom">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
                 <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-geo-alt-fill text-danger me-2"></i>4G Sites GIS Map View</h5>
-                <div class="d-flex align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <button type="button" class="btn btn-sm btn-outline-info fw-bold rounded-pill px-3" id="toggleRingMgmt">
+                        <i class="bi bi-diagram-3 me-1"></i> Mark BTS in Ring
+                    </button>
+                    <button type="button" class="btn btn-sm btn-info text-white fw-bold rounded-pill px-3" id="toggleRingDiagram">
+                        <i class="bi bi-eye-fill me-1"></i> Ring Diagram (ON)
+                    </button>
                     <button type="button" class="btn btn-sm btn-outline-primary fw-bold rounded-pill px-3" id="toggleDistCalc">
                         <i class="bi bi-ruler me-1"></i> Distance Calculator
                     </button>
                     <span class="badge bg-primary rounded-pill px-3 py-2" id="mapped-sites-count">0 Sites Mapped</span>
                 </div>
             </div>
+        </div>
+
+        <!-- Ring Management Tool Panel -->
+        <div class="ring-mgmt-panel" id="ringMgmtPanel" style="display: none;">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold text-muted mb-1">
+                        <i class="bi bi-search me-1 text-cyan"></i>Enter BTS Name or RP ID to Mark/Unmark Ring Status:
+                    </label>
+                    <input type="text" id="ring_bts_input" class="form-control dist-input" list="btsDatalist" placeholder="Type BTS Name or RP ID (e.g. EKM_001)...">
+                </div>
+                <div class="col-md-6 d-flex gap-2">
+                    <button type="button" class="btn btn-success fw-bold px-4 rounded-pill flex-grow-1" id="btnMarkRing">
+                        <i class="bi bi-check-circle-fill me-1"></i> Mark as In Ring
+                    </button>
+                    <button type="button" class="btn btn-outline-danger fw-bold px-4 rounded-pill flex-grow-1" id="btnRemoveRing">
+                        <i class="bi bi-x-circle-fill me-1"></i> Remove from Ring
+                    </button>
+                </div>
+            </div>
+            <div class="alert alert-info py-2 px-3 mt-3 mb-0 small rounded-14" id="ringMgmtToast" style="display: none;"></div>
         </div>
 
         <!-- Distance Calculator Tool Panel -->
@@ -313,9 +432,10 @@
                 </div>
             </div>
             
+            <!-- Shared Datalist -->
             <datalist id="btsDatalist"></datalist>
 
-            <!-- Results Panel -->
+            <!-- Distance Results Banner -->
             <div class="dist-result-box mt-3" id="distResultBanner" style="display: none;">
                 <div class="d-flex flex-wrap justify-content-around align-items-center gap-3">
                     <div class="text-center px-3">
@@ -345,6 +465,22 @@
         </div>
     </div>
 
+    <!-- Ring Filter Navigation Pills -->
+    <div class="ring-nav-pills">
+        <a href="{% url 'bts_list' %}" class="ring-pill {% if not request.GET.is_ring %}active{% endif %}">
+            <i class="bi bi-grid-fill"></i> All Mobile BTS
+            <span class="pill-badge">{{ all_bts_count|default:total_count|default:"0" }}</span>
+        </a>
+        <a href="{% url 'bts_list' %}?is_ring=true" class="ring-pill {% if request.GET.is_ring == 'true' %}active{% endif %}">
+            <i class="bi bi-diagram-3-fill text-info"></i> BTS In Ring
+            <span class="pill-badge">{{ ring_count|default:"0" }}</span>
+        </a>
+        <a href="{% url 'bts_list' %}?is_ring=false" class="ring-pill {% if request.GET.is_ring == 'false' %}active{% endif %}">
+            <i class="bi bi-circle text-warning"></i> BTS Not In Ring
+            <span class="pill-badge">{{ non_ring_count|default:"0" }}</span>
+        </a>
+    </div>
+
     <!-- Search Bar -->
     <div class="search-container shadow-sm">
         <form method="GET" class="d-flex flex-column flex-md-row w-100 gap-3">
@@ -353,32 +489,54 @@
                 <input type="text" name="search" class="search-input" placeholder="Search by RP ID or BTS Name..." value="{{ request.GET.search }}">
             </div>
             <select name="is_ring" class="form-select border-0 bg-light fw-bold px-4" style="border-radius: 14px; min-width: 200px;" onchange="this.form.submit()">
-                <option value="">All Connectivity</option>
-                <option value="true" {% if request.GET.is_ring == 'true' %}selected{% endif %}>Ring Only</option>
-                <option value="false" {% if request.GET.is_ring == 'false' %}selected{% endif %}>Non-Ring Only</option>
+                <option value="">All Ring Connectivity</option>
+                <option value="true" {% if request.GET.is_ring == 'true' %}selected{% endif %}>In Ring Only</option>
+                <option value="false" {% if request.GET.is_ring == 'false' %}selected{% endif %}>Not In Ring Only</option>
             </select>
             <button type="submit" class="btn btn-dark px-4 fw-bold rounded-pill">Search</button>
         </form>
     </div>
 
+    <!-- Batch Actions Toolbar -->
+    <div class="batch-toolbar" id="batchToolbar" style="display: none;">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-check2-square text-primary fs-5"></i>
+            <span class="fw-bold text-dark" id="selectedCountText">0 selected</span>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-success fw-bold rounded-pill px-3" id="btnBatchMarkRing">
+                <i class="bi bi-check-circle-fill me-1"></i> Mark Selected as In Ring
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger fw-bold rounded-pill px-3" id="btnBatchRemoveRing">
+                <i class="bi bi-x-circle-fill me-1"></i> Remove Selected from Ring
+            </button>
+        </div>
+    </div>
+
     <!-- Inventory Table -->
     <div class="inventory-card">
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover mb-0" id="btsTable">
                 <thead>
                     <tr>
+                        <th style="width: 40px;">
+                            <input type="checkbox" class="form-check-input" id="selectAllBts">
+                        </th>
                         <th>RP ID</th>
                         <th>BTS Name</th>
                         <th>Location</th>
                         <th>CEF 12T?</th>
-                        <th>Ring?</th>
+                        <th>Ring Connectivity</th>
                         <th>Diagram</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for bts in bts_list %}
-                    <tr class="animate-in">
+                    <tr class="animate-in" data-bts-id="{{ bts.id }}">
+                        <td>
+                            <input type="checkbox" class="form-check-input bts-select-checkbox" value="{{ bts.id }}">
+                        </td>
                         <td class="bts-rp-id">{{ bts.rp_id }}</td>
                         <td class="bts-name">{{ bts.bts_name|default:"Unnamed BTS" }}</td>
                         <td>
@@ -400,16 +558,24 @@
                         </td>
                         <td>
                             {% if bts.is_ring %}
-                                <span class="badge-modern bg-info text-white">YES</span>
+                                <span class="badge-modern bg-info text-white ring-status-badge" 
+                                      onclick="quickToggleRing({{ bts.id }}, false)" 
+                                      title="Click to mark as NOT in ring">
+                                    <i class="bi bi-diagram-3-fill me-1"></i>IN RING
+                                </span>
                             {% else %}
-                                <span class="badge-modern bg-light text-muted">NO</span>
+                                <span class="badge-modern bg-light text-muted border ring-status-badge" 
+                                      onclick="quickToggleRing({{ bts.id }}, true)" 
+                                      title="Click to mark as IN ring">
+                                    <i class="bi bi-circle me-1"></i>NOT IN RING
+                                </span>
                             {% endif %}
                         </td>
                         <td>
                             {% if bts.erps_image %}
-                                <a href="{{ bts.erps_image.url }}" target="_blank" class="btn-icon">
+                                <button type="button" class="btn-icon text-primary" onclick="showErpsModal('{{ bts.bts_name|escapejs }}', '{{ bts.erps_image.url }}')" title="View ERPS Ring Diagram">
                                     <i class="bi bi-image-fill"></i>
-                                </a>
+                                </button>
                             {% else %}
                                 <span class="text-muted opacity-50"><i class="bi bi-image"></i></span>
                             {% endif %}
@@ -430,11 +596,11 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="p-0">
+                        <td colspan="8" class="p-0">
                             <div class="empty-state">
                                 <i class="bi bi-broadcast"></i>
                                 <h5>No Mobile BTS found.</h5>
-                                <p class="text-muted">Start by adding a new Mobile Tower to your inventory.</p>
+                                <p class="text-muted">No records match the active filter criteria.</p>
                                 <a href="{% url 'bts_create' %}" class="btn btn-primary px-4 fw-bold rounded-pill mt-3">
                                     <i class="bi bi-plus-lg me-2"></i>Add First BTS
                                 </a>
@@ -449,11 +615,53 @@
 
 </div>
 
+<!-- ERPS Image Modal -->
+<div class="modal fade" id="erpsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-24">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold" id="erpsModalTitle">ERPS Ring Diagram</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center p-4">
+                <img id="erpsModalImg" src="" class="img-fluid rounded-16 shadow-sm mb-2" alt="ERPS Diagram">
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
 {% block extra_js %}
 <script>
+    // CSRF Token Helper
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    // Global map variables
+    var mapSites = [];
+    var btsLookup = {};
+    var leafletMap = null;
+    var markersDict = {};
+    var ringLayersGroup = null;
+    var distLayersGroup = null;
+    var showRingDiagram = true;
+
     $(document).ready(function() {
         // Parse map sites JSON
-        var mapSites = [];
         try {
             mapSites = JSON.parse('{{ map_sites_json|safe }}');
         } catch (e) {
@@ -463,203 +671,441 @@
         if (mapSites && mapSites.length > 0) {
             $('#mapSection').show();
             
-            var map = L.map('map', { zoomControl: false }).setView([9.9816, 76.2999], 10);
-            L.control.zoom({ position: 'bottomright' }).addTo(map);
+            leafletMap = L.map('map', { zoomControl: false }).setView([9.9816, 76.2999], 10);
+            L.control.zoom({ position: 'bottomright' }).addTo(leafletMap);
             
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                 attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
+            }).addTo(leafletMap);
 
-            var bounds = [];
-            var towerIcon = L.divIcon({
-                html: '<div class="map-tower-icon"><i class="bi bi-broadcast"></i></div>',
-                iconSize: [32, 32],
-                iconAnchor: [16, 16],
-                className: ''
+            distLayersGroup = L.featureGroup().addTo(leafletMap);
+            ringLayersGroup = L.featureGroup().addTo(leafletMap);
+
+            initMapMarkers();
+
+            // Toggle Ring Panel & Distance Calc
+            $('#toggleRingMgmt').on('click', function() {
+                $('#ringMgmtPanel').slideToggle(300);
             });
-
-            // Populate datalist & lookup dictionary for autocomplete
-            var $datalist = $('#btsDatalist');
-            $datalist.empty();
-            var btsLookup = {};
-
-            mapSites.forEach(function(bts) {
-                var label = bts.bts_name + ' (' + bts.rp_id + ')';
-                btsLookup[label] = bts;
-                btsLookup[bts.rp_id] = bts;
-                btsLookup[bts.bts_name] = bts;
-
-                $datalist.append('<option value="' + label + '">');
-
-                var popupContent = '<div>' +
-                    '<h6 class="fw-bold mb-1">' + bts.bts_name + '</h6>' +
-                    '<p class="mb-1 small"><b>RP ID:</b> ' + bts.rp_id + '</p>';
-                
-                if (bts.place_name) {
-                    popupContent += '<p class="mb-1 small"><b>Place:</b> ' + bts.place_name + '</p>';
-                }
-                
-                popupContent += '<p class="mb-1 small"><b>Ring:</b> ' + (bts.is_ring ? '<span class="badge bg-info text-white">Yes</span>' : '<span class="badge bg-secondary text-white">No</span>') + '</p>' +
-                    '<p class="mb-1 small"><b>CEF 12T:</b> ' + (bts.has_cef_12t ? '<span class="badge bg-success text-white">Yes</span>' : '<span class="badge bg-secondary text-white">No</span>') + '</p>' +
-                    '<a href="/inventory/bts/' + bts.id + '/" class="btn btn-xs btn-primary mt-2 text-white py-1 px-2 font-size-xs rounded" style="font-size: 0.75rem;">View Details</a>' +
-                    '</div>';
-
-                var marker = L.marker([bts.latitude, bts.longitude], {
-                    icon: towerIcon
-                }).bindPopup(popupContent);
-                
-                marker.on('click', function() {
-                    handleMarkerClick(bts);
-                });
-
-                marker.addTo(map);
-                bounds.push([bts.latitude, bts.longitude]);
-            });
-
-            $('#mapped-sites-count').text(mapSites.length + ' Sites Mapped');
-
-            if (bounds.length > 0) {
-                map.fitBounds(bounds, { padding: [50, 50] });
-            }
-
-            // Distance Calculator Layers
-            var distLayersGroup = L.featureGroup().addTo(map);
-
-            // Toggle Distance Calculator Panel
             $('#toggleDistCalc').on('click', function() {
                 $('#distCalcPanel').slideToggle(300);
             });
 
-            function findBTS(inputVal) {
-                if (!inputVal) return null;
-                var val = inputVal.trim();
-                if (btsLookup[val]) return btsLookup[val];
-                var lower = val.toLowerCase();
-                for (var i = 0; i < mapSites.length; i++) {
-                    var b = mapSites[i];
-                    if (b.rp_id.toLowerCase() === lower || 
-                        b.bts_name.toLowerCase() === lower || 
-                        (b.bts_name + ' (' + b.rp_id + ')').toLowerCase() === lower) {
-                        return b;
-                    }
-                }
-                return null;
-            }
-
-            function calcHaversine(lat1, lon1, lat2, lon2) {
-                const R = 6371; // Earth radius in km
-                const dLat = (lat2 - lat1) * Math.PI / 180;
-                const dLon = (lon2 - lon1) * Math.PI / 180;
-                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                          Math.sin(dLon/2) * Math.sin(dLon/2);
-                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                return R * c;
-            }
-
-            function performCalculation() {
-                var siteA = findBTS($('#siteA_input').val());
-                var siteB = findBTS($('#siteB_input').val());
-
-                if (!siteA || !siteB) {
-                    alert("Please select valid BTS sites for both Site A and Site B from the list.");
-                    return;
-                }
-
-                if (siteA.id === siteB.id) {
-                    alert("Please select two different BTS sites to calculate distance.");
-                    return;
-                }
-
-                distLayersGroup.clearLayers();
-                $('#distResultBanner').slideDown(300);
-
-                var radKm = calcHaversine(siteA.latitude, siteA.longitude, siteB.latitude, siteB.longitude);
-                $('#radialDistValue').text(radKm.toFixed(2) + ' km');
-                $('#selectedRouteSummary').text(siteA.bts_name + ' ➔ ' + siteB.bts_name);
-
-                // Draw Radial Dashed Line
-                var radialLine = L.polyline([
-                    [siteA.latitude, siteA.longitude],
-                    [siteB.latitude, siteB.longitude]
-                ], {
-                    color: '#ef4444',
-                    weight: 3,
-                    dashArray: '8, 8',
-                    opacity: 0.9
-                }).addTo(distLayersGroup);
-
-                $('#roadDistValue').html('<span class="spinner-border spinner-border-sm text-primary me-1"></span>Routing...');
-
-                // Fetch OSRM Road Distance & Geometry
-                var osrmUrl = `https://router.project-osrm.org/route/v1/driving/${siteA.longitude},${siteA.latitude};${siteB.longitude},${siteB.latitude}?overview=full&geometries=geojson`;
-
-                $.ajax({
-                    url: osrmUrl,
-                    type: 'GET',
-                    timeout: 7000,
-                    success: function(data) {
-                        if (data && data.routes && data.routes.length > 0) {
-                            var route = data.routes[0];
-                            var roadKm = (route.distance / 1000).toFixed(2);
-                            $('#roadDistValue').text(roadKm + ' km');
-
-                            var coords = route.geometry.coordinates.map(function(pt) {
-                                return [pt[1], pt[0]];
-                            });
-
-                            L.polyline(coords, {
-                                color: '#2563eb',
-                                weight: 5,
-                                opacity: 0.85
-                            }).addTo(distLayersGroup);
-
-                            map.fitBounds(distLayersGroup.getBounds(), { padding: [60, 60] });
-                        } else {
-                            var estKm = (radKm * 1.25).toFixed(2);
-                            $('#roadDistValue').html(estKm + ' km <small class="text-muted fw-normal">(Est.)</small>');
-                            map.fitBounds(radialLine.getBounds(), { padding: [60, 60] });
-                        }
-                    },
-                    error: function() {
-                        var estKm = (radKm * 1.25).toFixed(2);
-                        $('#roadDistValue').html(estKm + ' km <small class="text-muted fw-normal">(Est.)</small>');
-                        map.fitBounds(radialLine.getBounds(), { padding: [60, 60] });
-                    }
-                });
-            }
-
-            function handleMarkerClick(bts) {
-                var val = bts.bts_name + ' (' + bts.rp_id + ')';
-                var siteA = $('#siteA_input').val();
-                var siteB = $('#siteB_input').val();
-
-                if (!siteA) {
-                    $('#siteA_input').val(val);
-                    $('#distCalcPanel').slideDown(300);
-                } else if (!siteB && siteA !== val) {
-                    $('#siteB_input').val(val);
-                    performCalculation();
+            // Toggle Ring Diagram Overlay
+            $('#toggleRingDiagram').on('click', function() {
+                showRingDiagram = !showRingDiagram;
+                if (showRingDiagram) {
+                    $(this).removeClass('btn-outline-secondary').addClass('btn-info text-white').html('<i class="bi bi-eye-fill me-1"></i> Ring Diagram (ON)');
+                    drawRingDiagram();
                 } else {
-                    $('#siteA_input').val(val);
-                    $('#siteB_input').val('');
-                    distLayersGroup.clearLayers();
-                    $('#distResultBanner').slideUp(200);
+                    $(this).removeClass('btn-info text-white').addClass('btn-outline-secondary').html('<i class="bi bi-eye-slash me-1"></i> Ring Diagram (OFF)');
+                    ringLayersGroup.clearLayers();
                 }
-            }
-
-            $('#btnCalculateDistance').on('click', function() {
-                performCalculation();
-            });
-
-            $('#btnClearDistance').on('click', function() {
-                $('#siteA_input').val('');
-                $('#siteB_input').val('');
-                distLayersGroup.clearLayers();
-                $('#distResultBanner').slideUp(200);
             });
         }
+
+        // Handle Ring Management Form Submission
+        $('#btnMarkRing').on('click', function() {
+            handleRingAction(true);
+        });
+        $('#btnRemoveRing').on('click', function() {
+            handleRingAction(false);
+        });
+
+        // Batch Action Checkboxes
+        $('#selectAllBts').on('change', function() {
+            $('.bts-select-checkbox').prop('checked', $(this).is(':checked'));
+            updateBatchToolbar();
+        });
+        $(document).on('change', '.bts-select-checkbox', function() {
+            updateBatchToolbar();
+        });
+
+        $('#btnBatchMarkRing').on('click', function() {
+            handleBatchRingAction(true);
+        });
+        $('#btnBatchRemoveRing').on('click', function() {
+            handleBatchRingAction(false);
+        });
+    });
+
+    function initMapMarkers() {
+        if (!leafletMap) return;
+        
+        var bounds = [];
+        var $datalist = $('#btsDatalist');
+        $datalist.empty();
+        btsLookup = {};
+        markersDict = {};
+
+        mapSites.forEach(function(bts) {
+            var label = bts.bts_name + ' (' + bts.rp_id + ')';
+            btsLookup[label] = bts;
+            btsLookup[bts.rp_id] = bts;
+            btsLookup[bts.bts_name] = bts;
+
+            $datalist.append('<option value="' + label + '">');
+
+            var marker = createTowerMarker(bts);
+            marker.addTo(leafletMap);
+            markersDict[bts.id] = marker;
+            bounds.push([bts.latitude, bts.longitude]);
+        });
+
+        $('#mapped-sites-count').text(mapSites.length + ' Sites Mapped');
+
+        if (bounds.length > 0) {
+            leafletMap.fitBounds(bounds, { padding: [50, 50] });
+        }
+
+        drawRingDiagram();
+    }
+
+    function createTowerMarker(bts) {
+        var isRing = bts.is_ring;
+        var iconHtml = '<div class="map-tower-icon ' + (isRing ? 'ring-active' : '') + '"><i class="bi bi-broadcast"></i></div>';
+        
+        var towerIcon = L.divIcon({
+            html: iconHtml,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            className: ''
+        });
+
+        var popupContent = '<div>' +
+            '<h6 class="fw-bold mb-1">' + bts.bts_name + '</h6>' +
+            '<p class="mb-1 small"><b>RP ID:</b> ' + bts.rp_id + '</p>';
+        
+        if (bts.place_name) {
+            popupContent += '<p class="mb-1 small"><b>Place:</b> ' + bts.place_name + '</p>';
+        }
+        
+        popupContent += '<p class="mb-1 small"><b>Ring Status:</b> ' + (isRing ? '<span class="badge bg-info text-white">In Ring</span>' : '<span class="badge bg-secondary text-white">Not In Ring</span>') + '</p>' +
+            '<p class="mb-2 small"><b>CEF 12T:</b> ' + (bts.has_cef_12t ? '<span class="badge bg-success text-white">Yes</span>' : '<span class="badge bg-secondary text-white">No</span>') + '</p>' +
+            '<div class="d-flex gap-1 flex-wrap">' +
+                '<button class="btn btn-xs ' + (isRing ? 'btn-outline-danger' : 'btn-success text-white') + ' py-1 px-2 font-size-xs rounded" style="font-size: 0.75rem;" onclick="quickToggleRing(' + bts.id + ', ' + (!isRing) + ')">' +
+                    (isRing ? 'Remove Ring' : 'Mark in Ring') +
+                '</button>' +
+                '<a href="/inventory/bts/' + bts.id + '/" class="btn btn-xs btn-primary text-white py-1 px-2 font-size-xs rounded" style="font-size: 0.75rem;">Details</a>' +
+            '</div>' +
+            '</div>';
+
+        var marker = L.marker([bts.latitude, bts.longitude], { icon: towerIcon }).bindPopup(popupContent);
+        
+        marker.on('click', function() {
+            handleMarkerClick(bts);
+        });
+
+        return marker;
+    }
+
+    function drawRingDiagram() {
+        if (!ringLayersGroup) return;
+        ringLayersGroup.clearLayers();
+        if (!showRingDiagram) return;
+
+        var ringSites = mapSites.filter(b => b.is_ring && b.latitude && b.longitude);
+        if (ringSites.length < 2) return;
+
+        // Order sites for a convex polygon or nearest neighbor sequence
+        var ordered = orderRingCoordinates(ringSites);
+        var coords = ordered.map(b => [b.latitude, b.longitude]);
+        if (coords.length > 2) {
+            coords.push(coords[0]); // Close loop
+        }
+
+        // Draw glowing Outer Polyline
+        L.polyline(coords, {
+            color: '#06b6d4',
+            weight: 7,
+            opacity: 0.3
+        }).addTo(ringLayersGroup);
+
+        // Draw Core Inner Polyline
+        L.polyline(coords, {
+            color: '#0284c7',
+            weight: 4,
+            dashArray: '8, 8',
+            opacity: 0.95
+        }).addTo(ringLayersGroup);
+    }
+
+    function orderRingCoordinates(sites) {
+        if (sites.length <= 2) return sites;
+        var result = [sites[0]];
+        var remaining = sites.slice(1);
+
+        while (remaining.length > 0) {
+            var curr = result[result.length - 1];
+            var nearestIdx = 0;
+            var minD = Infinity;
+
+            for (var i = 0; i < remaining.length; i++) {
+                var d = Math.pow(curr.latitude - remaining[i].latitude, 2) + Math.pow(curr.longitude - remaining[i].longitude, 2);
+                if (d < minD) {
+                    minD = d;
+                    nearestIdx = i;
+                }
+            }
+            result.push(remaining[nearestIdx]);
+            remaining.splice(nearestIdx, 1);
+        }
+        return result;
+    }
+
+    function handleRingAction(targetIsRing) {
+        var val = $('#ring_bts_input').val();
+        if (!val) {
+            showToast("Please enter a valid BTS Name or RP ID.", "danger");
+            return;
+        }
+
+        $.ajax({
+            url: '{% url "toggle_bts_ring_api" %}',
+            type: 'POST',
+            contentType: 'application/json',
+            headers: { 'X-CSRFToken': csrftoken },
+            data: JSON.stringify({ query: val, is_ring: targetIsRing }),
+            success: function(res) {
+                if (res.success) {
+                    showToast(res.message, "success");
+                    updateLocalBtsRingState(res.bts_id, res.is_ring);
+                    updateCounters(res.total_ring_count, res.total_non_ring_count);
+                    $('#ring_bts_input').val('');
+                } else {
+                    showToast(res.error || "Failed to update ring status.", "danger");
+                }
+            },
+            error: function(xhr) {
+                var err = xhr.responseJSON ? xhr.responseJSON.error : "Server error.";
+                showToast(err, "danger");
+            }
+        });
+    }
+
+    function quickToggleRing(btsId, targetIsRing) {
+        $.ajax({
+            url: '{% url "toggle_bts_ring_api" %}',
+            type: 'POST',
+            contentType: 'application/json',
+            headers: { 'X-CSRFToken': csrftoken },
+            data: JSON.stringify({ bts_id: btsId, is_ring: targetIsRing }),
+            success: function(res) {
+                if (res.success) {
+                    updateLocalBtsRingState(res.bts_id, res.is_ring);
+                    updateCounters(res.total_ring_count, res.total_non_ring_count);
+                }
+            }
+        });
+    }
+
+    function handleBatchRingAction(targetIsRing) {
+        var selectedIds = [];
+        $('.bts-select-checkbox:checked').each(function() {
+            selectedIds.push(parseInt($(this).val()));
+        });
+
+        if (selectedIds.length === 0) return;
+
+        $.ajax({
+            url: '{% url "toggle_bts_ring_api" %}',
+            type: 'POST',
+            contentType: 'application/json',
+            headers: { 'X-CSRFToken': csrftoken },
+            data: JSON.stringify({ bts_ids: selectedIds, is_ring: targetIsRing }),
+            success: function(res) {
+                if (res.success) {
+                    selectedIds.forEach(id => updateLocalBtsRingState(id, targetIsRing));
+                    updateCounters(res.total_ring_count, res.total_non_ring_count);
+                    $('.bts-select-checkbox').prop('checked', false);
+                    $('#selectAllBts').prop('checked', false);
+                    updateBatchToolbar();
+                }
+            }
+        });
+    }
+
+    function updateLocalBtsRingState(btsId, isRing) {
+        // Update in JS array
+        var bts = mapSites.find(b => b.id === btsId);
+        if (bts) {
+            bts.is_ring = isRing;
+            if (markersDict[btsId] && leafletMap) {
+                leafletMap.removeLayer(markersDict[btsId]);
+                var newMarker = createTowerMarker(bts);
+                newMarker.addTo(leafletMap);
+                markersDict[btsId] = newMarker;
+            }
+            drawRingDiagram();
+        }
+
+        // Update in table row
+        var $row = $('tr[data-bts-id="' + btsId + '"]');
+        if ($row.length > 0) {
+            var $badgeCell = $row.find('.ring-status-badge').parent();
+            if (isRing) {
+                $badgeCell.html('<span class="badge-modern bg-info text-white ring-status-badge" onclick="quickToggleRing(' + btsId + ', false)" title="Click to mark as NOT in ring"><i class="bi bi-diagram-3-fill me-1"></i>IN RING</span>');
+            } else {
+                $badgeCell.html('<span class="badge-modern bg-light text-muted border ring-status-badge" onclick="quickToggleRing(' + btsId + ', true)" title="Click to mark as IN ring"><i class="bi bi-circle me-1"></i>NOT IN RING</span>');
+            }
+        }
+    }
+
+    function updateCounters(ringCount, nonRingCount) {
+        $('#stat_ring_count').text(ringCount);
+        $('#stat_non_ring_count').text(nonRingCount);
+    }
+
+    function updateBatchToolbar() {
+        var count = $('.bts-select-checkbox:checked').length;
+        if (count > 0) {
+            $('#selectedCountText').text(count + ' site(s) selected');
+            $('#batchToolbar').slideDown(200);
+        } else {
+            $('#batchToolbar').slideUp(200);
+        }
+    }
+
+    function showToast(msg, type) {
+        var $t = $('#ringMgmtToast');
+        $t.removeClass('alert-info alert-success alert-danger')
+          .addClass('alert-' + type)
+          .text(msg)
+          .slideDown(200);
+        setTimeout(function() { $t.slideUp(200); }, 4000);
+    }
+
+    function showErpsModal(name, url) {
+        $('#erpsModalTitle').text(name + ' - ERPS Ring Diagram');
+        $('#erpsModalImg').attr('src', url);
+        new bootstrap.Modal(document.getElementById('erpsModal')).show();
+    }
+
+    // Distance Calculator Logic
+    function findBTS(inputVal) {
+        if (!inputVal) return null;
+        var val = inputVal.trim();
+        if (btsLookup[val]) return btsLookup[val];
+        var lower = val.toLowerCase();
+        for (var i = 0; i < mapSites.length; i++) {
+            var b = mapSites[i];
+            if (b.rp_id.toLowerCase() === lower || 
+                b.bts_name.toLowerCase() === lower || 
+                (b.bts_name + ' (' + b.rp_id + ')').toLowerCase() === lower) {
+                return b;
+            }
+        }
+        return null;
+    }
+
+    function calcHaversine(lat1, lon1, lat2, lon2) {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function performCalculation() {
+        var siteA = findBTS($('#siteA_input').val());
+        var siteB = findBTS($('#siteB_input').val());
+
+        if (!siteA || !siteB) {
+            alert("Please select valid BTS sites for both Site A and Site B from the list.");
+            return;
+        }
+
+        if (siteA.id === siteB.id) {
+            alert("Please select two different BTS sites to calculate distance.");
+            return;
+        }
+
+        distLayersGroup.clearLayers();
+        $('#distResultBanner').slideDown(300);
+
+        var radKm = calcHaversine(siteA.latitude, siteA.longitude, siteB.latitude, siteB.longitude);
+        $('#radialDistValue').text(radKm.toFixed(2) + ' km');
+        $('#selectedRouteSummary').text(siteA.bts_name + ' ➔ ' + siteB.bts_name);
+
+        var radialLine = L.polyline([
+            [siteA.latitude, siteA.longitude],
+            [siteB.latitude, siteB.longitude]
+        ], {
+            color: '#ef4444',
+            weight: 3,
+            dashArray: '8, 8',
+            opacity: 0.9
+        }).addTo(distLayersGroup);
+
+        $('#roadDistValue').html('<span class="spinner-border spinner-border-sm text-primary me-1"></span>Routing...');
+
+        var osrmUrl = `https://router.project-osrm.org/route/v1/driving/${siteA.longitude},${siteA.latitude};${siteB.longitude},${siteB.latitude}?overview=full&geometries=geojson`;
+
+        $.ajax({
+            url: osrmUrl,
+            type: 'GET',
+            timeout: 7000,
+            success: function(data) {
+                if (data && data.routes && data.routes.length > 0) {
+                    var route = data.routes[0];
+                    var roadKm = (route.distance / 1000).toFixed(2);
+                    $('#roadDistValue').text(roadKm + ' km');
+
+                    var coords = route.geometry.coordinates.map(function(pt) {
+                        return [pt[1], pt[0]];
+                    });
+
+                    L.polyline(coords, {
+                        color: '#2563eb',
+                        weight: 5,
+                        opacity: 0.85
+                    }).addTo(distLayersGroup);
+
+                    leafletMap.fitBounds(distLayersGroup.getBounds(), { padding: [60, 60] });
+                } else {
+                    var estKm = (radKm * 1.25).toFixed(2);
+                    $('#roadDistValue').html(estKm + ' km <small class="text-muted fw-normal">(Est.)</small>');
+                    leafletMap.fitBounds(radialLine.getBounds(), { padding: [60, 60] });
+                }
+            },
+            error: function() {
+                var estKm = (radKm * 1.25).toFixed(2);
+                $('#roadDistValue').html(estKm + ' km <small class="text-muted fw-normal">(Est.)</small>');
+                leafletMap.fitBounds(radialLine.getBounds(), { padding: [60, 60] });
+            }
+        });
+    }
+
+    function handleMarkerClick(bts) {
+        var val = bts.bts_name + ' (' + bts.rp_id + ')';
+        var siteA = $('#siteA_input').val();
+        var siteB = $('#siteB_input').val();
+
+        if (!siteA) {
+            $('#siteA_input').val(val);
+            $('#distCalcPanel').slideDown(300);
+        } else if (!siteB && siteA !== val) {
+            $('#siteB_input').val(val);
+            performCalculation();
+        } else {
+            $('#siteA_input').val(val);
+            $('#siteB_input').val('');
+            distLayersGroup.clearLayers();
+            $('#distResultBanner').slideUp(200);
+        }
+    }
+
+    $('#btnCalculateDistance').on('click', function() {
+        performCalculation();
+    });
+
+    $('#btnClearDistance').on('click', function() {
+        $('#siteA_input').val('');
+        $('#siteB_input').val('');
+        distLayersGroup.clearLayers();
+        $('#distResultBanner').slideUp(200);
     });
 </script>
-{% endblock %}
 {% endblock %}
