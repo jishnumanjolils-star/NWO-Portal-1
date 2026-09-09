@@ -40,7 +40,12 @@ class DivisionRequiredMixin:
                 elif self.model == EBCircuit:
                     queryset = queryset.filter(te__nwo=division)
                 elif self.model == MobileBTS:
-                    queryset = queryset.filter(Q(maan_node__te__nwo=division) | Q(te__nwo=division)).distinct()
+                    queryset = queryset.filter(
+                        Q(maan_node__te__nwo=division) | 
+                        Q(te__nwo=division) |
+                        Q(te=None) |
+                        Q(te__name=f"UNMAPPED - {division.name}")
+                    ).distinct()
                 elif self.model == JunctionBox:
                     queryset = queryset.filter(te__nwo=division)
                 elif self.model == LIU:
@@ -608,7 +613,17 @@ class BTSListView(LoginRequiredMixin, DivisionRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         
         # Base queryset of all 4G sites for division
-        base_qs = super().get_queryset().filter(site_type='4G')
+        base_qs = MobileBTS.objects.filter(site_type='4G')
+        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile') and self.request.user.profile.division:
+            div = self.request.user.profile.division
+            _auto_assign_bts_helper(div)
+            base_qs = base_qs.filter(
+                Q(maan_node__te__nwo=div) | 
+                Q(te__nwo=div) |
+                Q(te=None) |
+                Q(te__name=f"UNMAPPED - {div.name}")
+            ).distinct()
+
         context['all_bts_count'] = base_qs.count()
         context['ring_count'] = base_qs.filter(is_ring=True).count()
         context['non_ring_count'] = base_qs.filter(is_ring=False).count()
@@ -648,9 +663,17 @@ def toggle_bts_ring_api(request):
         bts_ids = data.get('bts_ids', [])
         raw_bulk_text = data.get('raw_bulk_text', '')
 
+        div = None
         qs = MobileBTS.objects.filter(site_type='4G')
         if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.division:
-            qs = qs.filter(Q(maan_node__te__nwo=request.user.profile.division) | Q(te__nwo=request.user.profile.division)).distinct()
+            div = request.user.profile.division
+            _auto_assign_bts_helper(div)
+            qs = qs.filter(
+                Q(maan_node__te__nwo=div) | 
+                Q(te__nwo=div) |
+                Q(te=None) |
+                Q(te__name=f"UNMAPPED - {div.name}")
+            ).distinct()
 
         # Handle Raw Bulk Text Input (comma, newline, semicolon separated)
         if raw_bulk_text or data.get('bulk_inputs'):
@@ -677,8 +700,10 @@ def toggle_bts_ring_api(request):
                 
                 if matched:
                     if matched.id not in updated_ids:
+                        if div and (matched.te is None or matched.te.name.startswith("UNMAPPED -")):
+                            matched.te = _get_placeholder_te(div)
                         matched.is_ring = bool(is_ring_target)
-                        matched.save(update_fields=['is_ring'])
+                        matched.save()
                         updated_ids.append(matched.id)
                     
                     matched_sites.append({
@@ -712,7 +737,11 @@ def toggle_bts_ring_api(request):
 
         if bts_ids:
             target_sites = qs.filter(id__in=bts_ids)
-            target_sites.update(is_ring=bool(is_ring_target))
+            for s in target_sites:
+                if div and (s.te is None or s.te.name.startswith("UNMAPPED -")):
+                    s.te = _get_placeholder_te(div)
+                s.is_ring = bool(is_ring_target)
+                s.save()
             updated_ids = list(target_sites.values_list('id', flat=True))
             total_ring = qs.filter(is_ring=True).count()
             total_non_ring = qs.filter(is_ring=False).count()
@@ -737,6 +766,9 @@ def toggle_bts_ring_api(request):
         if not site:
             return JsonResponse({'success': False, 'error': 'BTS site not found or access denied.'}, status=404)
 
+        if div and (site.te is None or site.te.name.startswith("UNMAPPED -")):
+            site.te = _get_placeholder_te(div)
+
         if is_ring_target is not None:
             site.is_ring = bool(is_ring_target)
         elif action == 'add':
@@ -746,7 +778,7 @@ def toggle_bts_ring_api(request):
         else:
             site.is_ring = not site.is_ring
 
-        site.save(update_fields=['is_ring'])
+        site.save()
 
         total_ring = qs.filter(is_ring=True).count()
         total_non_ring = qs.filter(is_ring=False).count()
@@ -763,6 +795,7 @@ def toggle_bts_ring_api(request):
         })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
 
 
 
