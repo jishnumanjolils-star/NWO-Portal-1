@@ -757,9 +757,35 @@ def toggle_bts_ring_api(request):
             site = qs.filter(id=bts_id).first()
         elif query:
             q_str = str(query).strip()
+            # 1. Exact match on rp_id or bts_name
             site = qs.filter(Q(rp_id__iexact=q_str) | Q(bts_name__iexact=q_str)).first()
+            
+            # 2. Substring match on rp_id or bts_name
             if not site:
                 site = qs.filter(Q(rp_id__icontains=q_str) | Q(bts_name__icontains=q_str)).first()
+                
+            # 3. Handle composite strings like "RP-02064-Madhavapharmacy (RP-02064)"
+            if not site:
+                all_sites = list(qs)
+                q_lower = q_str.lower()
+                for s in all_sites:
+                    s_rp = s.rp_id.lower().strip()
+                    s_name = (s.bts_name or '').lower().strip()
+                    s_rp_clean = s_rp.replace('-', '')
+                    
+                    if (s_rp and s_rp in q_lower) or (s_name and s_name in q_lower) or (s_rp_clean and s_rp_clean in q_lower.replace('-', '')):
+                        site = s
+                        break
+            
+            # 4. Regex extraction for RP ID numbers (e.g. RP-02064)
+            if not site:
+                import re
+                rp_matches = re.findall(r'RP-?\d+', q_str, re.IGNORECASE)
+                for rp in rp_matches:
+                    clean_rp = rp.lower()
+                    site = next((s for s in qs if s.rp_id.lower() == clean_rp or s.rp_id.lower().replace('-', '') == clean_rp.replace('-', '')), None)
+                    if site:
+                        break
 
         if not site:
             return JsonResponse({'success': False, 'error': 'BTS site not found.'}, status=404)

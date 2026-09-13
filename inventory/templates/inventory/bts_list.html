@@ -710,15 +710,30 @@
                             <label class="form-label small fw-bold text-muted">
                                 Search BTS Name or RP ID:
                             </label>
-                            <input type="text" id="modal_ring_bts_input" class="form-control dist-input" list="btsDatalist" placeholder="Type BTS Name or RP ID (e.g. EKM_001)...">
+                            <input type="text" id="modal_ring_bts_input" class="form-control dist-input" list="btsDatalist" placeholder="Type BTS Name or RP ID (e.g. RP-02064 or Madhavapharmacy)..." autocomplete="off">
+                            <datalist id="btsDatalist">
+                                {% for bts in bts_list %}
+                                <option value="{{ bts.rp_id }} - {{ bts.bts_name }}"></option>
+                                <option value="{{ bts.rp_id }}"></option>
+                                <option value="{{ bts.bts_name }}"></option>
+                                {% endfor %}
+                            </datalist>
                         </div>
-                        <div class="d-flex gap-2 justify-content-end">
+                        <div class="d-flex gap-2 justify-content-end mb-3">
                             <button type="button" class="btn btn-success fw-bold px-4 rounded-pill" id="btnModalMarkRing">
                                 <i class="bi bi-check-circle-fill me-1"></i> Mark as In Ring
                             </button>
                             <button type="button" class="btn btn-outline-danger fw-bold px-4 rounded-pill" id="btnModalRemoveRing">
                                 <i class="bi bi-x-circle-fill me-1"></i> Remove from Ring
                             </button>
+                        </div>
+
+                        <!-- Session Log for Multi BTS Addition One-by-One -->
+                        <div id="singleAddedSessionContainer" style="display: none;" class="p-3 bg-light rounded-16 border">
+                            <label class="form-label extra-small fw-bold text-muted text-uppercase mb-2 d-block">
+                                <i class="bi bi-clock-history me-1"></i> Sites Updated in This Session:
+                            </label>
+                            <div class="d-flex flex-wrap gap-2" id="singleAddedSessionBadges"></div>
                         </div>
                     </div>
 
@@ -959,7 +974,16 @@
                     showModalToast(res.message, "success");
                     updateLocalBtsRingState(res.bts_id, res.is_ring);
                     updateCounters(res.total_ring_count, res.total_non_ring_count);
-                    $('#modal_ring_bts_input').val('');
+                    
+                    // Add badge to session activity list for multi site addition one by one
+                    $('#singleAddedSessionContainer').show();
+                    var badgeClass = res.is_ring ? 'bg-success text-white' : 'bg-secondary text-white';
+                    var badgeIcon = res.is_ring ? 'bi-check-circle-fill' : 'bi-dash-circle';
+                    var labelText = (res.rp_id || '') + ' - ' + (res.bts_name || '') + (res.is_ring ? ' (In Ring)' : ' (Removed)');
+                    var $badge = $('<span class="badge ' + badgeClass + ' p-2 shadow-sm d-inline-flex align-items-center gap-1 rounded-pill"><i class="bi ' + badgeIcon + '"></i> ' + labelText + '</span>');
+                    $('#singleAddedSessionBadges').prepend($badge);
+
+                    $('#modal_ring_bts_input').val('').focus();
                 } else {
                     showModalToast(res.error || "Failed to update ring status.", "danger");
                 }
