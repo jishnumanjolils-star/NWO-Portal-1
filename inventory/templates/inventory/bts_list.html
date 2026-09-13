@@ -227,9 +227,6 @@
         text-align: center;
     }
     .empty-state i { font-size: 4rem; color: #CBD5E1; margin-bottom: 1.5rem; display: block; }
-    .empty-state h5 { font-weight: 700; color: #475569; margin-bottom: 0.5rem; }
-<<<<<<< HEAD
-
     /* Leaflet Map Styling */
     #map {
         height: 500px;
@@ -303,8 +300,6 @@
         border: 1px solid #E2E8F0;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     }
-=======
->>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
 </style>
 {% endblock %}
 
@@ -323,19 +318,12 @@
             <h1 class="inventory-title"><i class="bi bi-broadcast me-2 text-primary"></i>Mobile BTS Inventory</h1>
         </div>
         <div class="d-flex gap-2 flex-wrap">
-<<<<<<< HEAD
             <button type="button" class="btn btn-info text-white px-4 fw-bold rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#ringModal">
                 <i class="bi bi-diagram-3-fill me-2"></i>Add Ring Topology
             </button>
             <button type="button" class="btn btn-outline-primary px-4 fw-bold rounded-pill" id="btnHeaderDistCalc">
                 <i class="bi bi-ruler me-2"></i>Measure Distance
             </button>
-            <a class="btn btn-outline-secondary px-4 fw-bold rounded-pill"
-               href="{% url 'export_bts_kml' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">
-                <i class="bi bi-geo-alt me-2"></i>Download KML
-            </a>
-=======
->>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
             <a class="btn btn-outline-success px-4 fw-bold rounded-pill"
                href="{% url 'export_bts' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">
                 <i class="bi bi-file-earmark-excel me-2"></i>Export Excel
@@ -382,7 +370,6 @@
         </div>
     </div>
 
-<<<<<<< HEAD
     <!-- Map Section -->
     <div class="map-container-wrapper card border-0 shadow-sm overflow-hidden mb-4" id="mapSection" style="border-radius: 24px; display: block;">
         <div class="card-header bg-white py-3 border-bottom">
@@ -401,13 +388,6 @@
                     <span class="badge bg-primary rounded-pill px-3 py-2" id="mapped-sites-count">0 Sites Mapped</span>
                 </div>
             </div>
-=======
-    <!-- GIS Sites Map View -->
-    <div class="inventory-card mb-4" style="border-radius: 24px;">
-        <div class="p-3 bg-light d-flex justify-content-between align-items-center" style="border-bottom: 1px solid #E2E8F0;">
-            <h5 class="mb-0 fw-800 text-dark" style="font-size: 1.1rem;"><i class="bi bi-map-fill text-primary me-2"></i>GIS Sites Map View</h5>
-            <span class="badge bg-primary text-white rounded-pill px-3 py-1 fw-bold" style="font-size: 0.75rem;">Live Sites Mapping</span>
->>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
         </div>
 
         <!-- Ring Management Tool Panel -->
@@ -796,7 +776,6 @@
     var showRingDiagram = true;
 
     $(document).ready(function() {
-<<<<<<< HEAD
         // Parse map sites JSON
         try {
             mapSites = JSON.parse('{{ map_sites_json|safe }}');
@@ -809,18 +788,11 @@
             
             leafletMap = L.map('map', { zoomControl: false }).setView([9.9816, 76.2999], 10);
             L.control.zoom({ position: 'bottomright' }).addTo(leafletMap);
-=======
-        var mapEl = document.getElementById('bts-map');
-        if (mapEl) {
-            var map = L.map('bts-map', { zoomControl: false }).setView([9.9816, 76.2999], 10);
-            L.control.zoom({ position: 'bottomright' }).addTo(map);
->>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
             
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                 attribution: '© OpenStreetMap contributors'
             }).addTo(leafletMap);
 
-<<<<<<< HEAD
             distLayersGroup = L.featureGroup().addTo(leafletMap);
             ringLayersGroup = L.featureGroup().addTo(leafletMap);
 
@@ -843,32 +815,10 @@
                 } else {
                     $(this).removeClass('btn-info text-white').addClass('btn-outline-secondary').html('<i class="bi bi-eye-slash me-1"></i> Ring Diagram (OFF)');
                     ringLayersGroup.clearLayers();
-=======
-            var mapSites = {{ map_sites_json|safe }};
-            var markersGroup = L.featureGroup().addTo(map);
-
-            var towerIcon = L.divIcon({
-                html: '<div style="background:#8b5cf6; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; border:2px solid white; box-shadow:0 2px 5px rgba(0,0,0,0.2);"><i class="bi bi-broadcast"></i></div>',
-                iconSize: [30, 30],
-                iconAnchor: [15, 15],
-                className: ''
-            });
-
-            mapSites.forEach(function(bts) {
-                if (bts.latitude && bts.longitude) {
-                    var popupContent = "<b>" + bts.bts_name + "</b><br>" +
-                                       "RP ID: " + bts.rp_id + "<br>" +
-                                       "Place: " + bts.place_name + "<br>" +
-                                       "<a href='/inventory/bts/" + bts.id + "/' class='btn btn-sm btn-primary text-white mt-2 px-2 py-1' style='font-size:0.75rem; text-decoration:none; border-radius:6px; display:inline-block;'>View Details</a>";
-                    var marker = L.marker([bts.latitude, bts.longitude], { icon: towerIcon })
-                                  .bindPopup(popupContent);
-                    markersGroup.addLayer(marker);
->>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
                 }
             });
         }
 
-<<<<<<< HEAD
         // Handle Ring Management Form Submission
         $('#btnMarkRing').on('click', function() {
             handleRingAction(true);

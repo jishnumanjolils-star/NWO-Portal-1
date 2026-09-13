@@ -641,17 +641,7 @@ class BTSListView(LoginRequiredMixin, DivisionRequiredMixin, ListView):
         
         # Current active list count
         queryset = self.get_queryset()
-        context['total_count'] = queryset.count()
-<<<<<<< HEAD
-        
         # Serialize all 4G sites to JSON for Leaflet mapping and tool lookups
-=======
-        context['ring_count'] = queryset.filter(is_ring=True).count()
-        context['cef_count'] = queryset.filter(has_cef_12t=True).count()
-        context['avg_power'] = queryset.aggregate(Avg('receive_power_db'))['receive_power_db__avg']
-
-        # Serialize 4G sites coordinates to JSON for Leaflet mapping
->>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
         map_sites = []
         for bts in base_qs:
             erps_url = ''
@@ -2028,7 +2018,6 @@ def export_circuits(request):
     wb.save(response)
     return response
 
-<<<<<<< HEAD
 _te_cache = None
 
 def clear_te_cache():
@@ -2045,13 +2034,6 @@ def _match_exchange(name_str, exchange_list):
     if not name_str or not exchange_list:
         return None
         
-=======
-def _resolve_te_helper(te_name, division=None):
-    if not te_name:
-        return None
-    name_str = str(te_name).strip()
-    
->>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
     import re
     name_upper = name_str.upper()
     corrections = {
@@ -2110,7 +2092,6 @@ def _resolve_te_helper(te_name, division=None):
         name_str = mapping_normalized[lookup_upper]
     
     # 1. Exact match
-<<<<<<< HEAD
     for ex in exchange_list:
         if ex.name == name_str:
             return ex
@@ -2121,80 +2102,33 @@ def _resolve_te_helper(te_name, division=None):
         if ex.name.lower() == name_str_lower:
             return ex
             
-=======
-    qs = TelephoneExchange.objects.filter(name=name_str)
-    if division:
-        qs = qs.filter(nwo=division)
-    te = qs.first()
-    if te:
-        return te
-        
-    # 2. Case-insensitive exact match
-    qs = TelephoneExchange.objects.filter(name__iexact=name_str)
-    if division:
-        qs = qs.filter(nwo=division)
-    te = qs.first()
-    if te:
-        return te
-        
->>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
     # 3. Appending/removing suffix " TE"
     alt_name = name_str
     if alt_name.upper().endswith(" TE"):
         alt_name = alt_name[:-3].strip()
     else:
         alt_name = f"{alt_name} TE"
-<<<<<<< HEAD
     alt_name_lower = alt_name.lower()
     for ex in exchange_list:
         if ex.name.lower() == alt_name_lower:
             return ex
             
-    # 4. Fallback: case-insensitive contains match (only if it matches exactly 1 exchange)
+    # 4. Fallback: case-insensitive contains match
     matched_exchanges = [ex for ex in exchange_list if name_str_lower in ex.name.lower()]
     if len(matched_exchanges) == 1:
         return matched_exchanges[0]
-=======
         
-    qs = TelephoneExchange.objects.filter(name__iexact=alt_name)
-    if division:
-        qs = qs.filter(nwo=division)
-    te = qs.first()
-    if te:
-        return te
-        
-    # 4. Fallback: case-insensitive contains match (only if it matches exactly 1 exchange)
-    qs = TelephoneExchange.objects.filter(name__icontains=name_str)
-    if division:
-        qs = qs.filter(nwo=division)
-    if qs.count() == 1:
-        return qs.first()
->>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
-        
-    # 5. Reverse substring search: check if any exchange name (without " TE") is a substring of the lookup string
+    # 5. Reverse substring search
     lookup_clean = name_str.upper().replace(' ', '').replace('-', '')
     if len(lookup_clean) >= 3:
-<<<<<<< HEAD
         for ex in exchange_list:
             exch_clean = ex.name.upper()
-=======
-        all_exchanges = TelephoneExchange.objects.all()
-        if division:
-            all_exchanges = all_exchanges.filter(nwo=division)
-        for exchange in all_exchanges:
-            exch_clean = exchange.name.upper()
->>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
             if exch_clean.endswith(" TE"):
                 exch_clean = exch_clean[:-3].strip()
             exch_clean = exch_clean.replace(' ', '').replace('-', '')
             if len(exch_clean) >= 3 and exch_clean in lookup_clean:
-<<<<<<< HEAD
                 return ex
 
-=======
-                return exchange
-                
->>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
     return None
 
 def _resolve_te_helper(te_name, division=None):
@@ -2249,15 +2183,7 @@ def _auto_assign_bts_helper(division):
         maan_node=None
     )
     if unlinked_bts.exists():
-<<<<<<< HEAD
         placeholder_te = _get_placeholder_te(division)
-=======
-        placeholder_name = f"UNMAPPED - {division.name}"
-        placeholder_te, _ = TelephoneExchange.objects.get_or_create(
-            name=placeholder_name,
-            nwo=division
-        )
->>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
         for bts in unlinked_bts:
             matched_te = None
             if bts.place_name:
@@ -2273,14 +2199,9 @@ def _auto_assign_bts_helper(division):
                 bts.te = placeholder_te
                 bts.save()
 
-<<<<<<< HEAD
 def bulk_upload_inner(request):
     global _te_cache
     clear_te_cache()
-=======
-@login_required
-def bulk_upload(request):
->>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
     if request.method == 'POST' and request.FILES.get('excel_file'):
         excel_file = request.FILES['excel_file']
         upload_type = request.POST.get('upload_type')
@@ -2367,19 +2288,7 @@ def bulk_upload(request):
                         if te_name not in (None, ''):
                             te = _resolve_te_helper(te_name, division)
                             
-                        if not te:
-<<<<<<< HEAD
                             te = _get_placeholder_te(division)
-=======
-                            if not division:
-                                division = NWO.objects.first()
-                            
-                            placeholder_name = f"UNMAPPED - {division.name}" if division else "UNMAPPED - ALL"
-                            te_kwargs = {'name': placeholder_name}
-                            if division:
-                                te_kwargs['nwo'] = division
-                            te, _ = TelephoneExchange.objects.get_or_create(**te_kwargs)
->>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
                             if te_name not in (None, ''):
                                 row_errors.append(f"Row {i} (SL No {get_value(row, 'SL No', 'Sl No') or i-1}): Telephone Exchange '{te_name}' not found. Saved under '{te.name}'.")
                             else:
@@ -2660,18 +2569,7 @@ def bulk_upload(request):
                             te = _resolve_te_helper(te_name, division)
                             
                         if not te:
-<<<<<<< HEAD
                             te = _get_placeholder_te(division)
-=======
-                            if not division:
-                                division = NWO.objects.first()
-                            
-                            placeholder_name = f"UNMAPPED - {division.name}" if division else "UNMAPPED - ALL"
-                            te_kwargs = {'name': placeholder_name}
-                            if division:
-                                te_kwargs['nwo'] = division
-                            te, _ = TelephoneExchange.objects.get_or_create(**te_kwargs)
->>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
                             if te_name not in (None, ''):
                                 row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found. Saved under '{te.name}'.")
                             else:
@@ -2801,19 +2699,7 @@ def bulk_upload(request):
                         te = None
                         if te_name not in (None, ''):
                             te = _resolve_te_helper(te_name, division)
-                        if not te:
-<<<<<<< HEAD
                             te = _get_placeholder_te(division)
-=======
-                            if not division:
-                                division = NWO.objects.first()
-                            
-                            placeholder_name = f"UNMAPPED - {division.name}" if division else "UNMAPPED - ALL"
-                            te_kwargs = {'name': placeholder_name}
-                            if division:
-                                te_kwargs['nwo'] = division
-                            te, _ = TelephoneExchange.objects.get_or_create(**te_kwargs)
->>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
                             if te_name not in (None, ''):
                                 row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found. Saved under '{te.name}'.")
                             else:
@@ -3044,8 +2930,6 @@ def bulk_upload(request):
             
     return render(request, 'inventory/bulk_upload.html')
 
-@login_required
-<<<<<<< HEAD
 def bulk_upload(request):
     try:
         return bulk_upload_inner(request)
@@ -3054,8 +2938,6 @@ def bulk_upload(request):
         return render(request, 'inventory/bulk_upload.html')
 
 @login_required
-=======
->>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
 def download_template(request):
     category = request.GET.get('category', 'CIRCUIT')
     
