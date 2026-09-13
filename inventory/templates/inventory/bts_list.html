@@ -318,7 +318,7 @@
             <h1 class="inventory-title"><i class="bi bi-broadcast me-2 text-primary"></i>Mobile BTS Inventory</h1>
         </div>
         <div class="d-flex gap-2 flex-wrap">
-            <button type="button" class="btn btn-info text-white px-4 fw-bold rounded-pill shadow-sm btn-open-ring-modal" data-bs-toggle="modal" data-bs-target="#ringModal">
+            <button type="button" class="btn btn-info text-white px-4 fw-bold rounded-pill shadow-sm btn-open-ring-modal" onclick="openRingModal()">
                 <i class="bi bi-diagram-3-fill me-2"></i>+ Create ERPS Ring
             </button>
             <button type="button" class="btn btn-outline-primary px-4 fw-bold rounded-pill" id="btnHeaderDistCalc">
@@ -538,7 +538,7 @@
                 <option value="false" {% if request.GET.is_ring == 'false' %}selected{% endif %}>Not In Ring Only</option>
             </select>
             <button type="submit" class="btn btn-dark px-4 fw-bold rounded-pill">Search</button>
-            <button type="button" class="btn btn-info text-white px-4 fw-bold rounded-pill text-nowrap btn-open-ring-modal" data-bs-toggle="modal" data-bs-target="#ringModal">
+            <button type="button" class="btn btn-info text-white px-4 fw-bold rounded-pill text-nowrap btn-open-ring-modal" onclick="openRingModal()">
                 <i class="bi bi-diagram-3-fill me-1"></i>+ Create ERPS Ring
             </button>
         </form>
@@ -847,15 +847,8 @@
 
         // Modal Handlers
         $(document).on('click', '.btn-open-ring-modal', function(e) {
-            var modalEl = document.getElementById('ringModal');
-            if (modalEl) {
-                try {
-                    var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-                    modal.show();
-                } catch(err) {
-                    console.error("Modal init error:", err);
-                }
-            }
+            e.preventDefault();
+            openRingModal();
         });
 
         $('#btnModalMarkRing').on('click', function() {
@@ -896,6 +889,27 @@
             handleBatchRingAction(false);
         });
     });
+
+    function openRingModal() {
+        var modalEl = document.getElementById('ringModal');
+        if (!modalEl) return;
+        try {
+            if (window.bootstrap && bootstrap.Modal) {
+                var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+            } else if (typeof $ !== 'undefined' && $.fn.modal) {
+                $('#ringModal').modal('show');
+            } else {
+                modalEl.style.display = 'block';
+                modalEl.classList.add('show');
+            }
+        } catch (e) {
+            console.error("openRingModal error:", e);
+            if (typeof $ !== 'undefined' && $.fn.modal) {
+                $('#ringModal').modal('show');
+            }
+        }
+    }
 
     function showModalToast(msg, type) {
         var $t = $('#modalRingToast');
