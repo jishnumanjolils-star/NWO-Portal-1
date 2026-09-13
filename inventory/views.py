@@ -669,7 +669,7 @@ class BTSListView(LoginRequiredMixin, DivisionRequiredMixin, ListView):
             })
         context['map_sites_json'] = json.dumps(map_sites)
         
-        # Saved ERPS Rings List
+        # Saved ERPS Rings List & Existing BTS Marked in Ring List
         saved_rings = list(
             base_qs.filter(is_ring=True)
             .exclude(erps_ring_name__isnull=True)
@@ -678,6 +678,13 @@ class BTSListView(LoginRequiredMixin, DivisionRequiredMixin, ListView):
             .distinct()
         )
         context['saved_erps_rings'] = sorted(saved_rings)
+        
+        ring_bts = list(
+            base_qs.filter(is_ring=True)
+            .values('id', 'rp_id', 'bts_name', 'erps_ring_name')
+            .order_by('rp_id')
+        )
+        context['ring_bts_list'] = ring_bts
         return context
 
 @login_required
@@ -695,23 +702,42 @@ def toggle_bts_ring_api(request):
 
         qs = MobileBTS.objects.filter(site_type='4G')
 
-        # Action: Fetch all sites in a named ERPS Ring for editing
-        if action == 'get_ring_sites' and erps_ring_name:
-            sites = list(qs.filter(erps_ring_name__iexact=erps_ring_name).values('id', 'rp_id', 'bts_name', 'latitude', 'longitude', 'is_ring', 'erps_ring_name'))
-            return JsonResponse({'success': True, 'ring_name': erps_ring_name, 'sites': sites})
+        def get_saved_rings_and_bts():
+            saved = sorted(list(qs.filter(is_ring=True).exclude(erps_ring_name__isnull=True).exclude(erps_ring_name__exact='').values_list('erps_ring_name', flat=True).distinct()))
+            bts_list = list(qs.filter(is_ring=True).values('id', 'rp_id', 'bts_name', 'erps_ring_name').order_by('rp_id'))
+            return saved, bts_list
+
+        # Action: Fetch all sites in a named ERPS Ring or by BTS ID for editing
+        if action == 'get_ring_sites':
+            target_bts_id = data.get('bts_id') or bts_id
+            if target_bts_id:
+                target_bts = qs.filter(id=target_bts_id).first()
+                if target_bts:
+                    if target_bts.erps_ring_name:
+                        r_name = target_bts.erps_ring_name
+                        sites = list(qs.filter(erps_ring_name__iexact=r_name).values('id', 'rp_id', 'bts_name', 'latitude', 'longitude', 'is_ring', 'erps_ring_name'))
+                        return JsonResponse({'success': True, 'ring_name': r_name, 'sites': sites})
+                    else:
+                        sites = [{'id': target_bts.id, 'rp_id': target_bts.rp_id, 'bts_name': target_bts.bts_name, 'latitude': float(target_bts.latitude) if target_bts.latitude else None, 'longitude': float(target_bts.longitude) if target_bts.longitude else None, 'is_ring': target_bts.is_ring, 'erps_ring_name': ''}]
+                        return JsonResponse({'success': True, 'ring_name': '', 'sites': sites})
+
+            if erps_ring_name:
+                sites = list(qs.filter(erps_ring_name__iexact=erps_ring_name).values('id', 'rp_id', 'bts_name', 'latitude', 'longitude', 'is_ring', 'erps_ring_name'))
+                return JsonResponse({'success': True, 'ring_name': erps_ring_name, 'sites': sites})
 
         # Action: Delete an entire named ERPS Ring
         if action == 'delete_ring' and erps_ring_name:
             qs.filter(erps_ring_name__iexact=erps_ring_name).update(is_ring=False, erps_ring_name=None)
             total_ring = qs.filter(is_ring=True).count()
             total_non_ring = qs.filter(is_ring=False).count()
-            saved_rings = sorted(list(qs.filter(is_ring=True).exclude(erps_ring_name__isnull=True).exclude(erps_ring_name__exact='').values_list('erps_ring_name', flat=True).distinct()))
+            saved_rings, ring_bts_list = get_saved_rings_and_bts()
             return JsonResponse({
                 'success': True,
                 'message': f"ERPS Ring '{erps_ring_name}' deleted successfully.",
                 'total_ring_count': total_ring,
                 'total_non_ring_count': total_non_ring,
-                'saved_rings': saved_rings
+                'saved_rings': saved_rings,
+                'ring_bts_list': ring_bts_list
             })
 
         # Action: Save/Submit complete ERPS Ring configuration
@@ -736,7 +762,7 @@ def toggle_bts_ring_api(request):
 
             total_ring = qs.filter(is_ring=True).count()
             total_non_ring = qs.filter(is_ring=False).count()
-            saved_rings = sorted(list(qs.filter(is_ring=True).exclude(erps_ring_name__isnull=True).exclude(erps_ring_name__exact='').values_list('erps_ring_name', flat=True).distinct()))
+            saved_rings, ring_bts_list = get_saved_rings_and_bts()
             assigned_sites = list(qs.filter(erps_ring_name__iexact=erps_ring_name).values('id', 'rp_id', 'bts_name', 'latitude', 'longitude', 'is_ring', 'erps_ring_name'))
 
             return JsonResponse({
@@ -746,7 +772,8 @@ def toggle_bts_ring_api(request):
                 'sites': assigned_sites,
                 'total_ring_count': total_ring,
                 'total_non_ring_count': total_non_ring,
-                'saved_rings': saved_rings
+                'saved_rings': saved_rings,
+                'ring_bts_list': ring_bts_list
             })
 
         # Handle Raw Bulk Text Input (comma, newline, semicolon separated)

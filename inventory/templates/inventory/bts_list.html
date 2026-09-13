@@ -737,10 +737,21 @@
                         </label>
                         <div class="input-group">
                             <select class="form-select dist-input fw-bold" id="modal_existing_ring_select">
-                                <option value="">-- Choose Existing Saved Ring --</option>
-                                {% for ring_name in saved_erps_rings %}
-                                <option value="{{ ring_name }}">{{ ring_name }}</option>
-                                {% endfor %}
+                                <option value="">-- Choose Existing Ring or BTS Marked in Ring --</option>
+                                {% if saved_erps_rings %}
+                                <optgroup label="Saved ERPS Ring Groups" id="optgroup_saved_rings">
+                                    {% for ring_name in saved_erps_rings %}
+                                    <option value="group:{{ ring_name }}">{{ ring_name }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                                {% endif %}
+                                {% if ring_bts_list %}
+                                <optgroup label="Existing BTS Marked in Ring" id="optgroup_ring_bts">
+                                    {% for bts in ring_bts_list %}
+                                    <option value="bts:{{ bts.id }}">{{ bts.rp_id }} - {{ bts.bts_name|default:"Unnamed" }}{% if bts.erps_ring_name %} ({{ bts.erps_ring_name }}){% else %} (In Ring){% endif %}</option>
+                                    {% endfor %}
+                                </optgroup>
+                                {% endif %}
                             </select>
                             <button class="btn btn-outline-danger px-3 fw-bold" type="button" id="btnDeleteErpsRing" title="Delete Selected Ring" style="display:none;">
                                 <i class="bi bi-trash-fill me-1"></i> Delete Ring
@@ -958,16 +969,28 @@
 
         // Existing Ring Select Handler
         $('#modal_existing_ring_select').on('change', function() {
-            var ringName = $(this).val();
-            if (ringName) {
-                $('#modal_erps_ring_name_input').val(ringName);
-                $('#btnDeleteErpsRing').show();
-                loadExistingRingSites(ringName);
-            } else {
+            var val = $(this).val();
+            if (!val) {
                 $('#modal_erps_ring_name_input').val('');
                 $('#btnDeleteErpsRing').hide();
                 stagedSites = [];
                 renderStagedSites();
+                return;
+            }
+
+            if (val.indexOf('group:') === 0) {
+                var ringName = val.substring(6);
+                $('#modal_erps_ring_name_input').val(ringName);
+                $('#btnDeleteErpsRing').show();
+                loadExistingRingSites({ erps_ring_name: ringName });
+            } else if (val.indexOf('bts:') === 0) {
+                var btsId = parseInt(val.substring(4));
+                $('#btnDeleteErpsRing').show();
+                loadExistingRingSites({ bts_id: btsId });
+            } else {
+                $('#modal_erps_ring_name_input').val(val);
+                $('#btnDeleteErpsRing').show();
+                loadExistingRingSites({ erps_ring_name: val });
             }
         });
 
@@ -987,7 +1010,7 @@
                 success: function(res) {
                     if (res.success) {
                         showModalToast(res.message, "success");
-                        updateSavedRingsDropdown(res.saved_rings, '');
+                        updateSavedRingsDropdown(res.saved_rings, res.ring_bts_list, '');
                         $('#modal_erps_ring_name_input').val('');
                         $('#modal_existing_ring_select').val('');
                         $('#btnDeleteErpsRing').hide();
@@ -1095,7 +1118,7 @@
                 success: function(res) {
                     if (res.success) {
                         showToast(res.message, "success");
-                        updateSavedRingsDropdown(res.saved_rings, ringName);
+                        updateSavedRingsDropdown(res.saved_rings, res.ring_bts_list, 'group:' + ringName);
                         updateCounters(res.total_ring_count, res.total_non_ring_count);
 
                         mapSites.forEach(function(b) {
@@ -1285,44 +1308,62 @@
         });
     }
 
-    function updateSavedRingsDropdown(savedRings, currentSelected) {
+    function updateSavedRingsDropdown(savedRings, ringBtsList, currentSelected) {
         var $select = $('#modal_existing_ring_select');
         var $searchSelect = $('#search_erps_ring_select');
         var val = currentSelected !== undefined ? currentSelected : $select.val();
         
-        $select.empty().append('<option value="">-- Choose Existing Saved Ring --</option>');
+        $select.empty().append('<option value="">-- Choose Existing Ring or BTS Marked in Ring --</option>');
         if ($searchSelect.length > 0) {
             var searchVal = $searchSelect.val();
             $searchSelect.empty().append('<option value="">All ERPS Rings</option>');
         }
 
         if (savedRings && savedRings.length > 0) {
+            var $grpRings = $('<optgroup label="Saved ERPS Ring Groups" id="optgroup_saved_rings"></optgroup>');
             savedRings.forEach(function(ring) {
-                var sel = (ring === val) ? 'selected' : '';
-                $select.append('<option value="' + ring + '" ' + sel + '>' + ring + '</option>');
+                var isSel = (val === 'group:' + ring || val === ring) ? 'selected' : '';
+                $grpRings.append('<option value="group:' + ring + '" ' + isSel + '>' + ring + '</option>');
                 if ($searchSelect.length > 0) {
                     var sSel = (ring === searchVal) ? 'selected' : '';
                     $searchSelect.append('<option value="' + ring + '" ' + sSel + '>' + ring + '</option>');
                 }
             });
+            $select.append($grpRings);
         }
-        if (val && savedRings && savedRings.includes(val)) {
+
+        if (ringBtsList && ringBtsList.length > 0) {
+            var $grpBts = $('<optgroup label="Existing BTS Marked in Ring" id="optgroup_ring_bts"></optgroup>');
+            ringBtsList.forEach(function(b) {
+                var btsVal = 'bts:' + b.id;
+                var isSel = (val === btsVal) ? 'selected' : '';
+                var ringLabel = b.erps_ring_name ? ' (' + b.erps_ring_name + ')' : ' (In Ring)';
+                $grpBts.append('<option value="' + btsVal + '" ' + isSel + '>' + b.rp_id + ' - ' + (b.bts_name || 'Unnamed') + ringLabel + '</option>');
+            });
+            $select.append($grpBts);
+        }
+
+        if (val) {
             $select.val(val);
             $('#btnDeleteErpsRing').show();
         }
     }
 
-    function loadExistingRingSites(ringName) {
-        if (!ringName) return;
+    function loadExistingRingSites(params) {
+        if (!params) return;
+        var reqData = (typeof params === 'object') ? Object.assign({ action: 'get_ring_sites' }, params) : { action: 'get_ring_sites', erps_ring_name: params };
         $.ajax({
             url: '{% url "toggle_bts_ring_api" %}',
             type: 'POST',
             contentType: 'application/json',
             headers: { 'X-CSRFToken': csrftoken },
-            data: JSON.stringify({ action: 'get_ring_sites', erps_ring_name: ringName }),
+            data: JSON.stringify(reqData),
             success: function(res) {
                 if (res.success && res.sites) {
                     stagedSites = res.sites.map(s => ({ id: s.id, rp_id: s.rp_id, bts_name: s.bts_name }));
+                    if (res.ring_name && !$('#modal_erps_ring_name_input').val()) {
+                        $('#modal_erps_ring_name_input').val(res.ring_name);
+                    }
                     renderStagedSites();
                 }
             }
