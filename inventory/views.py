@@ -288,19 +288,38 @@ def dashboard(request):
 
     # 4. Build data structure
     nwo_data_list = []
+    from django.db.models import Count
     for nwo in sorted_nwos:
-        # Use explicit queryset to avoid any related_name/attribute resolution issues
-        exchanges = TelephoneExchange.objects.filter(nwo=nwo).order_by('name')
+        # Pre-fetch counts using annotation to avoid N+1 query loops
+        exchanges = TelephoneExchange.objects.filter(nwo=nwo).annotate(
+            c_count=Count('cables', distinct=True),
+            e_count=Count('equipments', distinct=True),
+            cir_count=Count('ebcircuit', distinct=True),
+            f_count=Count('ftth', distinct=True),
+        ).order_by('name')
+        
+        # Pre-calculate BTS counts for this division
+        bts_counts = {}
+        direct_bts = MobileBTS.objects.filter(te__nwo=nwo).values('te_id').annotate(count=Count('id', distinct=True))
+        for item in direct_bts:
+            if item['te_id']:
+                bts_counts[item['te_id']] = bts_counts.get(item['te_id'], 0) + item['count']
+        
+        maan_bts = MobileBTS.objects.filter(maan_node__te__nwo=nwo).values('maan_node__te_id').annotate(count=Count('id', distinct=True))
+        for item in maan_bts:
+            if item['maan_node__te_id']:
+                bts_counts[item['maan_node__te_id']] = bts_counts.get(item['maan_node__te_id'], 0) + item['count']
+
         te_list = []
         for te in exchanges:
             te_list.append({
                 'id': te.id,
                 'name': te.name,
-                'cable_count': te.cables.count(),
-                'equipment_count': te.equipments.count(),
-                'circuit_count': EBCircuit.objects.filter(te=te).count(),
-                'bts_count': MobileBTS.objects.filter(Q(maan_node__te=te) | Q(te=te)).distinct().count(),
-                'ftth_count': FTTH.objects.filter(te=te).count(),
+                'cable_count': te.c_count,
+                'equipment_count': te.e_count,
+                'circuit_count': te.cir_count,
+                'bts_count': bts_counts.get(te.id, 0),
+                'ftth_count': te.f_count,
             })
         
         nwo_data_list.append({
@@ -623,8 +642,16 @@ class BTSListView(LoginRequiredMixin, DivisionRequiredMixin, ListView):
         # Current active list count
         queryset = self.get_queryset()
         context['total_count'] = queryset.count()
+<<<<<<< HEAD
         
         # Serialize all 4G sites to JSON for Leaflet mapping and tool lookups
+=======
+        context['ring_count'] = queryset.filter(is_ring=True).count()
+        context['cef_count'] = queryset.filter(has_cef_12t=True).count()
+        context['avg_power'] = queryset.aggregate(Avg('receive_power_db'))['receive_power_db__avg']
+
+        # Serialize 4G sites coordinates to JSON for Leaflet mapping
+>>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
         map_sites = []
         for bts in base_qs:
             erps_url = ''
@@ -1763,6 +1790,7 @@ def export_bts(request):
     wb.save(response)
     return response
 
+
 @login_required
 def export_bts_kml(request):
     import xml.etree.ElementTree as ET
@@ -1779,26 +1807,26 @@ def export_bts_kml(request):
     is_ring = request.GET.get('is_ring')
     if is_ring:
         queryset = queryset.filter(is_ring=is_ring == 'true')
-        
+
     # We only include sites with valid coordinates in the KML
     queryset = queryset.filter(latitude__isnull=False, longitude__isnull=False)
 
     # Construct KML XML
     kml = ET.Element('kml', xmlns="http://www.opengis.net/kml/2.2")
     document = ET.SubElement(kml, 'Document')
-    
+
     title = ET.SubElement(document, 'name')
     title.text = "4G Mobile BTS Sites"
-    
+
     desc = ET.SubElement(document, 'description')
     desc.text = "Exported 4G sites from NET-TRACKER"
 
     for bts in queryset.order_by('rp_id'):
         placemark = ET.SubElement(document, 'Placemark')
-        
+
         name = ET.SubElement(placemark, 'name')
         name.text = f"{bts.bts_name} ({bts.rp_id})"
-        
+
         description = ET.SubElement(placemark, 'description')
         desc_content = f"RP ID: {bts.rp_id}\n"
         if bts.place_name:
@@ -1808,7 +1836,7 @@ def export_bts_kml(request):
         if bts.remarks:
             desc_content += f"Remarks: {bts.remarks}\n"
         description.text = desc_content
-        
+
         point = ET.SubElement(placemark, 'Point')
         coordinates = ET.SubElement(point, 'coordinates')
         # KML coordinates order: longitude, latitude, altitude (optional)
@@ -1816,7 +1844,7 @@ def export_bts_kml(request):
 
     # Serialize XML to string with utf-8 encoding and XML declaration
     xml_str = ET.tostring(kml, encoding='utf-8', xml_declaration=True)
-    
+
     response = HttpResponse(xml_str, content_type='application/vnd.google-earth.kml+xml')
     division_label = division.name if division else 'all'
     filename = f"bts_4g_sites_{division_label.lower().replace(' ', '_')}.kml"
@@ -2000,6 +2028,7 @@ def export_circuits(request):
     wb.save(response)
     return response
 
+<<<<<<< HEAD
 _te_cache = None
 
 def clear_te_cache():
@@ -2016,6 +2045,13 @@ def _match_exchange(name_str, exchange_list):
     if not name_str or not exchange_list:
         return None
         
+=======
+def _resolve_te_helper(te_name, division=None):
+    if not te_name:
+        return None
+    name_str = str(te_name).strip()
+    
+>>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
     import re
     name_upper = name_str.upper()
     corrections = {
@@ -2074,6 +2110,7 @@ def _match_exchange(name_str, exchange_list):
         name_str = mapping_normalized[lookup_upper]
     
     # 1. Exact match
+<<<<<<< HEAD
     for ex in exchange_list:
         if ex.name == name_str:
             return ex
@@ -2084,12 +2121,30 @@ def _match_exchange(name_str, exchange_list):
         if ex.name.lower() == name_str_lower:
             return ex
             
+=======
+    qs = TelephoneExchange.objects.filter(name=name_str)
+    if division:
+        qs = qs.filter(nwo=division)
+    te = qs.first()
+    if te:
+        return te
+        
+    # 2. Case-insensitive exact match
+    qs = TelephoneExchange.objects.filter(name__iexact=name_str)
+    if division:
+        qs = qs.filter(nwo=division)
+    te = qs.first()
+    if te:
+        return te
+        
+>>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
     # 3. Appending/removing suffix " TE"
     alt_name = name_str
     if alt_name.upper().endswith(" TE"):
         alt_name = alt_name[:-3].strip()
     else:
         alt_name = f"{alt_name} TE"
+<<<<<<< HEAD
     alt_name_lower = alt_name.lower()
     for ex in exchange_list:
         if ex.name.lower() == alt_name_lower:
@@ -2099,18 +2154,47 @@ def _match_exchange(name_str, exchange_list):
     matched_exchanges = [ex for ex in exchange_list if name_str_lower in ex.name.lower()]
     if len(matched_exchanges) == 1:
         return matched_exchanges[0]
+=======
+        
+    qs = TelephoneExchange.objects.filter(name__iexact=alt_name)
+    if division:
+        qs = qs.filter(nwo=division)
+    te = qs.first()
+    if te:
+        return te
+        
+    # 4. Fallback: case-insensitive contains match (only if it matches exactly 1 exchange)
+    qs = TelephoneExchange.objects.filter(name__icontains=name_str)
+    if division:
+        qs = qs.filter(nwo=division)
+    if qs.count() == 1:
+        return qs.first()
+>>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
         
     # 5. Reverse substring search: check if any exchange name (without " TE") is a substring of the lookup string
     lookup_clean = name_str.upper().replace(' ', '').replace('-', '')
     if len(lookup_clean) >= 3:
+<<<<<<< HEAD
         for ex in exchange_list:
             exch_clean = ex.name.upper()
+=======
+        all_exchanges = TelephoneExchange.objects.all()
+        if division:
+            all_exchanges = all_exchanges.filter(nwo=division)
+        for exchange in all_exchanges:
+            exch_clean = exchange.name.upper()
+>>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
             if exch_clean.endswith(" TE"):
                 exch_clean = exch_clean[:-3].strip()
             exch_clean = exch_clean.replace(' ', '').replace('-', '')
             if len(exch_clean) >= 3 and exch_clean in lookup_clean:
+<<<<<<< HEAD
                 return ex
 
+=======
+                return exchange
+                
+>>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
     return None
 
 def _resolve_te_helper(te_name, division=None):
@@ -2161,11 +2245,19 @@ def _auto_assign_bts_helper(division):
     if not division:
         return
     unlinked_bts = MobileBTS.objects.filter(
-        Q(te=None, maan_node=None) | 
-        Q(te__name__startswith="UNMAPPED -", maan_node=None)
+        te=None,
+        maan_node=None
     )
     if unlinked_bts.exists():
+<<<<<<< HEAD
         placeholder_te = _get_placeholder_te(division)
+=======
+        placeholder_name = f"UNMAPPED - {division.name}"
+        placeholder_te, _ = TelephoneExchange.objects.get_or_create(
+            name=placeholder_name,
+            nwo=division
+        )
+>>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
         for bts in unlinked_bts:
             matched_te = None
             if bts.place_name:
@@ -2181,9 +2273,14 @@ def _auto_assign_bts_helper(division):
                 bts.te = placeholder_te
                 bts.save()
 
+<<<<<<< HEAD
 def bulk_upload_inner(request):
     global _te_cache
     clear_te_cache()
+=======
+@login_required
+def bulk_upload(request):
+>>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
     if request.method == 'POST' and request.FILES.get('excel_file'):
         excel_file = request.FILES['excel_file']
         upload_type = request.POST.get('upload_type')
@@ -2271,7 +2368,18 @@ def bulk_upload_inner(request):
                             te = _resolve_te_helper(te_name, division)
                             
                         if not te:
+<<<<<<< HEAD
                             te = _get_placeholder_te(division)
+=======
+                            if not division:
+                                division = NWO.objects.first()
+                            
+                            placeholder_name = f"UNMAPPED - {division.name}" if division else "UNMAPPED - ALL"
+                            te_kwargs = {'name': placeholder_name}
+                            if division:
+                                te_kwargs['nwo'] = division
+                            te, _ = TelephoneExchange.objects.get_or_create(**te_kwargs)
+>>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
                             if te_name not in (None, ''):
                                 row_errors.append(f"Row {i} (SL No {get_value(row, 'SL No', 'Sl No') or i-1}): Telephone Exchange '{te_name}' not found. Saved under '{te.name}'.")
                             else:
@@ -2552,7 +2660,18 @@ def bulk_upload_inner(request):
                             te = _resolve_te_helper(te_name, division)
                             
                         if not te:
+<<<<<<< HEAD
                             te = _get_placeholder_te(division)
+=======
+                            if not division:
+                                division = NWO.objects.first()
+                            
+                            placeholder_name = f"UNMAPPED - {division.name}" if division else "UNMAPPED - ALL"
+                            te_kwargs = {'name': placeholder_name}
+                            if division:
+                                te_kwargs['nwo'] = division
+                            te, _ = TelephoneExchange.objects.get_or_create(**te_kwargs)
+>>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
                             if te_name not in (None, ''):
                                 row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found. Saved under '{te.name}'.")
                             else:
@@ -2683,7 +2802,18 @@ def bulk_upload_inner(request):
                         if te_name not in (None, ''):
                             te = _resolve_te_helper(te_name, division)
                         if not te:
+<<<<<<< HEAD
                             te = _get_placeholder_te(division)
+=======
+                            if not division:
+                                division = NWO.objects.first()
+                            
+                            placeholder_name = f"UNMAPPED - {division.name}" if division else "UNMAPPED - ALL"
+                            te_kwargs = {'name': placeholder_name}
+                            if division:
+                                te_kwargs['nwo'] = division
+                            te, _ = TelephoneExchange.objects.get_or_create(**te_kwargs)
+>>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
                             if te_name not in (None, ''):
                                 row_errors.append(f"Row {i}: Telephone Exchange '{te_name}' not found. Saved under '{te.name}'.")
                             else:
@@ -2915,6 +3045,7 @@ def bulk_upload_inner(request):
     return render(request, 'inventory/bulk_upload.html')
 
 @login_required
+<<<<<<< HEAD
 def bulk_upload(request):
     try:
         return bulk_upload_inner(request)
@@ -2923,6 +3054,8 @@ def bulk_upload(request):
         return render(request, 'inventory/bulk_upload.html')
 
 @login_required
+=======
+>>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
 def download_template(request):
     category = request.GET.get('category', 'CIRCUIT')
     
@@ -3300,9 +3433,6 @@ import tempfile
 
 @login_required
 def db_management(request):
-    if not request.user.is_superuser:
-        return HttpResponseForbidden("Only superusers are allowed to access Database Management.")
-    
     # Calculate media folder size
     media_size = 0
     media_count = 0
@@ -3333,9 +3463,6 @@ def db_management(request):
 
 @login_required
 def db_backup(request):
-    if not request.user.is_superuser:
-        return HttpResponseForbidden("Only superusers are allowed to download backups.")
-        
     try:
         # Create an in-memory tar archive
         tar_buffer = io.BytesIO()
@@ -3375,9 +3502,6 @@ def db_backup(request):
 @login_required
 @require_http_methods(["POST"])
 def db_restore(request):
-    if not request.user.is_superuser:
-        return HttpResponseForbidden("Only superusers are allowed to restore database backups.")
-        
     uploaded_file = request.FILES.get('backup_file')
     if not uploaded_file:
         messages.error(request, "Please select a backup file to upload.")

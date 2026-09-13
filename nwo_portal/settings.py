@@ -63,7 +63,7 @@ if USE_GIS:
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware', # For static files in production
+    *([] if DEBUG else ['whitenoise.middleware.WhiteNoiseMiddleware']), # For static files in production
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -101,7 +101,7 @@ WSGI_APPLICATION = 'nwo_portal.wsgi.application'
 DATABASES = {
     'default': dj_database_url.config(
         default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-        conn_max_age=600,
+        conn_max_age=0 if not DEBUG else 600,
         conn_health_checks=True,
     )
 }
@@ -173,3 +173,38 @@ LEAFLET_CONFIG = {
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
+
+# CSRF & Security configurations for reverse proxy setups (e.g. Render)
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost',
+    'http://127.0.0.1',
+    'http://0.0.0.0',
+]
+
+csrf_origins = os.environ.get('CSRF_TRUSTED_ORIGINS')
+if csrf_origins:
+    CSRF_TRUSTED_ORIGINS.extend(csrf_origins.split(','))
+else:
+    # Auto-trust standard Render domain wildcard (both https and http)
+    CSRF_TRUSTED_ORIGINS.append('https://*.onrender.com')
+    CSRF_TRUSTED_ORIGINS.append('http://*.onrender.com')
+    # Auto-trust standard Hugging Face Spaces domains
+    CSRF_TRUSTED_ORIGINS.append('https://*.hf.space')
+    CSRF_TRUSTED_ORIGINS.append('http://*.hf.space')
+    CSRF_TRUSTED_ORIGINS.append('https://nwportal-app.hf.space')
+    CSRF_TRUSTED_ORIGINS.append('http://nwportal-app.hf.space')
+    # Auto-trust domains from ALLOWED_HOSTS
+    for host in ALLOWED_HOSTS:
+        host = host.strip()
+        if host and host != '*':
+            CSRF_TRUSTED_ORIGINS.append(f'https://{host}')
+            CSRF_TRUSTED_ORIGINS.append(f'http://{host}')
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Configure SameSite=None and Secure for cookies to allow embedding inside Hugging Face iframes
+CSRF_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+
