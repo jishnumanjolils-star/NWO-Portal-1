@@ -318,7 +318,7 @@
             <h1 class="inventory-title"><i class="bi bi-broadcast me-2 text-primary"></i>Mobile BTS Inventory</h1>
         </div>
         <div class="d-flex gap-2 flex-wrap">
-            <button type="button" class="btn btn-info text-white px-4 fw-bold rounded-pill shadow-sm btn-open-ring-modal" onclick="openRingModal()">
+            <button type="button" class="btn btn-info text-white px-4 fw-bold rounded-pill shadow-sm btn-open-ring-modal" data-bs-toggle="modal" data-bs-target="#ringModal" onclick="openRingModal();">
                 <i class="bi bi-diagram-3-fill me-2"></i>+ Create ERPS Ring
             </button>
             <button type="button" class="btn btn-outline-primary px-4 fw-bold rounded-pill" id="btnHeaderDistCalc">
@@ -538,7 +538,7 @@
                 <option value="false" {% if request.GET.is_ring == 'false' %}selected{% endif %}>Not In Ring Only</option>
             </select>
             <button type="submit" class="btn btn-dark px-4 fw-bold rounded-pill">Search</button>
-            <button type="button" class="btn btn-info text-white px-4 fw-bold rounded-pill text-nowrap btn-open-ring-modal" onclick="openRingModal()">
+            <button type="button" class="btn btn-info text-white px-4 fw-bold rounded-pill text-nowrap btn-open-ring-modal" data-bs-toggle="modal" data-bs-target="#ringModal" onclick="openRingModal();">
                 <i class="bi bi-diagram-3-fill me-1"></i>+ Create ERPS Ring
             </button>
         </form>
@@ -678,6 +678,9 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block modals %}
 <!-- Dedicated Mark BTS in Ring Modal -->
 <div class="modal fade" id="ringModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -744,7 +747,6 @@
         </div>
     </div>
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
@@ -893,6 +895,9 @@
     function openRingModal() {
         var modalEl = document.getElementById('ringModal');
         if (!modalEl) return;
+        if (modalEl.parentNode !== document.body) {
+            document.body.appendChild(modalEl);
+        }
         try {
             if (window.bootstrap && bootstrap.Modal) {
                 var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -902,11 +907,27 @@
             } else {
                 modalEl.style.display = 'block';
                 modalEl.classList.add('show');
+                document.body.classList.add('modal-open');
+                if (!document.querySelector('.modal-backdrop')) {
+                    var backdrop = document.createElement('div');
+                    backdrop.className = 'modal-backdrop fade show';
+                    backdrop.id = 'fallbackRingBackdrop';
+                    backdrop.onclick = function() {
+                        modalEl.style.display = 'none';
+                        modalEl.classList.remove('show');
+                        document.body.classList.remove('modal-open');
+                        if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+                    };
+                    document.body.appendChild(backdrop);
+                }
             }
         } catch (e) {
             console.error("openRingModal error:", e);
             if (typeof $ !== 'undefined' && $.fn.modal) {
                 $('#ringModal').modal('show');
+            } else {
+                modalEl.style.display = 'block';
+                modalEl.classList.add('show');
             }
         }
     }
