@@ -864,6 +864,31 @@
         $('#btnModalRemoveBulkRing').on('click', function() {
             handleBulkRingActionModal(false);
         });
+
+        // Header Measure Distance Button
+        $('#btnHeaderDistCalc').on('click', function() {
+            $('#distCalcPanel').slideDown(300);
+            $('html, body').animate({
+                scrollTop: $('#distCalcPanel').offset().top - 120
+            }, 500);
+            $('#siteA_input').focus();
+        });
+
+        // Batch Action Checkboxes
+        $('#selectAllBts').on('change', function() {
+            $('.bts-select-checkbox').prop('checked', $(this).is(':checked'));
+            updateBatchToolbar();
+        });
+        $(document).on('change', '.bts-select-checkbox', function() {
+            updateBatchToolbar();
+        });
+
+        $('#btnBatchMarkRing').on('click', function() {
+            handleBatchRingAction(true);
+        });
+        $('#btnBatchRemoveRing').on('click', function() {
+            handleBatchRingAction(false);
+        });
     });
 
     function showModalToast(msg, type) {
@@ -946,34 +971,6 @@
             }
         });
     }
-
-
-
-        // Header Measure Distance Button
-        $('#btnHeaderDistCalc').on('click', function() {
-            $('#distCalcPanel').slideDown(300);
-            $('html, body').animate({
-                scrollTop: $('#distCalcPanel').offset().top - 120
-            }, 500);
-            $('#siteA_input').focus();
-        });
-
-        // Batch Action Checkboxes
-        $('#selectAllBts').on('change', function() {
-            $('.bts-select-checkbox').prop('checked', $(this).is(':checked'));
-            updateBatchToolbar();
-        });
-        $(document).on('change', '.bts-select-checkbox', function() {
-            updateBatchToolbar();
-        });
-
-        $('#btnBatchMarkRing').on('click', function() {
-            handleBatchRingAction(true);
-        });
-        $('#btnBatchRemoveRing').on('click', function() {
-            handleBatchRingAction(false);
-        });
-    });
 
     function initMapMarkers() {
         if (!leafletMap) return;
@@ -1112,10 +1109,6 @@
                 remaining.splice(nearestIdx, 1);
             } else {
                 result.push(remaining.shift());
-=======
-            if (mapSites.length > 0) {
-                map.fitBounds(markersGroup.getBounds(), { padding: [30, 30] });
->>>>>>> 8e61d58c8647b8fa77497bb2cd62450f0a40bd51
             }
         }
         return result;
