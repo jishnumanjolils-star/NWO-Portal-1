@@ -725,15 +725,47 @@ def toggle_bts_ring_api(request):
                 sites = list(qs.filter(erps_ring_name__iexact=erps_ring_name).values('id', 'rp_id', 'bts_name', 'latitude', 'longitude', 'is_ring', 'erps_ring_name'))
                 return JsonResponse({'success': True, 'ring_name': erps_ring_name, 'sites': sites})
 
-        # Action: Delete an entire named ERPS Ring
-        if action == 'delete_ring' and erps_ring_name:
-            qs.filter(erps_ring_name__iexact=erps_ring_name).update(is_ring=False, erps_ring_name=None)
+        # Action: Delete an entire named ERPS Ring or unassign site/ring
+        if action == 'delete_ring':
+            target_bts_id = data.get('bts_id') or bts_id
+            
+            clean_ring_name = erps_ring_name
+            if clean_ring_name.startswith('group:'):
+                clean_ring_name = clean_ring_name[6:].strip()
+            elif clean_ring_name.startswith('bts:') and not target_bts_id:
+                try:
+                    target_bts_id = int(clean_ring_name[4:])
+                    clean_ring_name = ''
+                except ValueError:
+                    pass
+
+            deleted_label = ""
+            if clean_ring_name:
+                qs.filter(erps_ring_name__iexact=clean_ring_name).update(is_ring=False, erps_ring_name=None)
+                deleted_label = f"ERPS Ring '{clean_ring_name}'"
+            
+            if target_bts_id:
+                bts_obj = qs.filter(id=target_bts_id).first()
+                if bts_obj:
+                    if bts_obj.erps_ring_name:
+                        rname = bts_obj.erps_ring_name
+                        qs.filter(erps_ring_name__iexact=rname).update(is_ring=False, erps_ring_name=None)
+                        deleted_label = f"ERPS Ring '{rname}'"
+                    else:
+                        bts_obj.is_ring = False
+                        bts_obj.erps_ring_name = None
+                        bts_obj.save(update_fields=['is_ring', 'erps_ring_name'])
+                        deleted_label = f"Site {bts_obj.rp_id}"
+
+            if not deleted_label and not clean_ring_name and not target_bts_id:
+                return JsonResponse({'success': False, 'error': 'Please select a valid ERPS Ring or BTS site to delete.'}, status=400)
+
             total_ring = qs.filter(is_ring=True).count()
             total_non_ring = qs.filter(is_ring=False).count()
             saved_rings, ring_bts_list = get_saved_rings_and_bts()
             return JsonResponse({
                 'success': True,
-                'message': f"ERPS Ring '{erps_ring_name}' deleted successfully.",
+                'message': f"{deleted_label} unassigned/deleted successfully.",
                 'total_ring_count': total_ring,
                 'total_non_ring_count': total_non_ring,
                 'saved_rings': saved_rings,

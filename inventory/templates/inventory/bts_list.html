@@ -996,17 +996,39 @@
 
         // Delete ERPS Ring Handler
         $('#btnDeleteErpsRing').on('click', function() {
-            var ringName = $('#modal_existing_ring_select').val() || $('#modal_erps_ring_name_input').val();
-            if (!ringName) return;
-            if (!confirm("Are you sure you want to delete ERPS Ring '" + ringName + "' and unassign all its sites?")) {
+            var selectVal = $('#modal_existing_ring_select').val();
+            var inputName = $('#modal_erps_ring_name_input').val().trim();
+            
+            var reqPayload = { action: 'delete_ring' };
+            var confirmName = inputName || selectVal;
+            
+            if (selectVal) {
+                if (selectVal.indexOf('group:') === 0) {
+                    reqPayload.erps_ring_name = selectVal.substring(6);
+                    confirmName = reqPayload.erps_ring_name;
+                } else if (selectVal.indexOf('bts:') === 0) {
+                    reqPayload.bts_id = parseInt(selectVal.substring(4));
+                    confirmName = inputName || ("BTS #" + reqPayload.bts_id);
+                } else {
+                    reqPayload.erps_ring_name = selectVal;
+                }
+            } else if (inputName) {
+                reqPayload.erps_ring_name = inputName;
+            } else {
+                showModalToast("Please select a saved ERPS Ring to delete.", "warning");
                 return;
             }
+
+            if (!confirm("Are you sure you want to delete / unassign " + confirmName + "?")) {
+                return;
+            }
+
             $.ajax({
                 url: '{% url "toggle_bts_ring_api" %}',
                 type: 'POST',
                 contentType: 'application/json',
                 headers: { 'X-CSRFToken': csrftoken },
-                data: JSON.stringify({ action: 'delete_ring', erps_ring_name: ringName }),
+                data: JSON.stringify(reqPayload),
                 success: function(res) {
                     if (res.success) {
                         showModalToast(res.message, "success");
@@ -1018,7 +1040,7 @@
                         renderStagedSites();
                         
                         mapSites.forEach(function(b) {
-                            if (b.erps_ring_name === ringName) {
+                            if ((reqPayload.erps_ring_name && b.erps_ring_name === reqPayload.erps_ring_name) || (reqPayload.bts_id && b.id === reqPayload.bts_id)) {
                                 updateLocalBtsRingState(b.id, false, false, '');
                             }
                         });
