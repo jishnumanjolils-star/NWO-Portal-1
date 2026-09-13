@@ -26,10 +26,9 @@ warn() {
 
 log "Starting NWO Portal application"
 
-# Check if DATABASE_URL is set, fallback to SQLite if not set
+# Check if DATABASE_URL is set
 if [ -z "$DATABASE_URL" ]; then
-    warn "DATABASE_URL environment variable is not set! Falling back to SQLite."
-    export DATABASE_URL="sqlite:///${PWD}/db.sqlite3"
+    warn "DATABASE_URL environment variable is not set! Django will use built-in SQLite database."
 fi
 
 log "Database URL: ${DATABASE_URL%%@*}@***"
@@ -80,11 +79,11 @@ if ! python -m gunicorn --version &>/dev/null; then
 fi
 
 log "Starting Gunicorn application server"
-log "Binding to 0.0.0.0:${PORT:-8000}"
+log "Binding to 0.0.0.0:${PORT:-7860}"
 
 # Start Gunicorn with python -m for better module resolution
 exec python -m gunicorn \
-  --bind 0.0.0.0:${PORT:-8000} \
+  --bind 0.0.0.0:${PORT:-7860} \
   --workers 3 \
   --worker-class sync \
   --timeout 60 \
