@@ -344,7 +344,7 @@
             <div class="stat-icon bg-blue-soft"><i class="bi bi-tower"></i></div>
             <div class="stat-content">
                 <div class="stat-label">Total Mobile BTS</div>
-                <div class="stat-value" id="stat_total_count">{{ all_bts_count|default:total_count|default:"0" }}</div>
+                <div class="stat-value" id="stat_total_count">{{ all_bts_count|default:"0" }}</div>
             </div>
         </a>
         <a href="{% url 'bts_list' %}?is_ring=true" class="stat-card {% if request.GET.is_ring == 'true' %}active-filter{% endif %}">
@@ -513,7 +513,7 @@
     <div class="ring-nav-pills">
         <a href="{% url 'bts_list' %}" class="ring-pill {% if not request.GET.is_ring %}active{% endif %}">
             <i class="bi bi-grid-fill"></i> All Mobile BTS
-            <span class="pill-badge">{{ all_bts_count|default:total_count|default:"0" }}</span>
+            <span class="pill-badge">{{ all_bts_count|default:"0" }}</span>
         </a>
         <a href="{% url 'bts_list' %}?is_ring=true" class="ring-pill {% if request.GET.is_ring == 'true' %}active{% endif %}">
             <i class="bi bi-diagram-3-fill text-info"></i> BTS In Ring
