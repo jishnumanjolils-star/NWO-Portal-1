@@ -26,10 +26,10 @@ warn() {
 
 log "Starting NWO Portal application"
 
-# Check if DATABASE_URL is set
+# Check if DATABASE_URL is set, fallback to SQLite if not set
 if [ -z "$DATABASE_URL" ]; then
-    error "DATABASE_URL environment variable is not set!"
-    exit 1
+    warn "DATABASE_URL environment variable is not set! Falling back to SQLite."
+    export DATABASE_URL="sqlite:///${PWD}/db.sqlite3"
 fi
 
 log "Database URL: ${DATABASE_URL%%@*}@***"
