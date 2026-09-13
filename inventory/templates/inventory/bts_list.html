@@ -690,111 +690,136 @@
 {% endblock %}
 
 {% block modals %}
-<!-- Dedicated Mark BTS in Ring Modal -->
+<!-- Dedicated ERPS Ring Topology Manager Modal -->
 <div class="modal fade" id="ringModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg rounded-24">
-            <div class="modal-header border-bottom bg-light py-3">
-                <h5 class="modal-title fw-bold text-dark"><i class="bi bi-diagram-3-fill text-info me-2"></i>Mark BTS in Ring Topology</h5>
+            <div class="modal-header border-bottom bg-light py-3 px-4">
+                <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                    <i class="bi bi-diagram-3-fill text-info fs-4"></i>
+                    <span>ERPS Ring Topology Manager</span>
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
+            
             <div class="modal-body p-4">
-                <!-- ERPS Ring Naming & Editing Controls -->
+                <!-- Step 1: Mode Switcher & Ring Naming -->
                 <div class="p-3 bg-light rounded-16 border mb-4">
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold text-dark mb-1">
-                                <i class="bi bi-folder-fill text-info me-1"></i> Edit Existing Saved ERPS Ring:
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                        <label class="form-label extra-small fw-extrabold text-uppercase text-muted mb-0">
+                            <i class="bi bi-gear-fill me-1 text-primary"></i> 1. Ring Configuration Mode
+                        </label>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <input type="radio" class="btn-check" name="ring_mode_radio" id="radio_create_new" value="create" checked autocomplete="off">
+                            <label class="btn btn-outline-primary fw-bold px-3" for="radio_create_new">
+                                <i class="bi bi-plus-circle-fill me-1"></i> Create New ERPS Ring
                             </label>
+                            
+                            <input type="radio" class="btn-check" name="ring_mode_radio" id="radio_edit_existing" value="edit" autocomplete="off">
+                            <label class="btn btn-outline-info fw-bold px-3" for="radio_edit_existing">
+                                <i class="bi bi-folder-fill me-1"></i> Edit Existing Saved Ring
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Create New Ring Field -->
+                    <div id="container_create_new_ring">
+                        <label class="form-label small fw-bold text-dark mb-1">
+                            <i class="bi bi-pencil-square text-primary me-1"></i> ERPS Ring Name:
+                        </label>
+                        <input type="text" id="modal_erps_ring_name_input" class="form-control dist-input fw-bold" placeholder="e.g. Ring 1 - Ernakulam Central">
+                    </div>
+
+                    <!-- Edit Existing Ring Dropdown -->
+                    <div id="container_edit_existing_ring" style="display: none;">
+                        <label class="form-label small fw-bold text-dark mb-1">
+                            <i class="bi bi-folder-fill text-info me-1"></i> Select Saved ERPS Ring to Edit:
+                        </label>
+                        <div class="input-group">
+                            <select class="form-select dist-input fw-bold" id="modal_existing_ring_select">
+                                <option value="">-- Choose Existing Saved Ring --</option>
+                                {% for ring_name in saved_erps_rings %}
+                                <option value="{{ ring_name }}">{{ ring_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button class="btn btn-outline-danger px-3 fw-bold" type="button" id="btnDeleteErpsRing" title="Delete Selected Ring" style="display:none;">
+                                <i class="bi bi-trash-fill me-1"></i> Delete Ring
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Add BTS Sites (One-by-One or Bulk) -->
+                <div class="p-3 bg-light rounded-16 border mb-4">
+                    <label class="form-label extra-small fw-extrabold text-uppercase text-muted mb-2 d-block">
+                        <i class="bi bi-plus-lg me-1 text-success"></i> 2. Add BTS Sites to Ring
+                    </label>
+
+                    <ul class="nav nav-pills mb-3" id="modalRingTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active py-1 px-3 small fw-bold" id="modal-single-tab" data-bs-toggle="pill" data-bs-target="#modal-single-pane" type="button" role="tab">
+                                <i class="bi bi-search me-1"></i> Single Site Add (One-by-One)
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link py-1 px-3 small fw-bold" id="modal-bulk-tab" data-bs-toggle="pill" data-bs-target="#modal-bulk-pane" type="button" role="tab">
+                                <i class="bi bi-diagram-3-fill me-1"></i> Bulk Add (Paste Multiple RP IDs)
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="modalRingTabContent">
+                        <!-- Single Site Add -->
+                        <div class="tab-pane fade show active" id="modal-single-pane" role="tabpanel">
                             <div class="input-group">
-                                <select class="form-select dist-input fw-bold" id="modal_existing_ring_select">
-                                    <option value="">-- Create / Select Named Ring --</option>
-                                    {% for ring_name in saved_erps_rings %}
-                                    <option value="{{ ring_name }}">{{ ring_name }}</option>
-                                    {% endfor %}
-                                </select>
-                                <button class="btn btn-outline-danger" type="button" id="btnDeleteErpsRing" title="Delete Selected Ring" style="display:none;">
-                                    <i class="bi bi-trash"></i>
+                                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                                <input type="text" id="modal_ring_bts_input" class="form-control dist-input border-start-0" list="btsDatalist" placeholder="Type BTS Name or RP ID (e.g. RP-02064 or Madhavapharmacy)..." autocomplete="off">
+                                <button type="button" class="btn btn-success fw-bold px-4" id="btnModalAddSingleBts">
+                                    <i class="bi bi-plus-circle-fill me-1"></i> Add BTS to Ring List
                                 </button>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold text-dark mb-1">
-                                <i class="bi bi-pencil-square text-primary me-1"></i> ERPS Ring Name:
-                            </label>
-                            <input type="text" id="modal_erps_ring_name_input" class="form-control dist-input fw-bold" placeholder="e.g. Ring 1 - Ernakulam Central">
+
+                        <!-- Bulk Add -->
+                        <div class="tab-pane fade" id="modal-bulk-pane" role="tabpanel">
+                            <textarea id="modal_bulk_ring_textarea" class="form-control dist-input font-monospace mb-2" rows="3" 
+                                placeholder="Paste RP IDs or BTS Names separated by commas or newlines...&#10;Example: RP-02064, RP-02065, RP-02066"></textarea>
+                            <div class="text-end">
+                                <button type="button" class="btn btn-secondary fw-bold px-3 btn-sm rounded-pill" id="btnModalParseBulk">
+                                    <i class="bi bi-download me-1"></i> Append Bulk Sites to List
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <ul class="nav nav-pills mb-3" id="modalRingTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active py-2 px-3 small fw-bold" id="modal-single-tab" data-bs-toggle="pill" data-bs-target="#modal-single-pane" type="button" role="tab">
-                            <i class="bi bi-search me-1"></i> Single Site Quick Mark
+                <!-- Step 3: Staged Ring Members Cart / List -->
+                <div class="p-3 bg-white rounded-16 border shadow-sm mb-3">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <label class="form-label extra-small fw-extrabold text-uppercase text-dark mb-0">
+                            <i class="bi bi-diagram-3 text-info me-1"></i> 3. Sites Grouped in this ERPS Ring 
+                            <span class="badge bg-primary rounded-pill ms-1" id="stagedCountBadge">0 Sites</span>
+                        </label>
+                        <button type="button" class="btn btn-link text-danger text-decoration-none p-0 extra-small fw-bold" id="btnClearStagedList">
+                            <i class="bi bi-x-circle me-1"></i> Clear List
                         </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link py-2 px-3 small fw-bold" id="modal-bulk-tab" data-bs-toggle="pill" data-bs-target="#modal-bulk-pane" type="button" role="tab">
-                            <i class="bi bi-diagram-3-fill me-1"></i> Form Ring Topology Altogether (Bulk Input)
-                        </button>
-                    </li>
-                </ul>
-
-                <div class="tab-content" id="modalRingTabContent">
-                    <!-- Single Site Tab -->
-                    <div class="tab-pane fade show active" id="modal-single-pane" role="tabpanel">
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold text-muted">
-                                Search BTS Name or RP ID:
-                            </label>
-                            <input type="text" id="modal_ring_bts_input" class="form-control dist-input" list="btsDatalist" placeholder="Type BTS Name or RP ID (e.g. RP-02064 or Madhavapharmacy)..." autocomplete="off">
-                            <datalist id="btsDatalist">
-                                {% for bts in bts_list %}
-                                <option value="{{ bts.rp_id }} - {{ bts.bts_name }}"></option>
-                                <option value="{{ bts.rp_id }}"></option>
-                                <option value="{{ bts.bts_name }}"></option>
-                                {% endfor %}
-                            </datalist>
-                        </div>
-                        <div class="d-flex gap-2 justify-content-end mb-3">
-                            <button type="button" class="btn btn-success fw-bold px-4 rounded-pill" id="btnModalMarkRing">
-                                <i class="bi bi-check-circle-fill me-1"></i> Mark as In Ring
-                            </button>
-                            <button type="button" class="btn btn-outline-danger fw-bold px-4 rounded-pill" id="btnModalRemoveRing">
-                                <i class="bi bi-x-circle-fill me-1"></i> Remove from Ring
-                            </button>
-                        </div>
-
-                        <!-- Session Log for Multi BTS Addition One-by-One -->
-                        <div id="singleAddedSessionContainer" style="display: none;" class="p-3 bg-light rounded-16 border">
-                            <label class="form-label extra-small fw-bold text-muted text-uppercase mb-2 d-block">
-                                <i class="bi bi-clock-history me-1"></i> Sites Updated in This Session:
-                            </label>
-                            <div class="d-flex flex-wrap gap-2" id="singleAddedSessionBadges"></div>
-                        </div>
                     </div>
 
-                    <!-- Bulk Ring Tab -->
-                    <div class="tab-pane fade" id="modal-bulk-pane" role="tabpanel">
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold text-muted">
-                                Paste or Type Multiple RP IDs / BTS Names to Form Complete Ring Topology:
-                            </label>
-                            <textarea id="modal_bulk_ring_textarea" class="form-control dist-input font-monospace" rows="4" 
-                                placeholder="Enter RP IDs or BTS Names separated by commas or newlines...&#10;Example: EKM_001, EKM_002, EKM_003, EKM_004"></textarea>
-                        </div>
-                        <div class="d-flex gap-2 justify-content-end">
-                            <button type="button" class="btn btn-success fw-bold px-4 rounded-pill" id="btnModalFormBulkRing">
-                                <i class="bi bi-diagram-3-fill me-1"></i> Form Ring Topology Altogether
-                            </button>
-                            <button type="button" class="btn btn-outline-danger fw-bold px-4 rounded-pill" id="btnModalRemoveBulkRing">
-                                <i class="bi bi-trash me-1"></i> Remove All from Ring
-                            </button>
-                        </div>
+                    <div id="stagedSitesContainer" class="d-flex flex-wrap gap-2 p-3 bg-light rounded-12 border align-items-center" style="min-height: 80px;">
+                        <span class="text-muted extra-small italic my-auto mx-auto" id="stagedEmptyMsg">No BTS sites added yet. Search or paste sites above to build the ring.</span>
                     </div>
                 </div>
 
-                <div class="alert alert-info py-2 px-3 mt-3 mb-0 small rounded-14" id="modalRingToast" style="display: none;"></div>
+                <!-- Toast / Status Message -->
+                <div class="alert alert-info py-2 px-3 mb-0 small rounded-14" id="modalRingToast" style="display: none;"></div>
+            </div>
+
+            <!-- Footer Save/Submit Controls -->
+            <div class="modal-footer border-top bg-light py-3 px-4 d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary fw-bold px-4 rounded-pill" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-success fw-bold px-5 rounded-pill shadow-sm" id="btnSaveErpsRing">
+                    <i class="bi bi-check-circle-fill me-1 fs-6"></i> Submit & Save ERPS Ring Topology
+                </button>
             </div>
         </div>
     </div>
@@ -905,20 +930,33 @@
             openRingModal();
         });
 
-        $('#btnModalMarkRing').on('click', function() {
-            handleRingActionModal(true);
-        });
-        $('#btnModalRemoveRing').on('click', function() {
-            handleRingActionModal(false);
-        });
-        $('#btnModalFormBulkRing').on('click', function() {
-            handleBulkRingActionModal(true);
-        });
-        $('#btnModalRemoveBulkRing').on('click', function() {
-            handleBulkRingActionModal(false);
+        // Mode Radio Switcher
+        $('input[name="ring_mode_radio"]').on('change', function() {
+            var mode = $(this).val();
+            if (mode === 'create') {
+                $('#container_create_new_ring').slideDown(200);
+                $('#container_edit_existing_ring').slideUp(200);
+                $('#modal_existing_ring_select').val('');
+                $('#modal_erps_ring_name_input').val('').focus();
+                $('#btnDeleteErpsRing').hide();
+                stagedSites = [];
+                renderStagedSites();
+            } else {
+                $('#container_create_new_ring').slideUp(200);
+                $('#container_edit_existing_ring').slideDown(200);
+                var selectedRing = $('#modal_existing_ring_select').val();
+                if (selectedRing) {
+                    $('#modal_erps_ring_name_input').val(selectedRing);
+                    $('#btnDeleteErpsRing').show();
+                    loadExistingRingSites(selectedRing);
+                } else {
+                    stagedSites = [];
+                    renderStagedSites();
+                }
+            }
         });
 
-        // Existing Ring Select & Delete Handlers
+        // Existing Ring Select Handler
         $('#modal_existing_ring_select').on('change', function() {
             var ringName = $(this).val();
             if (ringName) {
@@ -928,11 +966,12 @@
             } else {
                 $('#modal_erps_ring_name_input').val('');
                 $('#btnDeleteErpsRing').hide();
-                $('#singleAddedSessionContainer').hide();
-                $('#singleAddedSessionBadges').empty();
+                stagedSites = [];
+                renderStagedSites();
             }
         });
 
+        // Delete ERPS Ring Handler
         $('#btnDeleteErpsRing').on('click', function() {
             var ringName = $('#modal_existing_ring_select').val() || $('#modal_erps_ring_name_input').val();
             if (!ringName) return;
@@ -950,9 +989,10 @@
                         showModalToast(res.message, "success");
                         updateSavedRingsDropdown(res.saved_rings, '');
                         $('#modal_erps_ring_name_input').val('');
+                        $('#modal_existing_ring_select').val('');
                         $('#btnDeleteErpsRing').hide();
-                        $('#singleAddedSessionContainer').hide();
-                        $('#singleAddedSessionBadges').empty();
+                        stagedSites = [];
+                        renderStagedSites();
                         
                         mapSites.forEach(function(b) {
                             if (b.erps_ring_name === ringName) {
@@ -962,6 +1002,132 @@
                         updateCounters(res.total_ring_count, res.total_non_ring_count);
                     } else {
                         showModalToast(res.error || "Failed to delete ring.", "danger");
+                    }
+                },
+                error: function(xhr) {
+                    var err = xhr.responseJSON ? xhr.responseJSON.error : "Server error.";
+                    showModalToast(err, "danger");
+                }
+            });
+        });
+
+        // Single Add BTS to Ring List
+        $('#btnModalAddSingleBts').on('click', function() {
+            addSingleBtsToStagedList();
+        });
+        $('#modal_ring_bts_input').on('keypress', function(e) {
+            if (e.which === 13) {
+                e.preventDefault();
+                addSingleBtsToStagedList();
+            }
+        });
+
+        // Bulk Add to Ring List
+        $('#btnModalParseBulk').on('click', function() {
+            var text = $('#modal_bulk_ring_textarea').val().trim();
+            if (!text) {
+                showModalToast("Please paste RP IDs or BTS Names.", "warning");
+                return;
+            }
+            var tokens = text.split(/[\n\r,;]+/);
+            var addedCount = 0;
+            var notFound = [];
+
+            tokens.forEach(function(tok) {
+                var val = tok.trim();
+                if (!val) return;
+                var bts = findBTS(val);
+                if (bts) {
+                    if (!stagedSites.some(s => s.id === bts.id)) {
+                        stagedSites.push({ id: bts.id, rp_id: bts.rp_id, bts_name: bts.bts_name });
+                        addedCount++;
+                    }
+                } else {
+                    notFound.push(val);
+                }
+            });
+
+            renderStagedSites();
+            $('#modal_bulk_ring_textarea').val('');
+            
+            var msg = "Appended " + addedCount + " BTS site(s) to the list.";
+            if (notFound.length > 0) {
+                msg += " (Not found: " + notFound.join(', ') + ")";
+            }
+            showModalToast(msg, notFound.length > 0 ? "warning" : "success");
+        });
+
+        // Clear Staged List
+        $('#btnClearStagedList').on('click', function() {
+            stagedSites = [];
+            renderStagedSites();
+        });
+
+        // Submit & Save ERPS Ring Topology
+        $('#btnSaveErpsRing').on('click', function() {
+            var ringName = $('#modal_erps_ring_name_input').val().trim();
+            if (!ringName) {
+                showModalToast("Please enter an ERPS Ring Name (e.g. Ring 1 - Ernakulam Central).", "danger");
+                $('#modal_erps_ring_name_input').focus();
+                return;
+            }
+
+            if (stagedSites.length === 0) {
+                if (!confirm("No BTS sites are currently in this list. Saving will create an empty ring or unassign all sites. Continue?")) {
+                    return;
+                }
+            }
+
+            var btsIds = stagedSites.map(s => s.id);
+            var prevName = $('#modal_existing_ring_select').val();
+
+            $.ajax({
+                url: '{% url "toggle_bts_ring_api" %}',
+                type: 'POST',
+                contentType: 'application/json',
+                headers: { 'X-CSRFToken': csrftoken },
+                data: JSON.stringify({
+                    action: 'save_erps_ring',
+                    erps_ring_name: ringName,
+                    previous_ring_name: prevName,
+                    bts_ids: btsIds
+                }),
+                success: function(res) {
+                    if (res.success) {
+                        showToast(res.message, "success");
+                        updateSavedRingsDropdown(res.saved_rings, ringName);
+                        updateCounters(res.total_ring_count, res.total_non_ring_count);
+
+                        mapSites.forEach(function(b) {
+                            var inNewRing = btsIds.includes(b.id);
+                            if (inNewRing) {
+                                updateLocalBtsRingState(b.id, true, false, ringName);
+                            } else if (b.erps_ring_name === ringName || (prevName && b.erps_ring_name === prevName)) {
+                                updateLocalBtsRingState(b.id, false, false, '');
+                            }
+                        });
+
+                        var ringCoords = stagedSites.map(s => mapSites.find(m => m.id === s.id)).filter(s => s && s.latitude && s.longitude).map(s => [s.latitude, s.longitude]);
+                        if (ringCoords.length > 0 && leafletMap) {
+                            leafletMap.fitBounds(ringCoords, { padding: [60, 60] });
+                        }
+
+                        var modalEl = document.getElementById('ringModal');
+                        try {
+                            if (window.bootstrap && bootstrap.Modal) {
+                                var modalInstance = bootstrap.Modal.getInstance(modalEl);
+                                if (modalInstance) modalInstance.hide();
+                            } else if (typeof $ !== 'undefined' && $.fn.modal) {
+                                $('#ringModal').modal('hide');
+                            } else {
+                                modalEl.style.display = 'none';
+                                modalEl.classList.remove('show');
+                            }
+                        } catch (e) {
+                            modalEl.style.display = 'none';
+                        }
+                    } else {
+                        showModalToast(res.error || "Failed to save ERPS Ring.", "danger");
                     }
                 },
                 error: function(xhr) {
@@ -1073,6 +1239,79 @@
         }
     }
 
+    function addSingleBtsToStagedList() {
+        var inputVal = $('#modal_ring_bts_input').val().trim();
+        if (!inputVal) {
+            showModalToast("Please enter a BTS Name or RP ID to add.", "warning");
+            return;
+        }
+        var bts = findBTS(inputVal);
+        if (bts) {
+            if (stagedSites.some(s => s.id === bts.id)) {
+                showModalToast("BTS " + bts.rp_id + " is already in the list.", "info");
+            } else {
+                stagedSites.push({ id: bts.id, rp_id: bts.rp_id, bts_name: bts.bts_name });
+                renderStagedSites();
+                showModalToast("Added " + bts.rp_id + " - " + bts.bts_name + " to list.", "success");
+            }
+            $('#modal_ring_bts_input').val('').focus();
+        } else {
+            showModalToast("BTS site '" + inputVal + "' not found. Check RP ID or BTS Name.", "danger");
+        }
+    }
+
+    function removeStagedSite(btsId) {
+        stagedSites = stagedSites.filter(s => s.id !== btsId);
+        renderStagedSites();
+    }
+
+    function renderStagedSites() {
+        var $container = $('#stagedSitesContainer');
+        $container.empty();
+        $('#stagedCountBadge').text(stagedSites.length + ' Sites');
+
+        if (stagedSites.length === 0) {
+            $container.html('<span class="text-muted extra-small italic my-auto mx-auto" id="stagedEmptyMsg">No BTS sites added yet. Search or paste sites above to build the ring.</span>');
+            return;
+        }
+
+        stagedSites.forEach(function(s) {
+            var labelText = s.rp_id + ' - ' + (s.bts_name || 'Unnamed');
+            var $badge = $('<span class="badge bg-info text-white p-2 shadow-sm d-inline-flex align-items-center gap-2 rounded-pill fw-bold">' +
+                '<i class="bi bi-broadcast"></i> ' + labelText +
+                ' <button type="button" class="btn-close btn-close-white ms-1" style="font-size:0.65rem;" title="Remove site from list" onclick="removeStagedSite(' + s.id + ')"></button>' +
+            '</span>');
+            $container.append($badge);
+        });
+    }
+
+    function updateSavedRingsDropdown(savedRings, currentSelected) {
+        var $select = $('#modal_existing_ring_select');
+        var $searchSelect = $('#search_erps_ring_select');
+        var val = currentSelected !== undefined ? currentSelected : $select.val();
+        
+        $select.empty().append('<option value="">-- Choose Existing Saved Ring --</option>');
+        if ($searchSelect.length > 0) {
+            var searchVal = $searchSelect.val();
+            $searchSelect.empty().append('<option value="">All ERPS Rings</option>');
+        }
+
+        if (savedRings && savedRings.length > 0) {
+            savedRings.forEach(function(ring) {
+                var sel = (ring === val) ? 'selected' : '';
+                $select.append('<option value="' + ring + '" ' + sel + '>' + ring + '</option>');
+                if ($searchSelect.length > 0) {
+                    var sSel = (ring === searchVal) ? 'selected' : '';
+                    $searchSelect.append('<option value="' + ring + '" ' + sSel + '>' + ring + '</option>');
+                }
+            });
+        }
+        if (val && savedRings && savedRings.includes(val)) {
+            $select.val(val);
+            $('#btnDeleteErpsRing').show();
+        }
+    }
+
     function loadExistingRingSites(ringName) {
         if (!ringName) return;
         $.ajax({
@@ -1083,133 +1322,9 @@
             data: JSON.stringify({ action: 'get_ring_sites', erps_ring_name: ringName }),
             success: function(res) {
                 if (res.success && res.sites) {
-                    renderRingSitesBadges(ringName, res.sites);
+                    stagedSites = res.sites.map(s => ({ id: s.id, rp_id: s.rp_id, bts_name: s.bts_name }));
+                    renderStagedSites();
                 }
-            }
-        });
-    }
-
-    function renderRingSitesBadges(ringName, sites) {
-        $('#singleAddedSessionContainer').show();
-        var $badges = $('#singleAddedSessionBadges');
-        $badges.empty();
-        if (!sites || sites.length === 0) {
-            $badges.html('<span class="text-muted small">No sites assigned to ' + ringName + ' yet.</span>');
-            return;
-        }
-        sites.forEach(function(s) {
-            var labelText = s.rp_id + ' - ' + (s.bts_name || 'Unnamed');
-            var $badge = $('<span class="badge bg-info text-white p-2 shadow-sm d-inline-flex align-items-center gap-2 rounded-pill">' +
-                '<i class="bi bi-diagram-3-fill"></i> ' + labelText +
-                ' <button type="button" class="btn-close btn-close-white ms-1" style="font-size:0.65rem;" title="Remove from ' + ringName + '" onclick="removeSiteFromRing(' + s.id + ', \'' + ringName.replace(/'/g, "\\'") + '\')"></button>' +
-            '</span>');
-            $badges.append($badge);
-        });
-    }
-
-    function removeSiteFromRing(btsId, ringName) {
-        $.ajax({
-            url: '{% url "toggle_bts_ring_api" %}',
-            type: 'POST',
-            contentType: 'application/json',
-            headers: { 'X-CSRFToken': csrftoken },
-            data: JSON.stringify({ bts_id: btsId, is_ring: false, erps_ring_name: '' }),
-            success: function(res) {
-                if (res.success) {
-                    updateLocalBtsRingState(btsId, false, true, '');
-                    updateCounters(res.total_ring_count, res.total_non_ring_count);
-                    if (res.saved_rings) updateSavedRingsDropdown(res.saved_rings, ringName);
-                    loadExistingRingSites(ringName);
-                    showModalToast("Removed site from " + ringName, "success");
-                }
-            }
-        });
-    }
-
-    function handleRingActionModal(targetIsRing) {
-        var val = $('#modal_ring_bts_input').val();
-        if (!val) {
-            showModalToast("Please enter a valid BTS Name or RP ID.", "danger");
-            return;
-        }
-        var ringName = $('#modal_erps_ring_name_input').val().trim() || $('#modal_existing_ring_select').val();
-
-        $.ajax({
-            url: '{% url "toggle_bts_ring_api" %}',
-            type: 'POST',
-            contentType: 'application/json',
-            headers: { 'X-CSRFToken': csrftoken },
-            data: JSON.stringify({ query: val, is_ring: targetIsRing, erps_ring_name: ringName }),
-            success: function(res) {
-                if (res.success) {
-                    showModalToast(res.message, "success");
-                    updateLocalBtsRingState(res.bts_id, res.is_ring, true, res.erps_ring_name);
-                    updateCounters(res.total_ring_count, res.total_non_ring_count);
-                    if (res.saved_rings) updateSavedRingsDropdown(res.saved_rings, ringName);
-                    if (ringName) {
-                        loadExistingRingSites(ringName);
-                    } else {
-                        $('#singleAddedSessionContainer').show();
-                        var badgeClass = res.is_ring ? 'bg-success text-white' : 'bg-secondary text-white';
-                        var badgeIcon = res.is_ring ? 'bi-check-circle-fill' : 'bi-dash-circle';
-                        var labelText = (res.rp_id || '') + ' - ' + (res.bts_name || '') + (res.is_ring ? ' (In Ring)' : ' (Removed)');
-                        var $badge = $('<span class="badge ' + badgeClass + ' p-2 shadow-sm d-inline-flex align-items-center gap-1 rounded-pill"><i class="bi ' + badgeIcon + '"></i> ' + labelText + '</span>');
-                        $('#singleAddedSessionBadges').prepend($badge);
-                    }
-
-                    $('#modal_ring_bts_input').val('').focus();
-                } else {
-                    showModalToast(res.error || "Failed to update ring status.", "danger");
-                }
-            },
-            error: function(xhr) {
-                var err = xhr.responseJSON ? xhr.responseJSON.error : "Server error.";
-                showModalToast(err, "danger");
-            }
-        });
-    }
-
-    function handleBulkRingActionModal(targetIsRing) {
-        var rawText = $('#modal_bulk_ring_textarea').val();
-        if (!rawText || !rawText.trim()) {
-            showModalToast("Please enter or paste RP IDs / BTS Names into the bulk input box.", "danger");
-            return;
-        }
-        var ringName = $('#modal_erps_ring_name_input').val().trim() || $('#modal_existing_ring_select').val();
-
-        $.ajax({
-            url: '{% url "toggle_bts_ring_api" %}',
-            type: 'POST',
-            contentType: 'application/json',
-            headers: { 'X-CSRFToken': csrftoken },
-            data: JSON.stringify({ raw_bulk_text: rawText, is_ring: targetIsRing, erps_ring_name: ringName }),
-            success: function(res) {
-                if (res.success) {
-                    var toastType = res.unmatched_inputs && res.unmatched_inputs.length > 0 ? "warning" : "success";
-                    showModalToast(res.message, toastType);
-                    
-                    if (res.matched_sites && res.matched_sites.length > 0) {
-                        res.matched_sites.forEach(function(s) {
-                            updateLocalBtsRingState(s.id, res.is_ring, false, s.erps_ring_name);
-                        });
-                        drawRingDiagram();
-                        
-                        var ringCoords = res.matched_sites.filter(s => s.latitude && s.longitude).map(s => [s.latitude, s.longitude]);
-                        if (ringCoords.length > 0 && leafletMap) {
-                            leafletMap.fitBounds(ringCoords, { padding: [60, 60] });
-                        }
-                    }
-                    if (res.saved_rings) updateSavedRingsDropdown(res.saved_rings, ringName);
-                    if (ringName) loadExistingRingSites(ringName);
-                    updateCounters(res.total_ring_count, res.total_non_ring_count);
-                    $('#modal_bulk_ring_textarea').val('');
-                } else {
-                    showModalToast(res.error || "Failed to update bulk ring topology.", "danger");
-                }
-            },
-            error: function(xhr) {
-                var err = xhr.responseJSON ? xhr.responseJSON.error : "Server error.";
-                showModalToast(err, "danger");
             }
         });
     }

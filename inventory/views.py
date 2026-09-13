@@ -697,7 +697,7 @@ def toggle_bts_ring_api(request):
 
         # Action: Fetch all sites in a named ERPS Ring for editing
         if action == 'get_ring_sites' and erps_ring_name:
-            sites = list(qs.filter(erps_ring_name__iexact=erps_ring_name).values('id', 'rp_id', 'bts_name', 'is_ring', 'erps_ring_name'))
+            sites = list(qs.filter(erps_ring_name__iexact=erps_ring_name).values('id', 'rp_id', 'bts_name', 'latitude', 'longitude', 'is_ring', 'erps_ring_name'))
             return JsonResponse({'success': True, 'ring_name': erps_ring_name, 'sites': sites})
 
         # Action: Delete an entire named ERPS Ring
@@ -709,6 +709,41 @@ def toggle_bts_ring_api(request):
             return JsonResponse({
                 'success': True,
                 'message': f"ERPS Ring '{erps_ring_name}' deleted successfully.",
+                'total_ring_count': total_ring,
+                'total_non_ring_count': total_non_ring,
+                'saved_rings': saved_rings
+            })
+
+        # Action: Save/Submit complete ERPS Ring configuration
+        if action == 'save_erps_ring':
+            if not erps_ring_name:
+                return JsonResponse({'success': False, 'error': 'Please provide an ERPS Ring Name.'}, status=400)
+            
+            previous_name = data.get('previous_ring_name', '').strip()
+            
+            target_ring_names = [erps_ring_name]
+            if previous_name and previous_name.lower() != erps_ring_name.lower():
+                target_ring_names.append(previous_name)
+            
+            # Reset existing members of target ring
+            qs.filter(erps_ring_name__iexact=erps_ring_name).update(is_ring=False, erps_ring_name=None)
+            if previous_name and previous_name.lower() != erps_ring_name.lower():
+                qs.filter(erps_ring_name__iexact=previous_name).update(is_ring=False, erps_ring_name=None)
+
+            # Assign new member bts_ids
+            if bts_ids:
+                qs.filter(id__in=bts_ids).update(is_ring=True, erps_ring_name=erps_ring_name)
+
+            total_ring = qs.filter(is_ring=True).count()
+            total_non_ring = qs.filter(is_ring=False).count()
+            saved_rings = sorted(list(qs.filter(is_ring=True).exclude(erps_ring_name__isnull=True).exclude(erps_ring_name__exact='').values_list('erps_ring_name', flat=True).distinct()))
+            assigned_sites = list(qs.filter(erps_ring_name__iexact=erps_ring_name).values('id', 'rp_id', 'bts_name', 'latitude', 'longitude', 'is_ring', 'erps_ring_name'))
+
+            return JsonResponse({
+                'success': True,
+                'message': f"ERPS Ring '{erps_ring_name}' saved successfully with {len(assigned_sites)} BTS site(s).",
+                'erps_ring_name': erps_ring_name,
+                'sites': assigned_sites,
                 'total_ring_count': total_ring,
                 'total_non_ring_count': total_non_ring,
                 'saved_rings': saved_rings
