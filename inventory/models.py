@@ -291,6 +291,7 @@ class MobileBTS(models.Model):
     cef_ports_data = models.JSONField(default=dict, blank=True)
     
     is_ring = models.BooleanField(default=False, verbose_name="Is BTS in Ring")
+    erps_ring_name = models.CharField(max_length=255, blank=True, null=True, verbose_name="ERPS Ring Name")
     erps_image = models.ImageField(upload_to='bts_images/', blank=True, null=True, 
                                   validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg'])],
                                   help_text="Upload ERPS Connectivity Diagram (JPG only)")

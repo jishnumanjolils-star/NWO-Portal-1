@@ -625,6 +625,11 @@ class BTSListView(LoginRequiredMixin, DivisionRequiredMixin, ListView):
         is_ring = self.request.GET.get('is_ring')
         if is_ring:
             queryset = queryset.filter(is_ring=is_ring == 'true')
+            
+        # ERPS Ring Name filter
+        erps_ring_name_filter = self.request.GET.get('erps_ring_name')
+        if erps_ring_name_filter:
+            queryset = queryset.filter(erps_ring_name__iexact=erps_ring_name_filter)
         
         return queryset
 
@@ -658,10 +663,21 @@ class BTSListView(LoginRequiredMixin, DivisionRequiredMixin, ListView):
                 'longitude': float(bts.longitude) if bts.longitude is not None else None,
                 'place_name': bts.place_name or '',
                 'is_ring': bts.is_ring,
+                'erps_ring_name': bts.erps_ring_name or '',
                 'has_cef_12t': bts.has_cef_12t,
                 'erps_image_url': erps_url,
             })
         context['map_sites_json'] = json.dumps(map_sites)
+        
+        # Saved ERPS Rings List
+        saved_rings = list(
+            base_qs.filter(is_ring=True)
+            .exclude(erps_ring_name__isnull=True)
+            .exclude(erps_ring_name__exact='')
+            .values_list('erps_ring_name', flat=True)
+            .distinct()
+        )
+        context['saved_erps_rings'] = sorted(saved_rings)
         return context
 
 @login_required
@@ -671,12 +687,32 @@ def toggle_bts_ring_api(request):
         data = json.loads(request.body)
         bts_id = data.get('bts_id')
         query = data.get('query')
-        action = data.get('action') # 'add', 'remove', or 'toggle'
+        action = data.get('action') # 'add', 'remove', 'toggle', 'get_ring_sites', 'delete_ring'
         is_ring_target = data.get('is_ring', True)
         bts_ids = data.get('bts_ids', [])
         raw_bulk_text = data.get('raw_bulk_text', '')
+        erps_ring_name = data.get('erps_ring_name', '').strip()
 
         qs = MobileBTS.objects.filter(site_type='4G')
+
+        # Action: Fetch all sites in a named ERPS Ring for editing
+        if action == 'get_ring_sites' and erps_ring_name:
+            sites = list(qs.filter(erps_ring_name__iexact=erps_ring_name).values('id', 'rp_id', 'bts_name', 'is_ring', 'erps_ring_name'))
+            return JsonResponse({'success': True, 'ring_name': erps_ring_name, 'sites': sites})
+
+        # Action: Delete an entire named ERPS Ring
+        if action == 'delete_ring' and erps_ring_name:
+            qs.filter(erps_ring_name__iexact=erps_ring_name).update(is_ring=False, erps_ring_name=None)
+            total_ring = qs.filter(is_ring=True).count()
+            total_non_ring = qs.filter(is_ring=False).count()
+            saved_rings = sorted(list(qs.filter(is_ring=True).exclude(erps_ring_name__isnull=True).exclude(erps_ring_name__exact='').values_list('erps_ring_name', flat=True).distinct()))
+            return JsonResponse({
+                'success': True,
+                'message': f"ERPS Ring '{erps_ring_name}' deleted successfully.",
+                'total_ring_count': total_ring,
+                'total_non_ring_count': total_non_ring,
+                'saved_rings': saved_rings
+            })
 
         # Handle Raw Bulk Text Input (comma, newline, semicolon separated)
         if raw_bulk_text or data.get('bulk_inputs'):
@@ -705,7 +741,12 @@ def toggle_bts_ring_api(request):
                 if matched:
                     if matched.id not in updated_ids:
                         matched.is_ring = bool(is_ring_target)
-                        matched.save(update_fields=['is_ring'])
+                        if bool(is_ring_target):
+                            if erps_ring_name:
+                                matched.erps_ring_name = erps_ring_name
+                        else:
+                            matched.erps_ring_name = None
+                        matched.save(update_fields=['is_ring', 'erps_ring_name'])
                         updated_ids.append(matched.id)
                     
                     matched_sites.append({
@@ -715,14 +756,17 @@ def toggle_bts_ring_api(request):
                         'latitude': float(matched.latitude) if matched.latitude else None,
                         'longitude': float(matched.longitude) if matched.longitude else None,
                         'is_ring': matched.is_ring,
+                        'erps_ring_name': matched.erps_ring_name or '',
                     })
                 else:
                     unmatched_inputs.append(token)
 
             total_ring = qs.filter(is_ring=True).count()
             total_non_ring = qs.filter(is_ring=False).count()
+            saved_rings = sorted(list(qs.filter(is_ring=True).exclude(erps_ring_name__isnull=True).exclude(erps_ring_name__exact='').values_list('erps_ring_name', flat=True).distinct()))
             
-            msg = f"Ring Topology updated! {len(updated_ids)} BTS sites assigned."
+            ring_label = f" for '{erps_ring_name}'" if erps_ring_name else ""
+            msg = f"ERPS Ring Topology updated{ring_label}! {len(updated_ids)} BTS sites assigned."
             if unmatched_inputs:
                 msg += f" (Unmatched inputs: {', '.join(unmatched_inputs)})"
 
@@ -732,23 +776,35 @@ def toggle_bts_ring_api(request):
                 'matched_sites': matched_sites,
                 'unmatched_inputs': unmatched_inputs,
                 'is_ring': bool(is_ring_target),
+                'erps_ring_name': erps_ring_name,
                 'total_ring_count': total_ring,
                 'total_non_ring_count': total_non_ring,
+                'saved_rings': saved_rings,
                 'message': msg
             })
 
         if bts_ids:
             target_sites = qs.filter(id__in=bts_ids)
-            target_sites.update(is_ring=bool(is_ring_target))
+            if bool(is_ring_target):
+                update_kwargs = {'is_ring': True}
+                if erps_ring_name:
+                    update_kwargs['erps_ring_name'] = erps_ring_name
+                target_sites.update(**update_kwargs)
+            else:
+                target_sites.update(is_ring=False, erps_ring_name=None)
+                
             updated_ids = list(target_sites.values_list('id', flat=True))
             total_ring = qs.filter(is_ring=True).count()
             total_non_ring = qs.filter(is_ring=False).count()
+            saved_rings = sorted(list(qs.filter(is_ring=True).exclude(erps_ring_name__isnull=True).exclude(erps_ring_name__exact='').values_list('erps_ring_name', flat=True).distinct()))
             return JsonResponse({
                 'success': True,
                 'updated_ids': updated_ids,
                 'is_ring': bool(is_ring_target),
+                'erps_ring_name': erps_ring_name,
                 'total_ring_count': total_ring,
                 'total_non_ring_count': total_non_ring,
+                'saved_rings': saved_rings,
                 'message': f"Updated {len(updated_ids)} sites successfully."
             })
 
@@ -792,27 +848,41 @@ def toggle_bts_ring_api(request):
 
         if is_ring_target is not None:
             site.is_ring = bool(is_ring_target)
+            if bool(is_ring_target):
+                if erps_ring_name:
+                    site.erps_ring_name = erps_ring_name
+            else:
+                site.erps_ring_name = None
         elif action == 'add':
             site.is_ring = True
+            if erps_ring_name:
+                site.erps_ring_name = erps_ring_name
         elif action == 'remove':
             site.is_ring = False
+            site.erps_ring_name = None
         else:
             site.is_ring = not site.is_ring
+            if not site.is_ring:
+                site.erps_ring_name = None
 
-        site.save(update_fields=['is_ring'])
+        site.save(update_fields=['is_ring', 'erps_ring_name'])
 
         total_ring = qs.filter(is_ring=True).count()
         total_non_ring = qs.filter(is_ring=False).count()
+        saved_rings = sorted(list(qs.filter(is_ring=True).exclude(erps_ring_name__isnull=True).exclude(erps_ring_name__exact='').values_list('erps_ring_name', flat=True).distinct()))
 
+        ring_msg = f" for '{site.erps_ring_name}'" if site.erps_ring_name else ""
         return JsonResponse({
             'success': True,
             'bts_id': site.id,
             'rp_id': site.rp_id,
             'bts_name': site.bts_name,
             'is_ring': site.is_ring,
+            'erps_ring_name': site.erps_ring_name or '',
             'total_ring_count': total_ring,
             'total_non_ring_count': total_non_ring,
-            'message': f"Site {site.bts_name} ({site.rp_id}) is now {'In Ring' if site.is_ring else 'Not In Ring'}."
+            'saved_rings': saved_rings,
+            'message': f"Site {site.bts_name} ({site.rp_id}) is now {'In Ring' if site.is_ring else 'Not In Ring'}{ring_msg}."
         })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)

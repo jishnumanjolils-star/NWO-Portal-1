@@ -532,10 +532,16 @@
                 <i class="bi bi-search"></i>
                 <input type="text" name="search" class="search-input" placeholder="Search by RP ID or BTS Name..." value="{{ request.GET.search }}">
             </div>
-            <select name="is_ring" class="form-select border-0 bg-light fw-bold px-4" style="border-radius: 14px; min-width: 200px;" onchange="this.form.submit()">
+            <select name="is_ring" class="form-select border-0 bg-light fw-bold px-3" style="border-radius: 14px; min-width: 180px;" onchange="this.form.submit()">
                 <option value="">All Ring Connectivity</option>
                 <option value="true" {% if request.GET.is_ring == 'true' %}selected{% endif %}>In Ring Only</option>
                 <option value="false" {% if request.GET.is_ring == 'false' %}selected{% endif %}>Not In Ring Only</option>
+            </select>
+            <select name="erps_ring_name" id="search_erps_ring_select" class="form-select border-0 bg-light fw-bold px-3" style="border-radius: 14px; min-width: 180px;" onchange="this.form.submit()">
+                <option value="">All ERPS Rings</option>
+                {% for ring_name in saved_erps_rings %}
+                <option value="{{ ring_name }}" {% if request.GET.erps_ring_name == ring_name %}selected{% endif %}>{{ ring_name }}</option>
+                {% endfor %}
             </select>
             <button type="submit" class="btn btn-dark px-4 fw-bold rounded-pill">Search</button>
             <button type="button" class="btn btn-info text-white px-4 fw-bold rounded-pill text-nowrap btn-open-ring-modal" data-bs-toggle="modal" data-bs-target="#ringModal" onclick="openRingModal();">
@@ -610,6 +616,9 @@
                                       title="Click to mark as NOT in ring">
                                     <i class="bi bi-diagram-3-fill me-1"></i>IN RING
                                 </span>
+                                {% if bts.erps_ring_name %}
+                                    <div class="mt-1"><span class="badge bg-light text-dark border extra-small"><i class="bi bi-folder-fill text-info me-1"></i>{{ bts.erps_ring_name }}</span></div>
+                                {% endif %}
                             {% else %}
                                 <span class="badge-modern bg-light text-muted border ring-status-badge" 
                                       onclick="quickToggleRing({{ bts.id }}, true)" 
@@ -690,6 +699,34 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
+                <!-- ERPS Ring Naming & Editing Controls -->
+                <div class="p-3 bg-light rounded-16 border mb-4">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-dark mb-1">
+                                <i class="bi bi-folder-fill text-info me-1"></i> Edit Existing Saved ERPS Ring:
+                            </label>
+                            <div class="input-group">
+                                <select class="form-select dist-input fw-bold" id="modal_existing_ring_select">
+                                    <option value="">-- Create / Select Named Ring --</option>
+                                    {% for ring_name in saved_erps_rings %}
+                                    <option value="{{ ring_name }}">{{ ring_name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button class="btn btn-outline-danger" type="button" id="btnDeleteErpsRing" title="Delete Selected Ring" style="display:none;">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-dark mb-1">
+                                <i class="bi bi-pencil-square text-primary me-1"></i> ERPS Ring Name:
+                            </label>
+                            <input type="text" id="modal_erps_ring_name_input" class="form-control dist-input fw-bold" placeholder="e.g. Ring 1 - Ernakulam Central">
+                        </div>
+                    </div>
+                </div>
+
                 <ul class="nav nav-pills mb-3" id="modalRingTabs" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active py-2 px-3 small fw-bold" id="modal-single-tab" data-bs-toggle="pill" data-bs-target="#modal-single-pane" type="button" role="tab">
@@ -881,6 +918,59 @@
             handleBulkRingActionModal(false);
         });
 
+        // Existing Ring Select & Delete Handlers
+        $('#modal_existing_ring_select').on('change', function() {
+            var ringName = $(this).val();
+            if (ringName) {
+                $('#modal_erps_ring_name_input').val(ringName);
+                $('#btnDeleteErpsRing').show();
+                loadExistingRingSites(ringName);
+            } else {
+                $('#modal_erps_ring_name_input').val('');
+                $('#btnDeleteErpsRing').hide();
+                $('#singleAddedSessionContainer').hide();
+                $('#singleAddedSessionBadges').empty();
+            }
+        });
+
+        $('#btnDeleteErpsRing').on('click', function() {
+            var ringName = $('#modal_existing_ring_select').val() || $('#modal_erps_ring_name_input').val();
+            if (!ringName) return;
+            if (!confirm("Are you sure you want to delete ERPS Ring '" + ringName + "' and unassign all its sites?")) {
+                return;
+            }
+            $.ajax({
+                url: '{% url "toggle_bts_ring_api" %}',
+                type: 'POST',
+                contentType: 'application/json',
+                headers: { 'X-CSRFToken': csrftoken },
+                data: JSON.stringify({ action: 'delete_ring', erps_ring_name: ringName }),
+                success: function(res) {
+                    if (res.success) {
+                        showModalToast(res.message, "success");
+                        updateSavedRingsDropdown(res.saved_rings, '');
+                        $('#modal_erps_ring_name_input').val('');
+                        $('#btnDeleteErpsRing').hide();
+                        $('#singleAddedSessionContainer').hide();
+                        $('#singleAddedSessionBadges').empty();
+                        
+                        mapSites.forEach(function(b) {
+                            if (b.erps_ring_name === ringName) {
+                                updateLocalBtsRingState(b.id, false, false, '');
+                            }
+                        });
+                        updateCounters(res.total_ring_count, res.total_non_ring_count);
+                    } else {
+                        showModalToast(res.error || "Failed to delete ring.", "danger");
+                    }
+                },
+                error: function(xhr) {
+                    var err = xhr.responseJSON ? xhr.responseJSON.error : "Server error.";
+                    showModalToast(err, "danger");
+                }
+            });
+        });
+
         // Header Measure Distance Button
         $('#btnHeaderDistCalc').on('click', function() {
             $('#distCalcPanel').slideDown(300);
@@ -956,32 +1046,116 @@
         setTimeout(function() { $t.slideUp(200); }, 4000);
     }
 
+    function updateSavedRingsDropdown(savedRings, currentSelected) {
+        var $select = $('#modal_existing_ring_select');
+        var $searchSelect = $('#search_erps_ring_select');
+        var val = currentSelected !== undefined ? currentSelected : $select.val();
+        
+        $select.empty().append('<option value="">-- Create / Select Named Ring --</option>');
+        if ($searchSelect.length > 0) {
+            var searchVal = $searchSelect.val();
+            $searchSelect.empty().append('<option value="">All ERPS Rings</option>');
+        }
+
+        if (savedRings && savedRings.length > 0) {
+            savedRings.forEach(function(ring) {
+                var sel = (ring === val) ? 'selected' : '';
+                $select.append('<option value="' + ring + '" ' + sel + '>' + ring + '</option>');
+                if ($searchSelect.length > 0) {
+                    var sSel = (ring === searchVal) ? 'selected' : '';
+                    $searchSelect.append('<option value="' + ring + '" ' + sSel + '>' + ring + '</option>');
+                }
+            });
+        }
+        if (val && savedRings && savedRings.includes(val)) {
+            $select.val(val);
+            $('#btnDeleteErpsRing').show();
+        }
+    }
+
+    function loadExistingRingSites(ringName) {
+        if (!ringName) return;
+        $.ajax({
+            url: '{% url "toggle_bts_ring_api" %}',
+            type: 'POST',
+            contentType: 'application/json',
+            headers: { 'X-CSRFToken': csrftoken },
+            data: JSON.stringify({ action: 'get_ring_sites', erps_ring_name: ringName }),
+            success: function(res) {
+                if (res.success && res.sites) {
+                    renderRingSitesBadges(ringName, res.sites);
+                }
+            }
+        });
+    }
+
+    function renderRingSitesBadges(ringName, sites) {
+        $('#singleAddedSessionContainer').show();
+        var $badges = $('#singleAddedSessionBadges');
+        $badges.empty();
+        if (!sites || sites.length === 0) {
+            $badges.html('<span class="text-muted small">No sites assigned to ' + ringName + ' yet.</span>');
+            return;
+        }
+        sites.forEach(function(s) {
+            var labelText = s.rp_id + ' - ' + (s.bts_name || 'Unnamed');
+            var $badge = $('<span class="badge bg-info text-white p-2 shadow-sm d-inline-flex align-items-center gap-2 rounded-pill">' +
+                '<i class="bi bi-diagram-3-fill"></i> ' + labelText +
+                ' <button type="button" class="btn-close btn-close-white ms-1" style="font-size:0.65rem;" title="Remove from ' + ringName + '" onclick="removeSiteFromRing(' + s.id + ', \'' + ringName.replace(/'/g, "\\'") + '\')"></button>' +
+            '</span>');
+            $badges.append($badge);
+        });
+    }
+
+    function removeSiteFromRing(btsId, ringName) {
+        $.ajax({
+            url: '{% url "toggle_bts_ring_api" %}',
+            type: 'POST',
+            contentType: 'application/json',
+            headers: { 'X-CSRFToken': csrftoken },
+            data: JSON.stringify({ bts_id: btsId, is_ring: false, erps_ring_name: '' }),
+            success: function(res) {
+                if (res.success) {
+                    updateLocalBtsRingState(btsId, false, true, '');
+                    updateCounters(res.total_ring_count, res.total_non_ring_count);
+                    if (res.saved_rings) updateSavedRingsDropdown(res.saved_rings, ringName);
+                    loadExistingRingSites(ringName);
+                    showModalToast("Removed site from " + ringName, "success");
+                }
+            }
+        });
+    }
+
     function handleRingActionModal(targetIsRing) {
         var val = $('#modal_ring_bts_input').val();
         if (!val) {
             showModalToast("Please enter a valid BTS Name or RP ID.", "danger");
             return;
         }
+        var ringName = $('#modal_erps_ring_name_input').val().trim() || $('#modal_existing_ring_select').val();
 
         $.ajax({
             url: '{% url "toggle_bts_ring_api" %}',
             type: 'POST',
             contentType: 'application/json',
             headers: { 'X-CSRFToken': csrftoken },
-            data: JSON.stringify({ query: val, is_ring: targetIsRing }),
+            data: JSON.stringify({ query: val, is_ring: targetIsRing, erps_ring_name: ringName }),
             success: function(res) {
                 if (res.success) {
                     showModalToast(res.message, "success");
-                    updateLocalBtsRingState(res.bts_id, res.is_ring);
+                    updateLocalBtsRingState(res.bts_id, res.is_ring, true, res.erps_ring_name);
                     updateCounters(res.total_ring_count, res.total_non_ring_count);
-                    
-                    // Add badge to session activity list for multi site addition one by one
-                    $('#singleAddedSessionContainer').show();
-                    var badgeClass = res.is_ring ? 'bg-success text-white' : 'bg-secondary text-white';
-                    var badgeIcon = res.is_ring ? 'bi-check-circle-fill' : 'bi-dash-circle';
-                    var labelText = (res.rp_id || '') + ' - ' + (res.bts_name || '') + (res.is_ring ? ' (In Ring)' : ' (Removed)');
-                    var $badge = $('<span class="badge ' + badgeClass + ' p-2 shadow-sm d-inline-flex align-items-center gap-1 rounded-pill"><i class="bi ' + badgeIcon + '"></i> ' + labelText + '</span>');
-                    $('#singleAddedSessionBadges').prepend($badge);
+                    if (res.saved_rings) updateSavedRingsDropdown(res.saved_rings, ringName);
+                    if (ringName) {
+                        loadExistingRingSites(ringName);
+                    } else {
+                        $('#singleAddedSessionContainer').show();
+                        var badgeClass = res.is_ring ? 'bg-success text-white' : 'bg-secondary text-white';
+                        var badgeIcon = res.is_ring ? 'bi-check-circle-fill' : 'bi-dash-circle';
+                        var labelText = (res.rp_id || '') + ' - ' + (res.bts_name || '') + (res.is_ring ? ' (In Ring)' : ' (Removed)');
+                        var $badge = $('<span class="badge ' + badgeClass + ' p-2 shadow-sm d-inline-flex align-items-center gap-1 rounded-pill"><i class="bi ' + badgeIcon + '"></i> ' + labelText + '</span>');
+                        $('#singleAddedSessionBadges').prepend($badge);
+                    }
 
                     $('#modal_ring_bts_input').val('').focus();
                 } else {
@@ -1001,13 +1175,14 @@
             showModalToast("Please enter or paste RP IDs / BTS Names into the bulk input box.", "danger");
             return;
         }
+        var ringName = $('#modal_erps_ring_name_input').val().trim() || $('#modal_existing_ring_select').val();
 
         $.ajax({
             url: '{% url "toggle_bts_ring_api" %}',
             type: 'POST',
             contentType: 'application/json',
             headers: { 'X-CSRFToken': csrftoken },
-            data: JSON.stringify({ raw_bulk_text: rawText, is_ring: targetIsRing }),
+            data: JSON.stringify({ raw_bulk_text: rawText, is_ring: targetIsRing, erps_ring_name: ringName }),
             success: function(res) {
                 if (res.success) {
                     var toastType = res.unmatched_inputs && res.unmatched_inputs.length > 0 ? "warning" : "success";
@@ -1015,7 +1190,7 @@
                     
                     if (res.matched_sites && res.matched_sites.length > 0) {
                         res.matched_sites.forEach(function(s) {
-                            updateLocalBtsRingState(s.id, res.is_ring, false);
+                            updateLocalBtsRingState(s.id, res.is_ring, false, s.erps_ring_name);
                         });
                         drawRingDiagram();
                         
@@ -1024,6 +1199,8 @@
                             leafletMap.fitBounds(ringCoords, { padding: [60, 60] });
                         }
                     }
+                    if (res.saved_rings) updateSavedRingsDropdown(res.saved_rings, ringName);
+                    if (ringName) loadExistingRingSites(ringName);
                     updateCounters(res.total_ring_count, res.total_non_ring_count);
                     $('#modal_bulk_ring_textarea').val('');
                 } else {
@@ -1092,8 +1269,11 @@
             popupContent += '<p class="mb-1 small"><b>Place:</b> ' + bts.place_name + '</p>';
         }
         
-        popupContent += '<p class="mb-1 small"><b>Ring Status:</b> ' + (isRing ? '<span class="badge bg-info text-white">In Ring</span>' : '<span class="badge bg-secondary text-white">Not In Ring</span>') + '</p>' +
-            '<p class="mb-2 small"><b>CEF 12T:</b> ' + (bts.has_cef_12t ? '<span class="badge bg-success text-white">Yes</span>' : '<span class="badge bg-secondary text-white">No</span>') + '</p>' +
+        popupContent += '<p class="mb-1 small"><b>Ring Status:</b> ' + (isRing ? '<span class="badge bg-info text-white">In Ring</span>' : '<span class="badge bg-secondary text-white">Not In Ring</span>') + '</p>';
+        if (bts.erps_ring_name) {
+            popupContent += '<p class="mb-1 small"><b>ERPS Group:</b> <span class="badge bg-light text-dark border"><i class="bi bi-folder-fill text-info me-1"></i>' + bts.erps_ring_name + '</span></p>';
+        }
+        popupContent += '<p class="mb-2 small"><b>CEF 12T:</b> ' + (bts.has_cef_12t ? '<span class="badge bg-success text-white">Yes</span>' : '<span class="badge bg-secondary text-white">No</span>') + '</p>' +
             '<div class="d-flex gap-1 flex-wrap">' +
                 '<button class="btn btn-xs ' + (isRing ? 'btn-outline-danger' : 'btn-success text-white') + ' py-1 px-2 font-size-xs rounded" style="font-size: 0.75rem;" onclick="quickToggleRing(' + bts.id + ', ' + (!isRing) + ')">' +
                     (isRing ? 'Remove Ring' : 'Mark in Ring') +
@@ -1114,32 +1294,8 @@
     function drawRingDiagram() {
         if (!ringLayersGroup) return;
         ringLayersGroup.clearLayers();
-        if (!showRingDiagram) return;
-
-        var ringSites = mapSites.filter(b => b.is_ring && b.latitude && b.longitude);
-        if (ringSites.length < 2) return;
-
-        // Order sites for a convex polygon or nearest neighbor sequence
-        var ordered = orderRingCoordinates(ringSites);
-        var coords = ordered.map(b => [b.latitude, b.longitude]);
-        if (coords.length > 2) {
-            coords.push(coords[0]); // Close loop
-        }
-
-        // Draw glowing Outer Polyline
-        L.polyline(coords, {
-            color: '#06b6d4',
-            weight: 7,
-            opacity: 0.3
-        }).addTo(ringLayersGroup);
-
-        // Draw Core Inner Polyline
-        L.polyline(coords, {
-            color: '#0284c7',
-            weight: 4,
-            dashArray: '8, 8',
-            opacity: 0.95
-        }).addTo(ringLayersGroup);
+        // Marked connection lines disabled per requirement
+        return;
     }
 
     function orderRingCoordinates(sites) {
@@ -1295,12 +1451,12 @@
         });
     }
 
-    function updateLocalBtsRingState(btsId, isRing, redraw) {
+    function updateLocalBtsRingState(btsId, isRing, redraw, ringName) {
         if (redraw === undefined) redraw = true;
-        // Update in JS array
         var bts = mapSites.find(b => b.id === btsId);
         if (bts) {
             bts.is_ring = isRing;
+            if (ringName !== undefined) bts.erps_ring_name = ringName;
             if (markersDict[btsId] && leafletMap) {
                 leafletMap.removeLayer(markersDict[btsId]);
                 var newMarker = createTowerMarker(bts);
@@ -1310,12 +1466,12 @@
             if (redraw) drawRingDiagram();
         }
 
-        // Update in table row
         var $row = $('tr[data-bts-id="' + btsId + '"]');
         if ($row.length > 0) {
             var $badgeCell = $row.find('.ring-status-badge').parent();
+            var ringLabel = (bts && bts.erps_ring_name) ? '<div class="mt-1"><span class="badge bg-light text-dark border extra-small"><i class="bi bi-folder-fill text-info me-1"></i>' + bts.erps_ring_name + '</span></div>' : '';
             if (isRing) {
-                $badgeCell.html('<span class="badge-modern bg-info text-white ring-status-badge" onclick="quickToggleRing(' + btsId + ', false)" title="Click to mark as NOT in ring"><i class="bi bi-diagram-3-fill me-1"></i>IN RING</span>');
+                $badgeCell.html('<span class="badge-modern bg-info text-white ring-status-badge" onclick="quickToggleRing(' + btsId + ', false)" title="Click to mark as NOT in ring"><i class="bi bi-diagram-3-fill me-1"></i>IN RING</span>' + ringLabel);
             } else {
                 $badgeCell.html('<span class="badge-modern bg-light text-muted border ring-status-badge" onclick="quickToggleRing(' + btsId + ', true)" title="Click to mark as IN ring"><i class="bi bi-circle me-1"></i>NOT IN RING</span>');
             }
