@@ -910,8 +910,9 @@
                     
                     if (res.matched_sites && res.matched_sites.length > 0) {
                         res.matched_sites.forEach(function(s) {
-                            updateLocalBtsRingState(s.id, res.is_ring);
+                            updateLocalBtsRingState(s.id, res.is_ring, false);
                         });
+                        drawRingDiagram();
                         
                         var ringCoords = res.matched_sites.filter(s => s.latitude && s.longitude).map(s => [s.latitude, s.longitude]);
                         if (ringCoords.length > 0 && leafletMap) {
@@ -1065,24 +1066,38 @@
     }
 
     function orderRingCoordinates(sites) {
-        if (sites.length <= 2) return sites;
+        if (!sites || sites.length <= 2) return sites || [];
         var result = [sites[0]];
         var remaining = sites.slice(1);
+        var maxLoops = sites.length * 2;
+        var loopCount = 0;
 
-        while (remaining.length > 0) {
+        while (remaining.length > 0 && loopCount < maxLoops) {
+            loopCount++;
             var curr = result[result.length - 1];
-            var nearestIdx = 0;
+            var nearestIdx = -1;
             var minD = Infinity;
 
+            var lat1 = parseFloat(curr.latitude);
+            var lon1 = parseFloat(curr.longitude);
+
             for (var i = 0; i < remaining.length; i++) {
-                var d = Math.pow(curr.latitude - remaining[i].latitude, 2) + Math.pow(curr.longitude - remaining[i].longitude, 2);
+                var lat2 = parseFloat(remaining[i].latitude);
+                var lon2 = parseFloat(remaining[i].longitude);
+                if (isNaN(lat1) || isNaN(lon1) || isNaN(lat2) || isNaN(lon2)) continue;
+                
+                var d = Math.pow(lat1 - lat2, 2) + Math.pow(lon1 - lon2, 2);
                 if (d < minD) {
                     minD = d;
                     nearestIdx = i;
                 }
             }
-            result.push(remaining[nearestIdx]);
-            remaining.splice(nearestIdx, 1);
+            if (nearestIdx !== -1) {
+                result.push(remaining[nearestIdx]);
+                remaining.splice(nearestIdx, 1);
+            } else {
+                result.push(remaining.shift());
+            }
         }
         return result;
     }
@@ -1137,8 +1152,9 @@
                     
                     if (res.matched_sites && res.matched_sites.length > 0) {
                         res.matched_sites.forEach(function(s) {
-                            updateLocalBtsRingState(s.id, res.is_ring);
+                            updateLocalBtsRingState(s.id, res.is_ring, false);
                         });
+                        drawRingDiagram();
                         
                         var ringCoords = res.matched_sites.filter(s => s.latitude && s.longitude).map(s => [s.latitude, s.longitude]);
                         if (ringCoords.length > 0 && leafletMap) {
@@ -1191,7 +1207,8 @@
             data: JSON.stringify({ bts_ids: selectedIds, is_ring: targetIsRing }),
             success: function(res) {
                 if (res.success) {
-                    selectedIds.forEach(id => updateLocalBtsRingState(id, targetIsRing));
+                    selectedIds.forEach(id => updateLocalBtsRingState(id, targetIsRing, false));
+                    drawRingDiagram();
                     updateCounters(res.total_ring_count, res.total_non_ring_count);
                     $('.bts-select-checkbox').prop('checked', false);
                     $('#selectAllBts').prop('checked', false);
@@ -1201,7 +1218,8 @@
         });
     }
 
-    function updateLocalBtsRingState(btsId, isRing) {
+    function updateLocalBtsRingState(btsId, isRing, redraw) {
+        if (redraw === undefined) redraw = true;
         // Update in JS array
         var bts = mapSites.find(b => b.id === btsId);
         if (bts) {
@@ -1212,7 +1230,7 @@
                 newMarker.addTo(leafletMap);
                 markersDict[btsId] = newMarker;
             }
-            drawRingDiagram();
+            if (redraw) drawRingDiagram();
         }
 
         // Update in table row

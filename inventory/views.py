@@ -627,6 +627,12 @@ class BTSListView(LoginRequiredMixin, DivisionRequiredMixin, ListView):
         # Serialize all 4G sites to JSON for Leaflet mapping and tool lookups
         map_sites = []
         for bts in base_qs:
+            erps_url = ''
+            if getattr(bts, 'erps_image', None):
+                try:
+                    erps_url = bts.erps_image.url
+                except Exception:
+                    erps_url = ''
             map_sites.append({
                 'id': bts.id,
                 'rp_id': bts.rp_id,
@@ -636,7 +642,7 @@ class BTSListView(LoginRequiredMixin, DivisionRequiredMixin, ListView):
                 'place_name': bts.place_name or '',
                 'is_ring': bts.is_ring,
                 'has_cef_12t': bts.has_cef_12t,
-                'erps_image_url': bts.erps_image.url if bts.erps_image else '',
+                'erps_image_url': erps_url,
             })
         context['map_sites_json'] = json.dumps(map_sites)
         return context
