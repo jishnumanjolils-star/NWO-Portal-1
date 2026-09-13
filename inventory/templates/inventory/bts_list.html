@@ -620,7 +620,7 @@
                         </td>
                         <td>
                             {% if bts.erps_image %}
-                                <button type="button" class="btn-icon text-primary" onclick="showErpsModal('{{ bts.bts_name|escapejs }}', '{{ bts.erps_image.url }}')" title="View ERPS Ring Diagram">
+                                <button type="button" class="btn-icon text-primary btn-show-erps" data-bts-name="{{ bts.bts_name }}" data-erps-url="{{ bts.erps_image.url }}" title="View ERPS Ring Diagram">
                                     <i class="bi bi-image-fill"></i>
                                 </button>
                             {% else %}
@@ -748,6 +748,10 @@
 {% endblock %}
 
 {% block extra_js %}
+<script id="map-sites-data" type="application/json">
+{{ map_sites_json|safe }}
+</script>
+
 <script>
     // CSRF Token Helper
     function getCookie(name) {
@@ -776,9 +780,12 @@
     var showRingDiagram = true;
 
     $(document).ready(function() {
-        // Parse map sites JSON
+        // Parse map sites JSON safely
         try {
-            mapSites = JSON.parse('{{ map_sites_json|safe }}');
+            var rawElem = document.getElementById('map-sites-data');
+            if (rawElem && rawElem.textContent) {
+                mapSites = JSON.parse(rawElem.textContent.trim());
+            }
         } catch (e) {
             console.error("Error parsing map sites:", e);
         }
@@ -1271,6 +1278,13 @@
           .slideDown(200);
         setTimeout(function() { $t.slideUp(200); }, 4000);
     }
+
+    $(document).on('click', '.btn-show-erps', function(e) {
+        e.preventDefault();
+        var name = $(this).data('bts-name') || 'BTS';
+        var url = $(this).data('erps-url') || '';
+        showErpsModal(name, url);
+    });
 
     function showErpsModal(name, url) {
         $('#erpsModalTitle').text(name + ' - ERPS Ring Diagram');
