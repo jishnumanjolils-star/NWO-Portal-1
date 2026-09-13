@@ -505,7 +505,7 @@
         </div>
 
         <div class="card-body p-0">
-            <div id="bts-map" style="height: 380px; width: 100%;"></div>
+            <div id="map" style="height: 380px; width: 100%;"></div>
         </div>
     </div>
 
@@ -792,18 +792,21 @@
 
         if (mapSites && mapSites.length > 0) {
             $('#mapSection').show();
-            
-            leafletMap = L.map('map', { zoomControl: false }).setView([9.9816, 76.2999], 10);
-            L.control.zoom({ position: 'bottomright' }).addTo(leafletMap);
-            
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(leafletMap);
+            try {
+                leafletMap = L.map('map', { zoomControl: false }).setView([9.9816, 76.2999], 10);
+                L.control.zoom({ position: 'bottomright' }).addTo(leafletMap);
+                
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(leafletMap);
 
-            distLayersGroup = L.featureGroup().addTo(leafletMap);
-            ringLayersGroup = L.featureGroup().addTo(leafletMap);
+                distLayersGroup = L.featureGroup().addTo(leafletMap);
+                ringLayersGroup = L.featureGroup().addTo(leafletMap);
 
-            initMapMarkers();
+                initMapMarkers();
+            } catch (mapErr) {
+                console.error("Map initialization error:", mapErr);
+            }
 
             // Toggle Ring Panel & Distance Calc
             $('#toggleRingMgmt').on('click', function() {
