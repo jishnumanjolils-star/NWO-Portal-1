@@ -2,6 +2,28 @@
 
 from django.db import migrations, models
 
+def add_erps_ring_name_column_if_not_exists(apps, schema_editor):
+    connection = schema_editor.connection
+    vendor = connection.vendor
+    if vendor == 'postgresql':
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns 
+                        WHERE table_name='inventory_mobilebts' AND column_name='erps_ring_name'
+                    ) THEN
+                        ALTER TABLE inventory_mobilebts ADD COLUMN erps_ring_name varchar(255) NULL;
+                    END IF;
+                END $$;
+            """)
+    else:
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("ALTER TABLE inventory_mobilebts ADD COLUMN erps_ring_name varchar(255) NULL;")
+        except Exception:
+            pass
 
 class Migration(migrations.Migration):
 
@@ -10,9 +32,16 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='mobilebts',
-            name='erps_ring_name',
-            field=models.CharField(blank=True, max_length=255, null=True, verbose_name='ERPS Ring Name'),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(add_erps_ring_name_column_if_not_exists, reverse_code=migrations.RunPython.noop),
+            ],
+            state_operations=[
+                migrations.AddField(
+                    model_name='mobilebts',
+                    name='erps_ring_name',
+                    field=models.CharField(blank=True, max_length=255, null=True, verbose_name='ERPS Ring Name'),
+                ),
+            ]
         ),
     ]
